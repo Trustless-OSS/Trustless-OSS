@@ -16,6 +16,8 @@ import {
   getContributorHandler,
   healthHandler,
   fundEscrowHandler,
+  updateRepoRewardsHandler,
+  retryIssueHandler,
 } from './routes/api.js';
 
 /* ------------------------------------------------------------------ */
@@ -32,6 +34,7 @@ addRoute('POST', '/api/webhooks/github',        githubWebhookHandler);
 addRoute('GET',  '/api/repos',                  listReposHandler);
 addRoute('POST', '/api/repos/connect',          connectRepoHandler);
 addRoute('GET',  '/api/repos/:repoId/issues',   listIssuesHandler);
+addRoute('PUT',  '/api/repos/:repoId/rewards',  updateRepoRewardsHandler);
 
 // Escrow
 addRoute('POST', '/api/escrow/create',          createEscrowHandler);
@@ -39,6 +42,7 @@ addRoute('POST', '/api/escrow/fund',            fundEscrowHandler);
 
 // Milestones
 addRoute('POST', '/api/milestones/push',        pushMilestoneHandler);
+addRoute('POST', '/api/issues/:issueId/retry',  retryIssueHandler);
 
 // Wallet
 addRoute('POST', '/api/wallet/connect',         saveWalletHandler);

@@ -5,7 +5,9 @@ export function parseLabels(labels: { name: string }[]): ParsedLabels {
 
   const isRewarded = names.includes('rewarded');
 
-  const difficulty: ParsedLabels['difficulty'] = names.includes('high')
+  const difficulty: ParsedLabels['difficulty'] = names.includes('custom')
+    ? 'custom'
+    : names.includes('high')
     ? 'high'
     : names.includes('medium')
     ? 'medium'
@@ -13,26 +15,23 @@ export function parseLabels(labels: { name: string }[]): ParsedLabels {
     ? 'low'
     : null;
 
-  // Parse bonus:50 label format
-  const bonusLabel = names.find((n) => n.startsWith('bonus:'));
-  const bonusAmount = bonusLabel ? parseFloat(bonusLabel.split(':')[1] ?? '0') || 0 : 0;
-
-  return { isRewarded, difficulty, bonusAmount };
+  return { isRewarded, difficulty };
 }
 
 export function getRewardAmount(
   difficulty: ParsedLabels['difficulty'],
-  bonusAmount: number,
-  repoDefaults: Pick<Repo, 'reward_low' | 'reward_medium' | 'reward_high'>
+  repoDefaults: Pick<Repo, 'reward_low' | 'reward_medium' | 'reward_high'>,
+  customAmount?: number
 ): number {
-  const base =
-    difficulty === 'high'
-      ? repoDefaults.reward_high
-      : difficulty === 'medium'
-      ? repoDefaults.reward_medium
-      : difficulty === 'low'
-      ? repoDefaults.reward_low
-      : 0;
+  if (difficulty === 'custom' && customAmount != null) {
+    return customAmount;
+  }
 
-  return base + bonusAmount;
+  return difficulty === 'high'
+    ? repoDefaults.reward_high
+    : difficulty === 'medium'
+    ? repoDefaults.reward_medium
+    : difficulty === 'low'
+    ? repoDefaults.reward_low
+    : 0;
 }

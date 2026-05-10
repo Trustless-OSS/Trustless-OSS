@@ -1,8 +1,22 @@
+const commentCache = new Map<string, number>();
+const CACHE_TTL = 10000; // 10 seconds
+
 export async function postComment(
   fullName: string,
   issueNumber: number,
   body: string
 ): Promise<void> {
+  const cacheKey = `${fullName}#${issueNumber}:${body.substring(0, 50)}`;
+  const now = Date.now();
+  const lastSent = commentCache.get(cacheKey);
+
+  if (lastSent && now - lastSent < CACHE_TTL) {
+    console.log(`[GitHub] Skipping duplicate comment on ${fullName}#${issueNumber}`);
+    return;
+  }
+  
+  commentCache.set(cacheKey, now);
+
   const token = process.env.GITHUB_BOT_TOKEN;
   if (!token) {
     console.error(`[GitHub] Cannot post comment. GITHUB_BOT_TOKEN is missing in .env`);

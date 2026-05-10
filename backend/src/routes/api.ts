@@ -321,6 +321,136 @@ export async function getContributorHandler(req: IncomingMessage, res: ServerRes
 }
 
 /* ------------------------------------------------------------------ */
+/* PUT /api/repos/:repoId/rewards                                       */
+/* Body: { reward_low, reward_medium, reward_high }                    */
+/* ------------------------------------------------------------------ */
+export async function updateRepoRewardsHandler(
+  req: IncomingMessage,
+  res: ServerResponse,
+  params: Record<string, string>
+): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    reward_low: number;
+    reward_medium: number;
+    reward_high: number;
+  };
+
+  // Validate amounts
+  if (body.reward_low < 0 || body.reward_medium < 0 || body.reward_high < 0) {
+    json(res, { error: 'Reward amounts must be non-negative' }, 400);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('repos')
+    .update({
+      reward_low: body.reward_low,
+      reward_medium: body.reward_medium,
+      reward_high: body.reward_high,
+    })
+    .eq('id', params.repoId!)
+    .select()
+    .single<Repo>();
+
+  if (error) { json(res, { error: error.message }, 400); return; }
+  json(res, { repo: data });
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/issues/:issueId/retry                                      */
+/* ------------------------------------------------------------------ */
+export async function retryIssueHandler(
+  req: IncomingMessage,
+  res: ServerResponse,
+  params: Record<string, string>
+): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const { data: issue } = await supabase
+    .from('issues')
+    .select('*, repos(*)')
+    .eq('id', params.issueId!)
+    .single<Issue & { repos: Repo }>();
+
+  if (!issue) { json(res, { error: 'Issue not found' }, 404); return; }
+
+  // Check if user is the repo owner
+  if (Number(issue.repos.owner_github_id) !== Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub)) {
+    json(res, { error: 'Only the repository owner can retry' }, 403);
+    return;
+  }
+
+  const { data: assignment } = await supabase
+    .from('assignments')
+    .select('*, contributors(*)')
+    .eq('issue_id', issue.id)
+    .single<Assignment>();
+
+  if (!assignment) { json(res, { error: 'No assignment found' }, 400); return; }
+
+  const { pushMilestoneOnChain, releaseEscrowMilestone } = await import('../lib/trustless-work/milestone.js');
+  
+  let currentIssue = { ...issue };
+
+  // Step 1: If pending, try to push milestone
+  if (currentIssue.status === 'pending') {
+    if (!assignment.contributors?.stellar_wallet) {
+      json(res, { error: 'Contributor has not connected a wallet yet' }, 400);
+      return;
+    }
+    await pushMilestoneOnChain(issue.repos, currentIssue, assignment.contributors.stellar_wallet);
+    json(res, { ok: true, step: 'pushed', status: 'active' });
+    return;
+  }
+
+  // Step 2: If active, check if GitHub issue is closed to trigger release
+  if (currentIssue.status === 'active') {
+    // Verify GitHub status before releasing
+    try {
+      const ghRes = await fetch(`https://api.github.com/repos/${issue.repos.full_name}/issues/${issue.github_issue_number}`, {
+        headers: {
+          'Authorization': `token ${process.env.GITHUB_BOT_TOKEN}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Trustless-OSS-Bot'
+        }
+      });
+      const ghIssue = await ghRes.json() as any;
+      
+      if (ghIssue.state !== 'closed') {
+        json(res, { error: 'This issue is still open on GitHub. Please close it or merge the PR first.' }, 400);
+        return;
+      }
+    } catch (e) {
+      console.error('[API] Failed to verify GitHub issue state:', e);
+      // Proceed anyway if it's a manual retry and GitHub is down? 
+      // Better to fail safe.
+      json(res, { error: 'Could not verify GitHub issue state' }, 500);
+      return;
+    }
+
+    const txHash = await releaseEscrowMilestone(issue.repos, currentIssue);
+    if (txHash) {
+      await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
+      await supabase.from('issues').update({ status: 'completed' }).eq('id', currentIssue.id);
+      json(res, { ok: true, step: 'released', txHash });
+    } else {
+      json(res, { error: 'On-chain release failed' }, 500);
+    }
+    return;
+  }
+
+  json(res, { ok: true, message: 'Process is already up to date' });
+}
+
+/* ------------------------------------------------------------------ */
 /* GET /api/health                                                      */
 /* ------------------------------------------------------------------ */
 export async function healthHandler(_req: IncomingMessage, res: ServerResponse): Promise<void> {

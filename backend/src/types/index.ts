@@ -27,8 +27,7 @@ export interface Issue {
   github_issue_number: number;
   title: string;
   reward_amount: number;
-  difficulty_label: 'low' | 'medium' | 'high' | null;
-  bonus_amount: number;
+  difficulty_label: 'low' | 'medium' | 'high' | 'custom' | null;
   milestone_index: number | null;
   status: 'pending' | 'active' | 'completed' | 'cancelled';
   created_at: string;
@@ -47,8 +46,7 @@ export interface Assignment {
 
 export interface ParsedLabels {
   isRewarded: boolean;
-  difficulty: 'low' | 'medium' | 'high' | null;
-  bonusAmount: number;
+  difficulty: 'low' | 'medium' | 'high' | 'custom' | null;
 }
 
 export interface RouteContext {

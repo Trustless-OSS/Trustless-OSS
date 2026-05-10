@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import DeployEscrowButton from './DeployEscrowButton';
 import FundEscrowButton from './FundEscrowButton';
+import RewardSettingsForm from './RewardSettingsForm';
+import RetryProcessButton from './ReleaseBountyButton';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
 
@@ -31,7 +33,7 @@ function statusBadge(status: string) {
 
 function diffBadge(diff: string | null) {
   if (!diff) return '';
-  const map: Record<string, string> = { low: 'diff-low', medium: 'diff-medium', high: 'diff-high' };
+  const map: Record<string, string> = { low: 'diff-low', medium: 'diff-medium', high: 'diff-high', custom: 'diff-custom' };
   return `${map[diff] ?? ''} px-2 py-0.5 rounded-full text-xs font-medium`;
 }
 
@@ -106,20 +108,13 @@ export default async function RepoDetailPage({
               </div>
             </div>
 
-            <div className="flex gap-4 mt-6 pt-6 border-t border-white/5 flex-wrap">
-              <div className="glass rounded-xl px-4 py-3">
-                <div className="text-xs text-gray-500 mb-1">Low reward</div>
-                <div className="text-sm font-mono font-semibold text-white">{repo.reward_low} USDC</div>
-              </div>
-              <div className="glass rounded-xl px-4 py-3">
-                <div className="text-xs text-gray-500 mb-1">Medium reward</div>
-                <div className="text-sm font-mono font-semibold text-white">{repo.reward_medium} USDC</div>
-              </div>
-              <div className="glass rounded-xl px-4 py-3">
-                <div className="text-xs text-gray-500 mb-1">High reward</div>
-                <div className="text-sm font-mono font-semibold text-white">{repo.reward_high} USDC</div>
-              </div>
-            </div>
+            <RewardSettingsForm
+              repoId={repoId}
+              token={session?.access_token ?? ''}
+              initialLow={repo.reward_low}
+              initialMedium={repo.reward_medium}
+              initialHigh={repo.reward_high}
+            />
           </div>
         )}
 
@@ -130,7 +125,7 @@ export default async function RepoDetailPage({
           <div className="glass rounded-2xl p-12 text-center">
             <div className="text-4xl mb-4">🏷️</div>
             <p className="text-gray-400">
-              No bounty issues yet. Add <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">rewarded</code> + difficulty labels to a GitHub issue to get started.
+              No bounty issues yet. Add <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">rewarded</code> + a difficulty label (<code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">low</code> / <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">medium</code> / <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">high</code> / <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">custom</code>), or comment <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">@Trustless-OSS 50</code> on any issue.
             </p>
           </div>
         ) : (
@@ -143,6 +138,7 @@ export default async function RepoDetailPage({
                   <th className="px-6 py-4 font-medium">Reward</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Assignee</th>
+                  <th className="px-6 py-4 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -180,6 +176,14 @@ export default async function RepoDetailPage({
                         ) : (
                           <span className="text-gray-600">unassigned</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <RetryProcessButton 
+                          issueId={issue.id}
+                          token={session?.access_token ?? ''}
+                          status={issue.status}
+                          payoutStatus={assignment?.payout_status ?? 'pending'}
+                        />
                       </td>
                     </tr>
                   );

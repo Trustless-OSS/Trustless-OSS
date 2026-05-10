@@ -21,23 +21,31 @@ export async function pushMilestoneOnChain(
     throw new Error(`Escrow not found: ${repo.escrow_contract_id}`);
   }
 
-  const currentMilestones = escrowData.milestones ?? [];
-  const milestoneIndex = currentMilestones.length;
+  const currentMilestones = (escrowData.milestones ?? []) as any[];
+  let milestoneIndex = issue.milestone_index;
+  let newMilestones = [...currentMilestones];
 
-  // The update API expects a strict schema and rejects read-only properties
+  const milestoneData = {
+    description: `Issue #${issue.github_issue_number}: ${issue.title}`,
+    amount: Number(issue.reward_amount),
+    status: 'pending',
+    evidence: '',
+    flags: { approved: false, released: false, disputed: false, resolved: false },
+    receiver: contributorWallet,
+  };
+
+  if (milestoneIndex != null && milestoneIndex < currentMilestones.length) {
+    newMilestones[milestoneIndex] = milestoneData;
+  } else {
+    milestoneIndex = currentMilestones.length;
+    newMilestones.push(milestoneData);
+  }
+
   const { 
-    type, 
-    createdAt, 
-    updatedAt, 
-    balance, 
-    inconsistencies, 
-    contractBaseId,
-    isActive,
-    receiverMemo,
-    ...escrowPayload 
+    type, createdAt, updatedAt, balance, inconsistencies, 
+    contractBaseId, isActive, receiverMemo, ...escrowPayload 
   } = escrowData as any;
 
-  // Add new milestone to escrow
   const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
     method: 'PUT',
     body: JSON.stringify({
@@ -45,17 +53,7 @@ export async function pushMilestoneOnChain(
       contractId: repo.escrow_contract_id,
       escrow: {
         ...escrowPayload,
-        milestones: [
-          ...currentMilestones,
-          {
-            description: `Issue #${issue.github_issue_number}: ${issue.title}`,
-            amount: Number(issue.reward_amount), // amount must be a number
-            status: 'pending', // API might expect lowercase pending
-            evidence: '',
-            flags: { approved: false, released: false, disputed: false, resolved: false },
-            receiver: contributorWallet,
-          },
-        ],
+        milestones: newMilestones,
       },
     }),
   }) as { unsignedTransaction: string };
@@ -71,7 +69,7 @@ export async function pushMilestoneOnChain(
   console.log(`[Milestone] Issue #${issue.github_issue_number} pushed on-chain at index ${milestoneIndex}`);
 }
 
-export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<boolean> {
+export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<string | null> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
   try {
@@ -97,12 +95,13 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
       }),
     }) as { unsignedTransaction: string };
 
-    await signAndSendTransaction(releaseRes.unsignedTransaction);
+    const result = await signAndSendTransaction(releaseRes.unsignedTransaction) as { hash?: string; transactionHash?: string };
+    const hash = result.hash || result.transactionHash;
 
-    console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}`);
-    return true;
+    console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`);
+    return hash ?? 'success';
   } catch (err) {
     console.error('[Milestone] Release failed:', err);
-    return false;
+    return null;
   }
 }

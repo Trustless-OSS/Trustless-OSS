@@ -5,6 +5,8 @@ import {
   handleIssueLabeled,
   handleIssueAssigned,
   handleIssueUnassigned,
+  handleIssueClosed,
+  handleIssueCommentCreated,
   handlePRMerged,
   handleInstallation,
   handleInstallationRepositories,
@@ -39,6 +41,11 @@ export async function githubWebhookHandler(
       if (action === 'labeled') await handleIssueLabeled(payload);
       else if (action === 'assigned') await handleIssueAssigned(payload);
       else if (action === 'unassigned') await handleIssueUnassigned(payload);
+      else if (action === 'closed') await handleIssueClosed(payload);
+    }
+
+    if (event === 'issue_comment' && action === 'created') {
+      await handleIssueCommentCreated(payload);
     }
 
     if (event === 'pull_request' && action === 'closed') {

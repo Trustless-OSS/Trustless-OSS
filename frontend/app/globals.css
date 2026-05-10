@@ -46,6 +46,7 @@ body {
 .diff-low    { @apply bg-emerald-500/10 text-emerald-400; }
 .diff-medium { @apply bg-orange-500/10  text-orange-400; }
 .diff-high   { @apply bg-red-500/10     text-red-400; }
+.diff-custom { @apply bg-indigo-500/10  text-indigo-400; }
 
 /* Animated glow on cards */
 .glow-hover {
