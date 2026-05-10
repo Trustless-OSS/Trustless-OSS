@@ -8,9 +8,22 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const response = NextResponse.redirect(`${origin}${next}`);
+      // provider_token (GitHub OAuth token) is only available immediately after
+      // the code exchange — persist it in a short-lived cookie so client pages
+      // can use it for GitHub API calls without re-authenticating.
+      if (data.session?.provider_token) {
+        response.cookies.set('gh_token', data.session.provider_token, {
+          httpOnly: false,   // must be readable by JS on the client
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 8, // 8 hours
+          path: '/',
+        });
+      }
+      return response;
     }
   }
 

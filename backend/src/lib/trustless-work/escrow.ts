@@ -10,7 +10,7 @@ export async function createRepoEscrow(params: {
 }): Promise<{ contractId: string }> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
-  const response = await twFetch('/escrow/multi-release/deploy', {
+  const response = await twFetch('/deployer/multi-release', {
     method: 'POST',
     body: JSON.stringify({
       signer: params.maintainerWallet,
@@ -23,12 +23,18 @@ export async function createRepoEscrow(params: {
         platformAddress: platformKey,
         releaseSigner: platformKey,
         disputeResolver: params.maintainerWallet,
-        receiver: platformKey, // placeholder — overridden per milestone
       },
       platformFee: 0,
-      milestones: [],
+      milestones: [
+        {
+          description: `Initial Escrow Setup`,
+          amount: 0.1, // Minimum amount required to satisfy contract checks
+          receiver: platformKey, // Placeholder receiver
+        }
+      ],
       trustline: {
         address: TESTNET_USDC,
+        symbol: 'USDC',
       },
     }),
   }) as { unsignedTransaction: string };
@@ -39,4 +45,21 @@ export async function createRepoEscrow(params: {
 
 export async function getEscrowState(contractId: string): Promise<unknown> {
   return twFetch(`/escrow/${contractId}`);
+}
+
+export async function fundEscrow(params: {
+  contractId: string;
+  amount: number;
+  funderWallet: string;
+}): Promise<void> {
+  const response = await twFetch('/escrow/multi-release/fund-escrow', {
+    method: 'POST',
+    body: JSON.stringify({
+      contractId: params.contractId,
+      signer: params.funderWallet,
+      amount: params.amount,
+    }),
+  }) as { unsignedTransaction: string };
+
+  await signAndSendTransaction(response.unsignedTransaction);
 }

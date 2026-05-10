@@ -1,5 +1,9 @@
 import 'dotenv/config';
 import http from 'http';
+import dns from 'dns';
+
+// Fix for Node 18+ Undici fetch timing out on IPv6 addresses
+dns.setDefaultResultOrder('ipv4first');
 import { addRoute, dispatch, json } from './router.js';
 import { githubWebhookHandler } from './routes/webhooks.js';
 import {
@@ -11,6 +15,7 @@ import {
   saveWalletHandler,
   getContributorHandler,
   healthHandler,
+  fundEscrowHandler,
 } from './routes/api.js';
 
 /* ------------------------------------------------------------------ */
@@ -30,6 +35,7 @@ addRoute('GET',  '/api/repos/:repoId/issues',   listIssuesHandler);
 
 // Escrow
 addRoute('POST', '/api/escrow/create',          createEscrowHandler);
+addRoute('POST', '/api/escrow/fund',            fundEscrowHandler);
 
 // Milestones
 addRoute('POST', '/api/milestones/push',        pushMilestoneHandler);

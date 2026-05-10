@@ -6,6 +6,8 @@ import {
   handleIssueAssigned,
   handleIssueUnassigned,
   handlePRMerged,
+  handleInstallation,
+  handleInstallationRepositories,
 } from '../lib/github/webhook.js';
 
 export async function githubWebhookHandler(
@@ -44,6 +46,14 @@ export async function githubWebhookHandler(
       if (pr?.merged) {
         await handlePRMerged(payload);
       }
+    }
+
+    if (event === 'installation') {
+      await handleInstallation(payload);
+    }
+
+    if (event === 'installation_repositories') {
+      await handleInstallationRepositories(payload);
     }
 
     json(res, { ok: true });

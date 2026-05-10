@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "migrate": "tsx src/migrate.ts",
+    "proxy": "tsx src/webhook-proxy.ts"
   },
   "dependencies": {
     "@octokit/app": "^14.0.0",
     "@stellar/stellar-sdk": "^12.0.0",
     "@supabase/supabase-js": "^2.0.0",
     "dotenv": "^17.4.2",
+    "pg": "^8.20.0",
+    "smee-client": "^5.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.20.0"
   }
 }

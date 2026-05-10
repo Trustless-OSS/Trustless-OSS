@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
 import { supabase } from '../lib/supabase.js';
-import { createRepoEscrow } from '../lib/trustless-work/escrow.js';
+import { createRepoEscrow, fundEscrow } from '../lib/trustless-work/escrow.js';
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
 import type { Repo, Issue, Contributor } from '../types/index.js';
 
@@ -20,7 +20,37 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
     fullName: string;
     ownerGithubId: number;
     ownerUsername: string;
+    ghToken: string;
   };
+
+  // Automatically configure the GitHub Webhook on their repository!
+  try {
+    const webhookUrl = 'https://smee.io/trustless-oss-dev-webhook';
+    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET ?? 'your-webhook-secret';
+    
+    await fetch(`https://api.github.com/repos/${body.fullName}/hooks`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${body.ghToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'web',
+        active: true,
+        events: ['issues', 'pull_request'],
+        config: {
+          url: webhookUrl,
+          content_type: 'json',
+          secret: webhookSecret,
+          insecure_ssl: '0'
+        }
+      })
+    });
+    console.log(`[GitHub API] Automatically configured webhook for ${body.fullName}`);
+  } catch (err) {
+    console.error(`[GitHub API] Failed to configure webhook:`, err);
+  }
 
   const { data, error } = await supabase
     .from('repos')
@@ -74,6 +104,43 @@ export async function createEscrowHandler(req: IncomingMessage, res: ServerRespo
     .eq('id', repo.id);
 
   json(res, { contractId: result.contractId });
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/fund                                                */
+/* Funds an existing escrow contract                                    */
+/* ------------------------------------------------------------------ */
+export async function fundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; funderWallet: string };
+  if (!body?.repoId || !body?.amount || !body?.funderWallet) {
+    json(res, { error: 'Missing required fields' }, 400);
+    return;
+  }
+
+  const { data: repo } = await supabase
+    .from('repos')
+    .select('*')
+    .eq('id', body.repoId)
+    .single<Repo>();
+
+  if (!repo || !repo.escrow_contract_id) { json(res, { error: 'Repo or escrow not found' }, 404); return; }
+
+  await fundEscrow({
+    contractId: repo.escrow_contract_id,
+    amount: body.amount,
+    funderWallet: body.funderWallet,
+  });
+
+  // Update escrow_balance in DB
+  await supabase
+    .from('repos')
+    .update({ escrow_balance: repo.escrow_balance + body.amount })
+    .eq('id', repo.id);
+
+  json(res, { ok: true, newBalance: repo.escrow_balance + body.amount });
 }
 
 /* ------------------------------------------------------------------ */

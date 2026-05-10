@@ -69,7 +69,7 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
     await signAndSendTransaction(approveRes.unsignedTransaction);
 
     // Step 2: Release milestone
-    const releaseRes = await twFetch('/escrow/multi-release/release-milestone', {
+    const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
       method: 'POST',
       body: JSON.stringify({
         signer: platformKey,

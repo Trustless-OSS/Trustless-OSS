@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import DeployEscrowButton from './DeployEscrowButton';
+import FundEscrowButton from './FundEscrowButton';
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:4000';
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
 
 async function getIssues(repoId: string, token: string) {
   try {
@@ -86,7 +88,10 @@ export default async function RepoDetailPage({
                     </a>
                   </div>
                 ) : (
-                  <span className="text-sm text-yellow-400">⚠️ No escrow created yet</span>
+                  <div className="flex flex-col gap-2 items-start mt-2">
+                    <span className="text-sm text-yellow-400">⚠️ No escrow created yet</span>
+                    <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                  </div>
                 )}
               </div>
 
@@ -95,6 +100,9 @@ export default async function RepoDetailPage({
                 <div className="text-3xl font-bold text-green-400 font-mono">
                   {repo.escrow_balance} <span className="text-sm">USDC</span>
                 </div>
+                {repo.escrow_contract_id && (
+                  <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                )}
               </div>
             </div>
 
