@@ -11,13 +11,31 @@ export async function pushMilestoneOnChain(
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
   // Fetch current escrow state to determine the next milestone index
-  const escrowData = await twFetch(`/escrow/${repo.escrow_contract_id}`) as {
+  const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as Array<{
     milestones: unknown[];
     [key: string]: unknown;
-  };
+  }>;
+  const escrowData = escrowArray[0];
+  
+  if (!escrowData) {
+    throw new Error(`Escrow not found: ${repo.escrow_contract_id}`);
+  }
 
   const currentMilestones = escrowData.milestones ?? [];
   const milestoneIndex = currentMilestones.length;
+
+  // The update API expects a strict schema and rejects read-only properties
+  const { 
+    type, 
+    createdAt, 
+    updatedAt, 
+    balance, 
+    inconsistencies, 
+    contractBaseId,
+    isActive,
+    receiverMemo,
+    ...escrowPayload 
+  } = escrowData as any;
 
   // Add new milestone to escrow
   const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
@@ -26,14 +44,15 @@ export async function pushMilestoneOnChain(
       signer: platformKey,
       contractId: repo.escrow_contract_id,
       escrow: {
-        ...escrowData,
+        ...escrowPayload,
         milestones: [
           ...currentMilestones,
           {
             description: `Issue #${issue.github_issue_number}: ${issue.title}`,
-            amount: String(issue.reward_amount),
-            status: 'Pending',
-            flags: { approved: false, released: false, disputed: false },
+            amount: Number(issue.reward_amount), // amount must be a number
+            status: 'pending', // API might expect lowercase pending
+            evidence: '',
+            flags: { approved: false, released: false, disputed: false, resolved: false },
             receiver: contributorWallet,
           },
         ],
@@ -60,9 +79,9 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
     const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
       method: 'POST',
       body: JSON.stringify({
-        signer: platformKey,
+        approver: platformKey,
         contractId: repo.escrow_contract_id,
-        milestoneIndex: issue.milestone_index,
+        milestoneIndex: String(issue.milestone_index),
       }),
     }) as { unsignedTransaction: string };
 
@@ -72,9 +91,9 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
     const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
       method: 'POST',
       body: JSON.stringify({
-        signer: platformKey,
+        releaseSigner: platformKey,
         contractId: repo.escrow_contract_id,
-        milestoneIndex: issue.milestone_index,
+        milestoneIndex: String(issue.milestone_index),
       }),
     }) as { unsignedTransaction: string };
 

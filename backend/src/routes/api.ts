@@ -23,33 +23,57 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
     ghToken: string;
   };
 
-  // Automatically configure the GitHub Webhook on their repository!
+  // Automatically configure the GitHub Webhook on their repository (idempotent)
+  const webhookUrl = process.env.WEBHOOK_URL ?? 'https://smee.io/trustless-oss-dev-webhook';
+  const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET!;
+
   try {
-    const webhookUrl = 'https://smee.io/trustless-oss-dev-webhook';
-    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET ?? 'your-webhook-secret';
-    
-    await fetch(`https://api.github.com/repos/${body.fullName}/hooks`, {
-      method: 'POST',
+    // First check if our webhook already exists to avoid duplicates
+    const existingHooks = await fetch(`https://api.github.com/repos/${body.fullName}/hooks`, {
       headers: {
         Authorization: `Bearer ${body.ghToken}`,
         Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        name: 'web',
-        active: true,
-        events: ['issues', 'pull_request'],
-        config: {
-          url: webhookUrl,
-          content_type: 'json',
-          secret: webhookSecret,
-          insecure_ssl: '0'
-        }
-      })
     });
-    console.log(`[GitHub API] Automatically configured webhook for ${body.fullName}`);
+
+    let alreadyExists = false;
+    if (existingHooks.ok) {
+      const hooks = await existingHooks.json() as Array<{ config: { url: string } }>;
+      alreadyExists = hooks.some(h => h.config?.url === webhookUrl);
+    }
+
+    if (!alreadyExists) {
+      const createRes = await fetch(`https://api.github.com/repos/${body.fullName}/hooks`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${body.ghToken}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'web',
+          active: true,
+          events: ['issues', 'pull_request', 'issue_comment'],
+          config: {
+            url: webhookUrl,
+            content_type: 'json',
+            secret: webhookSecret,
+            insecure_ssl: '0',
+          },
+        }),
+      });
+
+      if (createRes.ok) {
+        console.log(`[GitHub] ✅ Webhook installed on ${body.fullName} → ${webhookUrl}`);
+      } else {
+        const errText = await createRes.text();
+        console.error(`[GitHub] ❌ Failed to install webhook on ${body.fullName}: ${createRes.status} ${errText}`);
+      }
+    } else {
+      console.log(`[GitHub] Webhook already exists on ${body.fullName}, skipping.`);
+    }
   } catch (err) {
-    console.error(`[GitHub API] Failed to configure webhook:`, err);
+    console.error(`[GitHub] Exception while installing webhook:`, err);
   }
 
   const { data, error } = await supabase
@@ -233,6 +257,19 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
   }
 
   await pushMilestoneOnChain(repo, issue, body.wallet);
+
+  // Post comment to GitHub
+  try {
+    const { postComment } = await import('../lib/github/comments.js');
+    await postComment(
+      repo.full_name,
+      issue.github_issue_number,
+      `✅ **Wallet Connected!** Bounty of **${issue.reward_amount} USDC** is now locked in escrow. Merge the PR to release the funds.`
+    );
+  } catch (e) {
+    console.error('[API] Failed to post comment after wallet connect:', e);
+  }
+
   json(res, { ok: true });
 }
 

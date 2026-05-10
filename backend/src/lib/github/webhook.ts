@@ -10,7 +10,7 @@ import type { Repo, Contributor, Issue, Assignment } from '../../types/index.js'
 
 function extractIssueNumber(body: string | null): number | null {
   if (!body) return null;
-  const match = body.match(/(?:closes|fixes|resolves)\s+#(\d+)/i);
+  const match = body.match(/(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/i);
   return match ? parseInt(match[1]!, 10) : null;
 }
 

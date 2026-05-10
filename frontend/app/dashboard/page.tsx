@@ -119,7 +119,6 @@ export default async function DashboardPage() {
                       href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
                       className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                     >
                       Escrow Viewer ↗

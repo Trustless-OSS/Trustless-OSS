@@ -129,7 +129,7 @@ export default async function HomePage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {[
-                  { label: 'low', amount: '25 USDC', note: 'Small fixes, typos', cls: 'diff-low' },
+                  { label: 'low', amount: '0.01 USDC', note: 'Small fixes, typos', cls: 'diff-low' },
                   { label: 'medium', amount: '75 USDC', note: 'Feature additions', cls: 'diff-medium' },
                   { label: 'high', amount: '150 USDC', note: 'Complex features', cls: 'diff-high' },
                   { label: 'bonus:N', amount: '+N USDC', note: 'Added on top of base', cls: 'status-active' },

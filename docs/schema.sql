@@ -12,7 +12,7 @@ create table if not exists repos (
   owner_username      text not null,
   escrow_contract_id  text,
   escrow_balance      numeric default 0,
-  reward_low          numeric default 25,
+  reward_low          numeric default 0.01,
   reward_medium       numeric default 75,
   reward_high         numeric default 150,
   created_at          timestamptz default now()

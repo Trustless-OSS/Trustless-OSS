@@ -153,9 +153,9 @@ export default async function RepoDetailPage({
                   difficulty_label: string | null;
                   reward_amount: number;
                   status: string;
-                  assignments?: { contributors?: { github_username: string }; payout_status: string }[];
+                  assignments?: { contributors?: { github_username: string }; payout_status: string };
                 }) => {
-                  const assignment = issue.assignments?.[0];
+                  const assignment = issue.assignments;
                   const contributor = assignment?.contributors;
                   return (
                     <tr key={issue.id} className="text-gray-300 hover:bg-white/2 transition-colors">
