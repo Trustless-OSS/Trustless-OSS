@@ -3,7 +3,7 @@ import { readBody, json } from '../router.js';
 import { supabase } from '../lib/supabase.js';
 import { createRepoEscrow, fundEscrow } from '../lib/trustless-work/escrow.js';
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
-import type { Repo, Issue, Contributor } from '../types/index.js';
+import type { Repo, Issue, Contributor, Assignment } from '../types/index.js';
 
 /* ------------------------------------------------------------------ */
 /* POST /api/repos/connect                                              */
@@ -308,8 +308,8 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
     .eq('github_issue_id', body.githubIssueId)
     .single<Issue>();
 
-  if (!issue || issue.status !== 'pending') {
-    json(res, { error: 'Issue not in pending state' }, 400);
+  if (!issue || (issue.status !== 'pending' && issue.status !== 'active')) {
+    json(res, { error: 'Issue is not in a valid state to connect wallet' }, 400);
     return;
   }
 

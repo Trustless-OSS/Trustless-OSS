@@ -2,6 +2,7 @@ import { supabase } from '../supabase.js';
 import { parseLabels, getRewardAmount } from './labels.js';
 import { postComment } from './comments.js';
 import { pushMilestoneOnChain, releaseEscrowMilestone } from '../trustless-work/milestone.js';
+import { twFetch } from '../trustless-work/client.js';
 import type { Repo, Contributor, Issue, Assignment } from '../../types/index.js';
 
 /* ------------------------------------------------------------------ */
@@ -45,7 +46,7 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
 
   const eventLabel = (payload.label as { name: string })?.name.toLowerCase();
   const difficultyLabels = ['low', 'medium', 'high', 'custom'];
-  const isTriggerLabel = eventLabel === 'rewarded' || difficultyLabels.includes(eventLabel);
+  const isTriggerLabel = eventLabel === 'rewarded' || difficultyLabels.includes(eventLabel) || eventLabel === 'rejected';
 
   if (!isTriggerLabel) return;
 
@@ -57,9 +58,6 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
 
   if (!repo || !repo.escrow_contract_id) return;
 
-  const parsed = parseLabels(issue.labels);
-  if (!parsed.isRewarded || !parsed.difficulty) return;
-
   // Idempotency — check if already created in DB
   const { data: existing } = await supabase
     .from('issues')
@@ -67,6 +65,19 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
     .eq('repo_id', repo.id)
     .eq('github_issue_id', issue.id)
     .single<Issue>();
+
+  if (eventLabel === 'rejected') {
+    if (existing && existing.status !== 'completed' && existing.status !== 'cancelled') {
+      await supabase.from('issues').update({ status: 'cancelled' }).eq('id', existing.id);
+      await supabase.from('assignments').delete().eq('issue_id', existing.id);
+      await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + existing.reward_amount }).eq('id', repo.id);
+      await postComment(repository.full_name, issue.number, `🚫 **Bounty Cancelled.**\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been refunded to the pool.`);
+    }
+    return;
+  }
+
+  const parsed = parseLabels(issue.labels);
+  if (!parsed.isRewarded || !parsed.difficulty) return;
 
   // If already completed or active on-chain, don't allow changes
   if (existing && existing.status !== 'pending') return;
@@ -80,7 +91,7 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
         await postComment(
           repository.full_name,
           issue.number,
-          `⚠️ Custom bounty requires an amount. Add \`@Trustless-OSS <amount>\` in the issue body.\n\nExample: \`@Trustless-OSS 50\` for a 50 USDC bounty.`
+          `⚠️ Custom bounty requires an amount. comment with \`@Trustless-OSS <amount>\` in the issue comment section.`
         );
       }
       return;
@@ -183,8 +194,121 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
   // Ignore comments from bots (to prevent self-triggering from example text)
   if (comment.user.type === 'Bot') return;
 
-  // Only process comments from repo owner/maintainers
   const isPrivileged = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(comment.author_association);
+
+  // Check for maintainer reject
+  if (isPrivileged && comment.body.includes('@Trustless-OSS /reject')) {
+    const { data: repo } = await supabase.from('repos').select('*').eq('github_repo_id', repository.id).single<Repo>();
+    if (!repo) return;
+    const { data: existing } = await supabase.from('issues').select('*').eq('repo_id', repo.id).eq('github_issue_id', issue.id).single<Issue>();
+
+    if (existing && existing.status !== 'completed' && existing.status !== 'cancelled') {
+      await supabase.from('issues').update({ status: 'cancelled' }).eq('id', existing.id);
+      await supabase.from('assignments').delete().eq('issue_id', existing.id);
+      await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + existing.reward_amount }).eq('id', repo.id);
+      await postComment(repository.full_name, issue.number, `🚫 **Bounty Cancelled.**\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been refunded to the pool.`);
+    }
+    return;
+  }
+
+  // Check for contributor address change via connect link
+  if (comment.body.match(/@Trustless-OSS\s+\/change-address/i)) {
+    const connectUrl = `${process.env.APP_URL}/connect?issue=${issue.id}&repo=${repository.id}`;
+    await postComment(
+      repository.full_name,
+      issue.number,
+      `👋 Hey @${comment.user.login}! You can update your Stellar wallet address here: [**Update Wallet →**](${connectUrl})`
+    );
+    return;
+  }
+
+  // Check for help command
+  if (comment.body.match(/@Trustless-OSS\s+\/help/i)) {
+    const helpMsg = `🤖 **Trustless-OSS Bot Commands**\n\n` +
+      `**For Maintainers:**\n` +
+      `- \`@Trustless-OSS <amount>\` : Create a custom bounty (e.g. \`@Trustless-OSS 50\`)\n` +
+      `- \`@Trustless-OSS /reject\` : Cancel the bounty and refund the escrow\n` +
+      `- \`@Trustless-OSS /retry\` : Retry a failed payout transaction\n\n` +
+      `**For Contributors:**\n` +
+      `- \`@Trustless-OSS /change-address\` : Get a link to update your connected Stellar wallet`;
+      
+    await postComment(repository.full_name, issue.number, helpMsg);
+    return;
+  }
+
+  // Check for maintainer retry
+  if (isPrivileged && comment.body.includes('@Trustless-OSS /retry')) {
+    const { data: repo } = await supabase.from('repos').select('*').eq('github_repo_id', repository.id).single<Repo>();
+    if (!repo) return;
+    
+    const { data: existing } = await supabase.from('issues').select('*').eq('repo_id', repo.id).eq('github_issue_id', issue.id).single<Issue>();
+    if (!existing) return;
+
+    const { data: assignment } = await supabase.from('assignments').select('*, contributors(*)').eq('issue_id', existing.id).single<Assignment>();
+    if (!assignment) {
+      await postComment(repository.full_name, issue.number, `⚠️ Cannot retry: No contributor is assigned.`);
+      return;
+    }
+
+    if (existing.status === 'completed' && assignment.payout_status === 'released') {
+      await postComment(repository.full_name, issue.number, `ℹ️ The bounty has already been successfully released.`);
+      return;
+    }
+
+    // Try to push if pending
+    if (existing.status === 'pending') {
+      if (!assignment.contributors?.stellar_wallet) {
+         await postComment(repository.full_name, issue.number, `⚠️ Cannot retry: Contributor has not connected a wallet yet.`);
+         return;
+      }
+      try {
+        await pushMilestoneOnChain(repo, existing, assignment.contributors.stellar_wallet);
+        existing.status = 'active';
+        const { data: updatedIssue } = await supabase.from('issues').select('*').eq('id', existing.id).single<Issue>();
+        if (updatedIssue) existing.milestone_index = updatedIssue.milestone_index;
+      } catch (e: any) {
+        await postComment(repository.full_name, issue.number, `⚠️ Failed to push milestone on-chain: ${e.message}`);
+        return;
+      }
+    }
+
+    // Now try to release if active
+    if (existing.status === 'active') {
+      const issueState = (payload.issue as any).state;
+      if (issueState !== 'closed') {
+        await postComment(repository.full_name, issue.number, `⚠️ Cannot release funds: Issue/PR is not closed yet.`);
+        return;
+      }
+
+      const txHash = await releaseEscrowMilestone(repo, existing);
+      if (txHash) {
+        await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
+        await supabase.from('issues').update({ status: 'completed' }).eq('id', existing.id);
+
+        const username = assignment.contributors?.github_username ?? 'contributor';
+        const explorerUrl = txHash !== 'success'
+          ? `https://stellar.expert/explorer/testnet/tx/${txHash}`
+          : `https://stellar.expert/explorer/testnet/contract/${repo.escrow_contract_id}`;
+
+        await postComment(
+          repository.full_name,
+          issue.number,
+          `🎉 **Bounty Released (Retry Successful)!**\n\n` +
+          `| Detail | Value |\n|---|---|\n` +
+          `| 💰 Amount | **${existing.reward_amount} USDC** |\n` +
+          `| 👤 Recipient | @${username} |\n` +
+          `| 🔗 Transaction | [View on Stellar Explorer →](${explorerUrl}) |\n` +
+          `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
+          `Thanks for your contribution! 🚀`
+        );
+      } else {
+        await postComment(repository.full_name, issue.number, `⚠️ Retry failed. The transaction could not be processed. Check escrow balance or contract state.`);
+      }
+    }
+    return;
+  }
+
+  // Only process the rest (custom amounts) from repo owner/maintainers
   if (!isPrivileged) return;
 
   // Check for @Trustless-OSS <amount> pattern
@@ -218,7 +342,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
       reward_amount: customAmount,
       difficulty_label: 'custom'
     }).eq('id', existing.id);
-    
+
     await postComment(
       repository.full_name,
       issue.number,
@@ -386,14 +510,62 @@ export async function handleIssueUnassigned(payload: Record<string, unknown>): P
 
   if (!issueRecord || issueRecord.status === 'completed' || issueRecord.status === 'cancelled') return;
 
-  // Cancel in DB + restore balance
-  await supabase.from('issues').update({ status: 'cancelled' }).eq('id', issueRecord.id);
-  await supabase
-    .from('repos')
-    .update({ escrow_balance: repo.escrow_balance + issueRecord.reward_amount })
-    .eq('id', repo.id);
+  // 1. Remove the assignment
+  await supabase.from('assignments').delete().eq('issue_id', issueRecord.id);
 
-  console.log(`[Webhook] Cancelled milestone for issue #${issue.number}`);
+  // 2. If it was active on-chain, close the milestone by zeroing it out
+  if (issueRecord.status === 'active' && issueRecord.milestone_index != null) {
+    const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
+
+    try {
+      const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as any[];
+      const escrowData = escrowArray[0];
+
+      if (escrowData && escrowData.milestones) {
+        let newMilestones = [...escrowData.milestones];
+        if (issueRecord.milestone_index < newMilestones.length) {
+          newMilestones[issueRecord.milestone_index] = {
+            ...newMilestones[issueRecord.milestone_index],
+            amount: 0,
+            receiver: platformKey, // dummy receiver
+          };
+
+          const {
+            type, createdAt, updatedAt, balance, inconsistencies,
+            contractBaseId, isActive, receiverMemo, ...escrowPayload
+          } = escrowData;
+
+          const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
+            method: 'PUT',
+            body: JSON.stringify({
+              signer: platformKey,
+              contractId: repo.escrow_contract_id,
+              escrow: {
+                ...escrowPayload,
+                milestones: newMilestones,
+              },
+            }),
+          }) as { unsignedTransaction: string };
+
+          const { signAndSendTransaction } = await import('../stellar/signer.js');
+          await signAndSendTransaction(updateRes.unsignedTransaction);
+        }
+      }
+    } catch (err) {
+      console.error('[Webhook] Failed to zero out milestone on unassign:', err);
+    }
+  }
+
+  // 3. Set issue back to pending and clear milestone index so reassignment creates a new one
+  await supabase.from('issues').update({ status: 'pending', milestone_index: null }).eq('id', issueRecord.id);
+
+  await postComment(
+    repository.full_name,
+    issue.number,
+    `🔄 Contributor unassigned. The milestone has been closed. The bounty of **${issueRecord.reward_amount} USDC** remains available for the next assignee.`
+  );
+
+  console.log(`[Webhook] Unassigned and closed milestone for issue #${issue.number}`);
 }
 
 /* ------------------------------------------------------------------ */

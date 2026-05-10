@@ -8,14 +8,13 @@ import { addRoute, dispatch, json } from './router.js';
 import { githubWebhookHandler } from './routes/webhooks.js';
 import {
   connectRepoHandler,
-  createEscrowHandler,
+  createEscrowUnsignedHandler,
   listReposHandler,
   listIssuesHandler,
   pushMilestoneHandler,
   saveWalletHandler,
   getContributorHandler,
   healthHandler,
-  createEscrowUnsignedHandler,
   submitDeployEscrowHandler,
   fundEscrowUnsignedHandler,
   submitFundEscrowHandler,

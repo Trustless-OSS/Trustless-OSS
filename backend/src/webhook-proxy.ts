@@ -6,11 +6,12 @@ const smee = new SmeeClient({
   logger: console
 });
 
-const events = smee.start();
-console.log('🔗 Smee webhook proxy started! Forwarding from https://smee.io/trustless-oss-dev-webhook to http://localhost:5000/api/webhooks/github');
+smee.start().then((events) => {
+  console.log('🔗 Smee webhook proxy started! Forwarding from https://smee.io/trustless-oss-dev-webhook to http://localhost:5000/api/webhooks/github');
 
-// Stop on Ctrl+C
-process.on('SIGINT', () => {
-  events.close();
-  process.exit();
+
+  process.on('SIGINT', () => {
+    events.close();
+    process.exit();
+  });
 });
