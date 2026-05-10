@@ -95,76 +95,133 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
 }
 
 /* ------------------------------------------------------------------ */
-/* POST /api/escrow/create                                             */
+/* POST /api/escrow/create-unsigned                                     */
 /* Body: { repoId, maintainerWallet }                                  */
 /* ------------------------------------------------------------------ */
-export async function createEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function createEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
 
-  const body = JSON.parse((await readBody(req)).toString()) as {
-    repoId: string;
-    maintainerWallet: string;
-  };
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; maintainerWallet: string };
 
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('id', body.repoId)
-    .single<Repo>();
-
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
 
-  const result = await createRepoEscrow({
-    maintainerWallet: body.maintainerWallet,
-    repoName: repo.full_name,
-  });
+  const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
+  const TESTNET_USDC = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
-  await supabase
-    .from('repos')
-    .update({ escrow_contract_id: result.contractId })
-    .eq('id', repo.id);
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    const response = await twFetch('/deployer/multi-release', {
+      method: 'POST',
+      body: JSON.stringify({
+        signer: body.maintainerWallet,
+        engagementId: `repo-${Date.now()}`,
+        title: `OSS Bounty: ${repo.full_name}`,
+        description: `Escrow for OSS bounty rewards in ${repo.full_name}`,
+        roles: {
+          approver: body.maintainerWallet,
+          serviceProvider: platformKey, // Automated fee payer
+          platformAddress: platformKey,
+          releaseSigner: platformKey,
+          disputeResolver: body.maintainerWallet,
+        },
+        platformFee: 0,
+        milestones: [{ description: `Initial Escrow Setup`, amount: 0.1, receiver: platformKey }],
+        trustline: { address: TESTNET_USDC, symbol: 'USDC' },
+      }),
+    }) as { unsignedTransaction: string };
 
-  json(res, { contractId: result.contractId });
+    json(res, { unsignedTransaction: response.unsignedTransaction });
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
 }
 
 /* ------------------------------------------------------------------ */
-/* POST /api/escrow/fund                                                */
-/* Funds an existing escrow contract                                    */
+/* POST /api/escrow/submit-deploy                                       */
+/* Body: { repoId, signedXdr }                                         */
 /* ------------------------------------------------------------------ */
-export async function fundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function submitDeployEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
+
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    const result = await twFetch('/helper/send-transaction', {
+      method: 'POST',
+      body: JSON.stringify({ signedXdr: body.signedXdr }),
+    }) as { contractId: string };
+
+    await supabase.from('repos').update({ escrow_contract_id: result.contractId }).eq('id', body.repoId);
+    json(res, { contractId: result.contractId });
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/fund-unsigned                                       */
+/* Body: { repoId, amount, funderWallet }                               */
+/* ------------------------------------------------------------------ */
+export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
   
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; funderWallet: string };
-  if (!body?.repoId || !body?.amount || !body?.funderWallet) {
-    json(res, { error: 'Missing required fields' }, 400);
-    return;
+
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
+  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    const response = await twFetch('/escrow/multi-release/fund-escrow', {
+      method: 'POST',
+      body: JSON.stringify({
+        contractId: repo.escrow_contract_id,
+        signer: body.funderWallet,
+        amount: body.amount,
+      }),
+    }) as { unsignedTransaction: string };
+
+    json(res, { unsignedTransaction: response.unsignedTransaction });
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
   }
+}
 
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('id', body.repoId)
-    .single<Repo>();
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/submit-fund                                         */
+/* Body: { repoId, amount, signedXdr }                                  */
+/* ------------------------------------------------------------------ */
+export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; signedXdr: string };
 
-  if (!repo || !repo.escrow_contract_id) { json(res, { error: 'Repo or escrow not found' }, 404); return; }
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    await twFetch('/helper/send-transaction', {
+      method: 'POST',
+      body: JSON.stringify({ signedXdr: body.signedXdr }),
+    });
 
-  await fundEscrow({
-    contractId: repo.escrow_contract_id,
-    amount: body.amount,
-    funderWallet: body.funderWallet,
-  });
-
-  // Update escrow_balance in DB
-  await supabase
-    .from('repos')
-    .update({ escrow_balance: repo.escrow_balance + body.amount })
-    .eq('id', repo.id);
-
-  json(res, { ok: true, newBalance: repo.escrow_balance + body.amount });
+    const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
+    if (repo) {
+      const newBalance = repo.escrow_balance + body.amount;
+      await supabase.from('repos').update({ escrow_balance: newBalance }).eq('id', repo.id);
+      json(res, { ok: true, newBalance });
+    } else {
+      json(res, { ok: true });
+    }
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
 }
 
 /* ------------------------------------------------------------------ */

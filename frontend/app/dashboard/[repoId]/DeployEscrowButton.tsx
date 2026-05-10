@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getWalletKit } from '../../lib/walletKit';
 
 export default function DeployEscrowButton({ repoId, token }: { repoId: string, token: string }) {
   const [loading, setLoading] = useState(false);
@@ -12,36 +13,50 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
     setLoading(true);
     setError('');
     
-    // In a real app, you might ask for the maintainer's wallet first.
-    // Here we'll just pass a dummy one or use the platform wallet for demo.
     try {
-      const res = await fetch(`${BACKEND}/api/escrow/create`, {
+      const kit = getWalletKit();
+
+      // 1. Open modal and get address
+      const { address } = await kit.authModal();
+      if (!address) throw new Error('No public key returned');
+
+      // 2. Get unsigned transaction
+      const res1 = await fetch(`${BACKEND}/api/escrow/create-unsigned`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          repoId,
-          maintainerWallet: 'GCJGOM2HPJGHEAGVFGIFN7SVTGWOZIH27E7JL7Q4D4VVIC4NZ7UK2VRK' // placeholder testnet wallet
-        })
+        body: JSON.stringify({ repoId, maintainerWallet: address })
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        setError(text);
-      } else {
-        window.location.reload(); // Refresh to see the new escrow
-      }
+      if (!res1.ok) throw new Error(await res1.text());
+      const { unsignedTransaction } = await res1.json();
+
+      // 3. Sign transaction
+      const { signedTxXdr } = await kit.signTransaction(unsignedTransaction);
+
+      // 4. Submit signed transaction
+      const res2 = await fetch(`${BACKEND}/api/escrow/submit-deploy`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ repoId, signedXdr: signedTxXdr })
+      });
+
+      if (!res2.ok) throw new Error(await res2.text());
+      window.location.reload(); 
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Failed to deploy');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="mt-2">
+    <div className="mt-2 flex flex-col items-end">
       <button 
         onClick={handleDeploy} 
         disabled={loading}
@@ -49,7 +64,7 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
       >
         {loading ? 'Deploying...' : 'Deploy Escrow Contract'}
       </button>
-      {error && <div className="text-red-400 text-xs mt-2">{error}</div>}
+      {error && <div className="text-red-400 text-xs mt-2 max-w-[200px] text-right">{error}</div>}
     </div>
   );
 }

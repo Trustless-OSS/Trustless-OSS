@@ -15,7 +15,10 @@ import {
   saveWalletHandler,
   getContributorHandler,
   healthHandler,
-  fundEscrowHandler,
+  createEscrowUnsignedHandler,
+  submitDeployEscrowHandler,
+  fundEscrowUnsignedHandler,
+  submitFundEscrowHandler,
   updateRepoRewardsHandler,
   retryIssueHandler,
 } from './routes/api.js';
@@ -37,8 +40,10 @@ addRoute('GET',  '/api/repos/:repoId/issues',   listIssuesHandler);
 addRoute('PUT',  '/api/repos/:repoId/rewards',  updateRepoRewardsHandler);
 
 // Escrow
-addRoute('POST', '/api/escrow/create',          createEscrowHandler);
-addRoute('POST', '/api/escrow/fund',            fundEscrowHandler);
+addRoute('POST', '/api/escrow/create-unsigned', createEscrowUnsignedHandler);
+addRoute('POST', '/api/escrow/submit-deploy',   submitDeployEscrowHandler);
+addRoute('POST', '/api/escrow/fund-unsigned',   fundEscrowUnsignedHandler);
+addRoute('POST', '/api/escrow/submit-fund',     submitFundEscrowHandler);
 
 // Milestones
 addRoute('POST', '/api/milestones/push',        pushMilestoneHandler);

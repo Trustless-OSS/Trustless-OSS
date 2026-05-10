@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Suspense } from 'react';
+import { getWalletKit } from '../lib/walletKit';
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
 
@@ -12,17 +13,11 @@ function ConnectForm() {
   const issueId = searchParams.get('issue');
   const repoId = searchParams.get('repo');
 
-  const [wallet, setWallet] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
 
-  async function handleSubmit() {
-    if (!wallet.startsWith('G') || wallet.length < 50) {
-      setError('Enter a valid Stellar wallet address (starts with G)');
-      return;
-    }
-
+  async function handleConnect() {
     setLoading(true);
     setError('');
 
@@ -30,7 +25,15 @@ function ConnectForm() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session) { window.location.href = `/login?next=/connect?issue=${issueId}&repo=${repoId}`; return; }
+      if (!session) { 
+        window.location.href = `/login?next=/connect?issue=${issueId}&repo=${repoId}`; 
+        return; 
+      }
+
+      const kit = getWalletKit();
+      
+      const { address } = await kit.authModal();
+      if (!address) throw new Error('No public key returned');
 
       // Save wallet + push milestone on-chain
       const res = await fetch(`${BACKEND}/api/milestones/push`, {
@@ -42,20 +45,18 @@ function ConnectForm() {
         body: JSON.stringify({
           githubIssueId: Number(issueId),
           githubRepoId: Number(repoId),
-          wallet,
+          wallet: address,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? 'Failed to connect wallet');
-        return;
+        throw new Error(data.error ?? 'Failed to connect wallet');
       }
 
       setDone(true);
-    } catch (e) {
-      setError('Unexpected error. Please try again.');
-      console.error(e);
+    } catch (e: any) {
+      setError(e.message || 'Failed to connect wallet');
     } finally {
       setLoading(false);
     }
@@ -64,17 +65,15 @@ function ConnectForm() {
   if (done) {
     return (
       <div className="text-center">
-        <div className="text-5xl mb-4">🎉</div>
-        <h2 className="text-2xl font-bold text-white mb-3">Wallet connected!</h2>
-        <p className="text-gray-400 mb-6">
-          Your bounty is locked in escrow! You will receive a confirmation comment on your GitHub issue shortly.
+        <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">Wallet Connected!</h2>
+        <p className="text-gray-400">
+          Your payout wallet is ready. You can close this page and get back to coding!
         </p>
-        <button 
-          onClick={() => window.close()} 
-          className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-colors text-sm"
-        >
-          Close window & Return to GitHub
-        </button>
       </div>
     );
   }
@@ -87,16 +86,6 @@ function ConnectForm() {
         Connect your Stellar wallet to receive USDC when your PR is merged.
       </p>
 
-      <label className="block text-sm text-gray-400 mb-2">Stellar Wallet Address</label>
-      <input
-        id="stellar-wallet-input"
-        type="text"
-        placeholder="G... (56 characters)"
-        value={wallet}
-        onChange={(e) => setWallet(e.target.value)}
-        className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4 font-mono text-sm"
-      />
-
       {error && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
           {error}
@@ -105,11 +94,21 @@ function ConnectForm() {
 
       <button
         id="connect-wallet-btn"
-        onClick={handleSubmit}
-        disabled={loading || !wallet}
-        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-all"
+        onClick={handleConnect}
+        disabled={loading}
+        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
       >
-        {loading ? 'Connecting…' : 'Connect wallet & lock bounty →'}
+        {loading ? (
+          <>
+            <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            Connecting...
+          </>
+        ) : (
+          'Connect Wallet'
+        )}
       </button>
 
       <p className="text-xs text-gray-600 mt-4 text-center">
