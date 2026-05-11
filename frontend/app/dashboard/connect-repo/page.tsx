@@ -63,12 +63,11 @@ export default function ConnectRepoPage() {
 
   const handleConnect = () => {
     if (!selected) return;
-    // Redirect to GitHub App installation for THIS specific repository
-    // We suggest the target ID (owner) and the specific repo ID
-    const installUrl = `https://github.com/apps/trustless-oss-bot/installations/new?suggested_target_id=${selected.owner.id}&repository_ids[]=${selected.id}`;
+    // Standard GitHub App installation URL with suggested repo
+    const installUrl = `https://github.com/apps/trustless-oss-bot/installations/new?suggested_target_id=${selected.owner.id}&repository_ids=${selected.id}`;
     window.open(installUrl, '_blank');
     
-    // Also redirect dashboard to wait for the webhook
+    // Redirect dashboard to wait for the sync
     router.push('/dashboard');
   };
 
