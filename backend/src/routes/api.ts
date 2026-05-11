@@ -23,10 +23,11 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
     ghToken: string;
   };
 
-  // Automatically configure the GitHub Webhook on their repository (idempotent)
-  // Use the Vercel URL if in production, otherwise fallback to smee for local dev
-  const defaultWebhook = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}/api/webhooks/github`
+  // Determine the correct webhook URL
+  const protocol = req.headers['x-forwarded-proto'] || 'http';
+  const host = req.headers['host'];
+  const defaultWebhook = host 
+    ? `${protocol}://${host}/api/webhooks/github`
     : 'https://smee.io/trustless-oss-dev-webhook';
     
   const webhookUrl = process.env.WEBHOOK_URL ?? defaultWebhook;

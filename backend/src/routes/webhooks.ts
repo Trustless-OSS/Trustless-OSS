@@ -19,22 +19,41 @@ export async function githubWebhookHandler(
   const rawBody = await readBody(req);
   const bodyStr = rawBody.toString('utf-8');
 
-  // Verify HMAC signature
+  const event = (req.headers['x-github-event'] as string) ?? '';
   const sig = (req.headers['x-hub-signature-256'] as string) ?? '';
-  const expected =
-    'sha256=' +
-    crypto.createHmac('sha256', process.env.GITHUB_WEBHOOK_SECRET!).update(rawBody).digest('hex');
+  
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error('[Webhook] ❌ GITHUB_WEBHOOK_SECRET is not set in environment variables');
+    json(res, { error: 'Internal server error — missing secret' }, 500);
+    return;
+  }
 
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+
+  // Robust signature comparison
+  let authorized = false;
+  try {
+    if (sig.length === expected.length) {
+      authorized = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+    }
+  } catch (err) {
+    console.error('[Webhook] Signature comparison error:', err);
+  }
+
+  if (!authorized) {
+    console.error(`[Webhook] ❌ Unauthorized signature for event: ${event}.`);
+    console.error(`Received: ${sig.slice(0, 15)}...`);
+    console.error(`Expected: ${expected.slice(0, 15)}...`);
     json(res, { error: 'Unauthorized — invalid webhook signature' }, 401);
     return;
   }
 
-  const event = (req.headers['x-github-event'] as string) ?? '';
   const payload = JSON.parse(bodyStr) as Record<string, unknown>;
   const action = payload.action as string | undefined;
+  const repository = payload.repository as { id: number; full_name: string } | undefined;
 
-  console.log(`[Webhook] ${event}.${action ?? ''}`);
+  console.log(`[Webhook] ✅ Authorized: ${event}.${action ?? ''} for repo: ${repository?.full_name} (ID: ${repository?.id})`);
 
   try {
     if (event === 'issues') {
