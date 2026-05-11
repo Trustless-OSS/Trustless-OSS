@@ -63,8 +63,9 @@ export default function ConnectRepoPage() {
 
   const handleConnect = () => {
     if (!selected) return;
+    const slug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'trustless-oss-bot';
     // Standard GitHub App installation URL with suggested repo
-    const installUrl = `https://github.com/apps/trustless-oss-bot/installations/new?suggested_target_id=${selected.owner.id}&repository_ids=${selected.id}`;
+    const installUrl = `https://github.com/apps/${slug}/installations/new?suggested_target_id=${selected.owner.id}&repository_ids=${selected.id}`;
     window.open(installUrl, '_blank');
     
     // Redirect dashboard to wait for the sync
@@ -173,7 +174,10 @@ export default function ConnectRepoPage() {
               </div>
 
               <button
-                onClick={() => window.open('https://github.com/apps/trustless-oss-bot/installations/new', '_blank')}
+                onClick={() => {
+                  const slug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'trustless-oss-bot';
+                  window.open(`https://github.com/apps/${slug}/installations/new`, '_blank');
+                }}
                 className="w-full py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 🔐 Grant Access to Organization / Repos
