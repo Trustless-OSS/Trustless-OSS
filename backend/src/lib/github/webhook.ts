@@ -760,7 +760,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
   if (action === 'created') {
     // Add all repositories the user granted access to
     for (const repo of repositories) {
-      await supabase.from('repos').upsert(
+      const { error } = await supabase.from('repos').upsert(
         {
           github_repo_id: repo.id,
           full_name: repo.full_name,
@@ -769,12 +769,16 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
         },
         { onConflict: 'github_repo_id' }
       );
-      console.log(`[Webhook] Installed app on repo: ${repo.full_name}`);
+      
+      if (error) {
+        console.error(`[Webhook] ❌ Failed to save repo ${repo.full_name}:`, error.message);
+      } else {
+        console.log(`[Webhook] ✅ Installed app on repo: ${repo.full_name}`);
+      }
     }
   } else if (action === 'deleted') {
     // Optionally disable or delete repos when the app is uninstalled
-    // For now, we will just log it
-    console.log(`[Webhook] Uninstalled app from account: ${installation.account.login}`);
+    console.log(`[Webhook] 🗑️ Uninstalled app from account: ${installation.account.login}`);
   }
 }
 
@@ -786,7 +790,7 @@ export async function handleInstallationRepositories(payload: Record<string, unk
 
   if (action === 'added') {
     for (const repo of repositoriesAdded) {
-      await supabase.from('repos').upsert(
+      const { error } = await supabase.from('repos').upsert(
         {
           github_repo_id: repo.id,
           full_name: repo.full_name,
@@ -795,12 +799,16 @@ export async function handleInstallationRepositories(payload: Record<string, unk
         },
         { onConflict: 'github_repo_id' }
       );
-      console.log(`[Webhook] Added repo to installation: ${repo.full_name}`);
+
+      if (error) {
+        console.error(`[Webhook] ❌ Failed to add repo ${repo.full_name}:`, error.message);
+      } else {
+        console.log(`[Webhook] ✅ Added repo to installation: ${repo.full_name}`);
+      }
     }
   } else if (action === 'removed') {
-    // Log removal of repos
     for (const repo of repositoriesRemoved) {
-      console.log(`[Webhook] Removed repo from installation: ${repo.full_name}`);
+      console.log(`[Webhook] ➖ Removed repo from installation: ${repo.full_name}`);
     }
   }
 }

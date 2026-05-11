@@ -17,13 +17,27 @@ async function getRepos(token: string) {
   }
 }
 
-export default async function DashboardPage() {
+interface DashboardProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function DashboardPage(props: DashboardProps) {
+  const searchParams = await props.searchParams;
+  const isSyncing = searchParams.syncing === 'true';
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const { data: { session } } = await supabase.auth.getSession();
   const repos = await getRepos(session?.access_token ?? '');
+
+  // Calculate if a repo is "new" (added in the last 5 minutes)
+  const isNew = (createdAt: string) => {
+    const created = new Date(createdAt).getTime();
+    const now = new Date().getTime();
+    return now - created < 5 * 60 * 1000; // 5 minutes
+  };
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -59,6 +73,19 @@ export default async function DashboardPage() {
       </nav>
 
       <div className="max-w-6xl mx-auto px-6 py-10">
+        {/* Syncing Banner */}
+        {isSyncing && (
+          <div className="mb-8 p-4 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+              <p className="text-sm text-indigo-300">
+                Background sync active. We are waiting for GitHub to notify us about your new repository...
+              </p>
+            </div>
+            <Link href="/dashboard" className="text-xs text-indigo-400 hover:underline">Dismiss</Link>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -81,12 +108,19 @@ export default async function DashboardPage() {
             <p className="text-gray-400 text-sm mb-6">
               Connect a GitHub repo to start creating trustless bounties.
             </p>
-            <Link
-              href="/dashboard/connect-repo"
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
-            >
-              Connect your first repo →
-            </Link>
+            <div className="flex flex-col items-center gap-4">
+              <Link
+                href="/dashboard/connect-repo"
+                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
+              >
+                Connect your first repo →
+              </Link>
+              {isSyncing && (
+                <p className="text-[10px] text-gray-600 uppercase tracking-widest animate-pulse">
+                  Checking for updates... Try refreshing in a few seconds.
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -95,13 +129,21 @@ export default async function DashboardPage() {
               full_name: string;
               escrow_contract_id: string | null;
               escrow_balance: number;
+              created_at: string;
             }) => (
               <div
                 key={repo.id}
-                className="glass rounded-2xl p-6 flex flex-col"
+                className={`glass rounded-2xl p-6 flex flex-col transition-all duration-500 ${isNew(repo.created_at) ? 'ring-2 ring-indigo-500/50 shadow-2xl shadow-indigo-500/10 scale-[1.02]' : ''}`}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <span className="text-xl">📁</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📁</span>
+                    {isNew(repo.created_at) && (
+                      <span className="bg-indigo-500 text-[10px] text-white font-bold px-2 py-0.5 rounded-full animate-bounce">
+                        NEW
+                      </span>
+                    )}
+                  </div>
                   {repo.escrow_contract_id ? (
                     <span className="status-completed px-2 py-0.5 rounded-full text-xs font-medium">
                       Escrow ✓
