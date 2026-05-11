@@ -66,6 +66,12 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
     // 2. AUTO-REPAIR: If ID is missing, ask GitHub for it
     if (!installationId) {
       console.error(`[GitHub Auth] 🛠️ Attempting auto-repair for ${repo.full_name}...`);
+      
+      if (!repo.full_name || !repo.full_name.includes('/')) {
+        console.error(`[GitHub Auth] ❌ Invalid full_name in DB: "${repo.full_name}"`);
+        return null;
+      }
+
       const [owner, name] = repo.full_name.split('/');
       
       try {

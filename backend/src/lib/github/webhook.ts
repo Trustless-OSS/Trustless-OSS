@@ -109,7 +109,14 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
       reward_amount: rewardAmount,
       difficulty_label: parsed.difficulty
     }).eq('id', existing.id);
+    
     console.log(`[Webhook] Updated bounty amount: ${repository.full_name}#${issue.number} -> ${rewardAmount} USDC`);
+    
+    await postComment(
+      repository.full_name, 
+      issue.number, 
+      `🔄 Bounty updated to **${rewardAmount} USDC** (Level: \`${parsed.difficulty}\`)`
+    );
     return;
   }
 
