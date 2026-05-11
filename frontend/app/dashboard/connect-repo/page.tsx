@@ -155,15 +155,30 @@ export default function ConnectRepoPage() {
               </div>
             )}
 
-            <button
-              onClick={handleConnect}
-              disabled={!selected}
-              className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
-            >
-              {selected
-                ? `Connect ${selected.name} →`
-                : 'Select a repository above'}
-            </button>
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                onClick={handleConnect}
+                disabled={!selected}
+                className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
+              >
+                {selected
+                  ? `Connect ${selected.name} →`
+                  : 'Select a repository above'}
+              </button>
+              
+              <div className="flex items-center gap-4 py-2">
+                <div className="h-px flex-1 bg-white/5" />
+                <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">or</span>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+
+              <button
+                onClick={() => window.open('https://github.com/apps/trustless-oss-bot/installations/new', '_blank')}
+                className="w-full py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                🔐 Grant Access to Organization / Repos
+              </button>
+            </div>
             
             <p className="mt-6 text-[10px] text-gray-600 uppercase tracking-widest text-center">
               Privacy First: We only ask for access to the repo you select.
