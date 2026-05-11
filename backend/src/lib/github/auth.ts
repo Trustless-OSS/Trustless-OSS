@@ -28,9 +28,9 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
     const app = new App({
       appId,
       privateKey: privateKey.includes('-----BEGIN PRIVATE KEY-----') 
-        ? privateKey 
+        ? privateKey.replace(/\\n/g, '\n') 
         : Buffer.from(privateKey, 'base64').toString('utf-8'),
-    });
+    });    
 
     let installationId = repo.github_installation_id ? Number(repo.github_installation_id) : null;
 
