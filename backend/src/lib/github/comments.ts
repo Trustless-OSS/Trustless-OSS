@@ -29,14 +29,16 @@ export async function postComment(
       .single();
 
     if (!repo) {
-      console.error(`[GitHub] Cannot post comment. Repository ${fullName} not found in database.`);
+      console.error(`[GitHub] ❌ Cannot post comment. Repository ${fullName} not found in database.`);
       return;
     }
 
     // 2. Get a fresh Installation Token
-    const token = await getInstallationToken(Number(repo.github_repo_id));
+    const repoId = Number(repo.github_repo_id);
+    console.log(`[GitHub] 🔑 Requesting installation token for ${fullName} (ID: ${repoId})`);
+    const token = await getInstallationToken(repoId);
     if (!token) {
-      console.error(`[GitHub] Cannot post comment. Failed to generate auth token for ${fullName}`);
+      console.error(`[GitHub] ❌ Cannot post comment. Failed to generate auth token for ${fullName}`);
       return;
     }
 

@@ -1,5 +1,4 @@
 import type { IncomingMessage, ServerResponse } from 'http';
-import { parse as parseUrl } from 'url';
 
 export type Handler = (
   req: IncomingMessage,
@@ -31,7 +30,8 @@ export function addRoute(method: string, path: string, handler: Handler): void {
 }
 
 export async function dispatch(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const { pathname } = parseUrl(req.url ?? '/');
+  const url = new URL(req.url ?? '/', `http://${req.headers.host || 'localhost'}`);
+  const pathname = url.pathname;
   const method = req.method?.toUpperCase() ?? 'GET';
 
   for (const route of routes) {
