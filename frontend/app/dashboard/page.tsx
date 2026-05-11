@@ -35,9 +35,18 @@ export default async function DashboardPage() {
           <span className="text-gray-400 text-sm">Dashboard</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-400">
-            {user.user_metadata?.user_name ?? user.email}
-          </span>
+          <div className="flex items-center gap-2">
+            {user.user_metadata?.avatar_url && (
+              <img 
+                src={user.user_metadata.avatar_url} 
+                alt="Profile" 
+                className="w-8 h-8 rounded-full border border-white/10" 
+              />
+            )}
+            <span className="text-sm text-gray-400">
+              {user.user_metadata?.user_name ?? user.email}
+            </span>
+          </div>
           <form action="/auth/signout" method="post">
             <button
               type="submit"
@@ -87,10 +96,9 @@ export default async function DashboardPage() {
               escrow_contract_id: string | null;
               escrow_balance: number;
             }) => (
-              <Link
+              <div
                 key={repo.id}
-                href={`/dashboard/${repo.id}`}
-                className="glass rounded-2xl p-6 glow-hover block"
+                className="glass rounded-2xl p-6 flex flex-col"
               >
                 <div className="flex items-start justify-between mb-4">
                   <span className="text-xl">📁</span>
@@ -105,27 +113,35 @@ export default async function DashboardPage() {
                   )}
                 </div>
 
-                <h3 className="font-bold text-white text-base mb-1 truncate">{repo.full_name}</h3>
+                <h3 className="font-bold text-white text-base mb-1 truncate">{repo.full_name.split('/')[1] || repo.full_name}</h3>
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
                   <div>
                     <div className="text-xs text-gray-500">Balance</div>
                     <div className="text-sm font-mono font-semibold text-green-400">
                       {repo.escrow_balance} USDC
                     </div>
                   </div>
-                  {repo.escrow_contract_id && (
-                    <a
-                      href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  <div className="flex items-center gap-3">
+                    {repo.escrow_contract_id && (
+                      <a
+                        href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                      >
+                        Escrow ↗
+                      </a>
+                    )}
+                    <Link
+                      href={`/dashboard/${repo.id}`}
+                      className="text-xs font-medium text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
                     >
-                      Escrow Viewer ↗
-                    </a>
-                  )}
+                      View →
+                    </Link>
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
