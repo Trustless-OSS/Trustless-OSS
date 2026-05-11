@@ -38,7 +38,7 @@ export async function githubWebhookHandler(
 
   try {
     if (event === 'issues') {
-      if (action === 'labeled') await handleIssueLabeled(payload);
+      if (action === 'opened' || action === 'labeled') await handleIssueLabeled(payload);
       else if (action === 'assigned') await handleIssueAssigned(payload);
       else if (action === 'unassigned') await handleIssueUnassigned(payload);
       else if (action === 'closed') await handleIssueClosed(payload);

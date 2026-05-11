@@ -9,7 +9,7 @@ export default function FundEscrowButton({ repoId, token }: { repoId: string, to
   const [showModal, setShowModal] = useState(false);
   const [amount, setAmount] = useState('0');
 
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
+  const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
   async function handleFund() {
     const numAmount = Number(amount);

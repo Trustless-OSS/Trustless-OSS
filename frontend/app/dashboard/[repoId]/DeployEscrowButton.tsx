@@ -7,7 +7,7 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
+  const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
   async function handleDeploy() {
     setLoading(true);

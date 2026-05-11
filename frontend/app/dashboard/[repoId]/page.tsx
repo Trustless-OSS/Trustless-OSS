@@ -6,7 +6,7 @@ import FundEscrowButton from './FundEscrowButton';
 import RewardSettingsForm from './RewardSettingsForm';
 import RetryProcessButton from './ReleaseBountyButton';
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
+const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
 async function getIssues(repoId: string, token: string) {
   try {

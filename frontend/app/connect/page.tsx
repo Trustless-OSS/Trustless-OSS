@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Suspense } from 'react';
 import { getWalletKit } from '../lib/walletKit';
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
+const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
 function ConnectForm() {
   const searchParams = useSearchParams();
