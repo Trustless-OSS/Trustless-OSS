@@ -756,6 +756,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
   const action = payload.action as string;
   const installation = payload.installation as { account: { id: number; login: string } };
   const repositories = (payload.repositories ?? []) as { id: number; full_name: string }[];
+  const sender = payload.sender as { id: number };
 
   if (action === 'created') {
     // Add all repositories the user granted access to
@@ -766,6 +767,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
           full_name: repo.full_name,
           owner_github_id: installation.account.id,
           owner_username: installation.account.login,
+          installer_github_id: sender.id,
         },
         { onConflict: 'github_repo_id' }
       );
@@ -773,7 +775,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
       if (error) {
         console.error(`[Webhook] ❌ Failed to save repo ${repo.full_name}:`, error.message);
       } else {
-        console.log(`[Webhook] ✅ Installed app on repo: ${repo.full_name}`);
+        console.log(`[Webhook] ✅ Installed app on repo: ${repo.full_name} (Installer: ${sender.id})`);
       }
     }
   } else if (action === 'deleted') {
@@ -787,6 +789,7 @@ export async function handleInstallationRepositories(payload: Record<string, unk
   const installation = payload.installation as { account: { id: number; login: string } };
   const repositoriesAdded = (payload.repositories_added ?? []) as { id: number; full_name: string }[];
   const repositoriesRemoved = (payload.repositories_removed ?? []) as { id: number; full_name: string }[];
+  const sender = payload.sender as { id: number };
 
   if (action === 'added') {
     for (const repo of repositoriesAdded) {
@@ -796,6 +799,7 @@ export async function handleInstallationRepositories(payload: Record<string, unk
           full_name: repo.full_name,
           owner_github_id: installation.account.id,
           owner_username: installation.account.login,
+          installer_github_id: sender.id,
         },
         { onConflict: 'github_repo_id' }
       );
@@ -803,7 +807,7 @@ export async function handleInstallationRepositories(payload: Record<string, unk
       if (error) {
         console.error(`[Webhook] ❌ Failed to add repo ${repo.full_name}:`, error.message);
       } else {
-        console.log(`[Webhook] ✅ Added repo to installation: ${repo.full_name}`);
+        console.log(`[Webhook] ✅ Added repo to installation: ${repo.full_name} (Installer: ${sender.id})`);
       }
     }
   } else if (action === 'removed') {

@@ -3,6 +3,9 @@
 -- Run this in the Supabase SQL editor
 -- ============================================================
 
+-- Ensure columns exist for existing tables
+ALTER TABLE repos ADD COLUMN IF NOT EXISTS installer_github_id bigint;
+
 -- repos: one row per connected GitHub repo
 create table if not exists repos (
   id                  uuid primary key default gen_random_uuid(),
@@ -10,6 +13,7 @@ create table if not exists repos (
   full_name           text not null,
   owner_github_id     bigint not null,
   owner_username      text not null,
+  installer_github_id bigint,
   escrow_contract_id  text,
   escrow_balance      numeric default 0,
   reward_low          numeric default 0,
@@ -64,22 +68,25 @@ alter table issues        enable row level security;
 alter table assignments   enable row level security;
 
 -- Repos: owner can read/write their own repos
-drop policy if exists "repos_owner" on repos;
+DROP POLICY IF EXISTS "repos_owner" ON repos;
 create policy "repos_owner" on repos
-  for all using (owner_github_id = (auth.jwt() -> 'user_metadata' ->> 'provider_id')::bigint);
+  for all using (
+    owner_github_id = (auth.jwt() -> 'user_metadata' ->> 'provider_id')::bigint OR
+    installer_github_id = (auth.jwt() -> 'user_metadata' ->> 'provider_id')::bigint
+  );
 
 -- Contributors: users can read/write their own contributor row
-drop policy if exists "contributors_self" on contributors;
+DROP POLICY IF EXISTS "contributors_self" on contributors;
 create policy "contributors_self" on contributors
   for all using (github_user_id = (auth.jwt() -> 'user_metadata' ->> 'provider_id')::bigint);
 
 -- Issues: anyone authenticated can read; backend service role writes
-drop policy if exists "issues_read" on issues;
+DROP POLICY IF EXISTS "issues_read" on issues;
 create policy "issues_read" on issues
   for select using (auth.role() = 'authenticated');
 
 -- Assignments: anyone authenticated can read
-drop policy if exists "assignments_read" on assignments;
+DROP POLICY IF EXISTS "assignments_read" on assignments;
 create policy "assignments_read" on assignments
   for select using (auth.role() = 'authenticated');
 
