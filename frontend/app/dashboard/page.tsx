@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import InstallationSuccessHandler from './InstallationSuccessHandler';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -51,10 +52,10 @@ export default async function DashboardPage(props: DashboardProps) {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             {user.user_metadata?.avatar_url && (
-              <img 
-                src={user.user_metadata.avatar_url} 
-                alt="Profile" 
-                className="w-8 h-8 rounded-full border border-white/10" 
+              <img
+                src={user.user_metadata.avatar_url}
+                alt="Profile"
+                className="w-8 h-8 rounded-full border border-white/10"
               />
             )}
             <span className="text-sm text-gray-400">
@@ -71,6 +72,8 @@ export default async function DashboardPage(props: DashboardProps) {
           </form>
         </div>
       </nav>
+      
+      <InstallationSuccessHandler />
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         {/* Syncing Banner */}

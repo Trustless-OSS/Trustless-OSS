@@ -1,15 +1,12 @@
--- ============================================================
--- Trustless OSS — Supabase Schema
--- Run this in the Supabase SQL editor
--- ============================================================
-
 -- Ensure columns exist for existing tables
 ALTER TABLE repos ADD COLUMN IF NOT EXISTS installer_github_id bigint;
+ALTER TABLE repos ADD COLUMN IF NOT EXISTS github_installation_id bigint;
 
 -- repos: one row per connected GitHub repo
 create table if not exists repos (
   id                  uuid primary key default gen_random_uuid(),
   github_repo_id      bigint unique not null,
+  github_installation_id bigint,
   full_name           text not null,
   owner_github_id     bigint not null,
   owner_username      text not null,

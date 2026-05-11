@@ -1,18 +1,28 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function ConnectRepoPage() {
   const router = useRouter();
 
+  useEffect(() => {
+    // Listen for the "success" message from the installation tab
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === 'github-installation-success') {
+        router.push('/dashboard?syncing=true');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [router]);
+
   const handleInstall = () => {
     const slug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'Trustless-OSS';
-    // Open GitHub App installation page
-    window.open(`https://github.com/apps/${slug}/installations/new`, '_blank');
-    
-    // Redirect to dashboard where we will show the syncing status
-    router.push('/dashboard?syncing=true');
+    // Open GitHub App installation page in a new window
+    window.open(`https://github.com/apps/${slug}/installations/new`, 'github_install', 'width=600,height=800');
   };
 
   return (
@@ -38,7 +48,6 @@ export default function ConnectRepoPage() {
             <h1 className="text-3xl font-extrabold text-white mb-3">Install GitHub App</h1>
             <p className="text-gray-400 text-sm mb-10 leading-relaxed">
               To start rewarding contributors, you need to install our bot on your repository. 
-              You can choose to grant access to all repositories or just specific ones.
             </p>
 
             <button
@@ -49,8 +58,8 @@ export default function ConnectRepoPage() {
             </button>
             
             <div className="mt-8 pt-8 border-t border-white/5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest">
-                Privacy First: We only access repositories you explicitly select.
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest text-center animate-pulse">
+                Waiting for installation...
               </p>
             </div>
           </div>

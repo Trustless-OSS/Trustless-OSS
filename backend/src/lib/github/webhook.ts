@@ -768,6 +768,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
           owner_github_id: installation.account.id,
           owner_username: installation.account.login,
           installer_github_id: sender.id,
+          github_installation_id: (installation as any).id,
         },
         { onConflict: 'github_repo_id' }
       );
@@ -775,7 +776,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
       if (error) {
         console.error(`[Webhook] ❌ Failed to save repo ${repo.full_name}:`, error.message);
       } else {
-        console.log(`[Webhook] ✅ Installed app on repo: ${repo.full_name} (Installer: ${sender.id})`);
+        console.log(`[Webhook] ✅ Installed app on repo: ${repo.full_name} (Installer: ${sender.id}, Installation: ${(installation as any).id})`);
       }
     }
   } else if (action === 'deleted') {
@@ -786,7 +787,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
 
 export async function handleInstallationRepositories(payload: Record<string, unknown>): Promise<void> {
   const action = payload.action as string;
-  const installation = payload.installation as { account: { id: number; login: string } };
+  const installation = payload.installation as { account: { id: number; login: string }; id: number };
   const repositoriesAdded = (payload.repositories_added ?? []) as { id: number; full_name: string }[];
   const repositoriesRemoved = (payload.repositories_removed ?? []) as { id: number; full_name: string }[];
   const sender = payload.sender as { id: number };
@@ -800,6 +801,7 @@ export async function handleInstallationRepositories(payload: Record<string, unk
           owner_github_id: installation.account.id,
           owner_username: installation.account.login,
           installer_github_id: sender.id,
+          github_installation_id: installation.id,
         },
         { onConflict: 'github_repo_id' }
       );
