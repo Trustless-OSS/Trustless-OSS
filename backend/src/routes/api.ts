@@ -24,7 +24,12 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
   };
 
   // Automatically configure the GitHub Webhook on their repository (idempotent)
-  const webhookUrl = process.env.WEBHOOK_URL ?? 'https://smee.io/trustless-oss-dev-webhook';
+  // Use the Vercel URL if in production, otherwise fallback to smee for local dev
+  const defaultWebhook = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}/api/webhooks/github`
+    : 'https://smee.io/trustless-oss-dev-webhook';
+    
+  const webhookUrl = process.env.WEBHOOK_URL ?? defaultWebhook;
   const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET!;
 
   try {
@@ -147,7 +152,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
 export async function submitDeployEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  
+
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
 
   try {
@@ -171,7 +176,7 @@ export async function submitDeployEscrowHandler(req: IncomingMessage, res: Serve
 export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  
+
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; funderWallet: string };
 
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
@@ -201,7 +206,7 @@ export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: Serve
 export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  
+
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; signedXdr: string };
 
   try {
@@ -454,7 +459,7 @@ export async function retryIssueHandler(
   if (!assignment) { json(res, { error: 'No assignment found' }, 400); return; }
 
   const { pushMilestoneOnChain, releaseEscrowMilestone } = await import('../lib/trustless-work/milestone.js');
-  
+
   let currentIssue = { ...issue };
 
   // Step 1: If pending, try to push milestone
@@ -480,7 +485,7 @@ export async function retryIssueHandler(
         }
       });
       const ghIssue = await ghRes.json() as any;
-      
+
       if (ghIssue.state !== 'closed') {
         json(res, { error: 'This issue is still open on GitHub. Please close it or merge the PR first.' }, 400);
         return;
@@ -511,7 +516,62 @@ export async function retryIssueHandler(
 /* GET /api/health                                                      */
 /* ------------------------------------------------------------------ */
 export async function healthHandler(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  json(res, { status: 'ok', ts: new Date().toISOString() });
+  const health: any = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
+    checks: {}
+  };
+
+  try {
+    // 1. Database Check
+    const startDb = Date.now();
+    const { error: dbError } = await supabase.from('repos').select('id', { count: 'exact', head: true }).limit(1);
+    health.checks.database = {
+      status: dbError ? 'error' : 'ok',
+      latency: `${Date.now() - startDb}ms`,
+      message: dbError?.message
+    };
+
+    // 2. Trustless Work API Check
+    const startTw = Date.now();
+    try {
+      const { twFetch } = await import('../lib/trustless-work/client.js');
+      await twFetch('/helper/health', { method: 'GET' });
+      health.checks.trustless_work = {
+        status: 'ok',
+        latency: `${Date.now() - startTw}ms`
+      };
+    } catch (e: any) {
+      health.checks.trustless_work = {
+        status: 'degraded',
+        error: e.message
+      };
+    }
+
+    // 3. Environment Check (Required Variables)
+    const requiredVars = [
+      'SUPABASE_URL', 
+      'SUPABASE_SERVICE_ROLE_KEY', 
+      'PLATFORM_STELLAR_PUBLIC_KEY',
+      'GITHUB_BOT_TOKEN',
+      'GITHUB_WEBHOOK_SECRET'
+    ];
+    const missing = requiredVars.filter(v => !process.env[v]);
+    health.checks.environment = {
+      status: missing.length === 0 ? 'ok' : 'error',
+      missing_variables: missing.length > 0 ? missing : undefined
+    };
+
+    // If any critical check fails, return 503
+    const isHealthy = health.checks.database.status === 'ok' && health.checks.environment.status === 'ok';
+    if (!isHealthy) health.status = 'unhealthy';
+
+    json(res, health, isHealthy ? 200 : 503);
+  } catch (err: any) {
+    json(res, { status: 'error', message: err.message }, 500);
+  }
 }
 
 /* ------------------------------------------------------------------ */
