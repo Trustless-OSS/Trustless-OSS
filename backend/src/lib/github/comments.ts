@@ -34,9 +34,9 @@ export async function postComment(
     }
 
     // 2. Get a fresh Installation Token
-    const repoId = Number(repo.github_repo_id);
-    console.log(`[GitHub] 🔑 Requesting installation token for ${fullName} (ID: ${repoId})`);
-    const token = await getInstallationToken(repoId);
+    const repoId = repo.github_repo_id;
+    console.error(`[GitHub] 🔑 Requesting installation token for ${fullName} (DB ID: ${repoId}, Type: ${typeof repoId})`);
+    const token = await getInstallationToken(Number(repoId));
     if (!token) {
       console.error(`[GitHub] ❌ Cannot post comment. Failed to generate auth token for ${fullName}`);
       return;
