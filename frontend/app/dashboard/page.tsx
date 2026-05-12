@@ -6,18 +6,25 @@ import InstallationSuccessHandler from './InstallationSuccessHandler';
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
 async function getRepos(token: string): Promise<{ repos: any[]; error: string | null }> {
+  const url = `${BACKEND}/api/repos`;
   try {
-    const res = await fetch(`${BACKEND}/api/repos`, {
+    const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return { repos: [], error: `Backend URL "${url}" → HTTP ${res.status} non-JSON: ${text.substring(0, 120)}` };
+    }
     if (!res.ok) {
       return { repos: [], error: data.error ?? `API error ${res.status}` };
     }
     return { repos: data.repos ?? [], error: null };
   } catch (e: any) {
-    return { repos: [], error: `Network error: ${e.message}` };
+    return { repos: [], error: `Fetch to "${url}" failed: ${e.message}` };
   }
 }
 
