@@ -90,6 +90,9 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
         full_name: body.fullName,
         owner_github_id: body.ownerGithubId,
         owner_username: body.ownerUsername,
+        reward_low: 0.01,
+        reward_medium: 0.02,
+        reward_high: 0.03,
       },
       { onConflict: 'github_repo_id' }
     )
@@ -135,7 +138,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
           disputeResolver: body.maintainerWallet, // maintainer resolves disputes
         },
         platformFee: 0,
-        milestones: [{ description: `Initial Escrow Setup`, amount: 0.1, receiver: platformKey }],
+        milestones: [{ description: `Initial Escrow Setup`, amount: 0.0001, receiver: platformKey }],
         trustline: { address: TESTNET_USDC, symbol: 'USDC' },
       }),
     }) as { unsignedTransaction: string };
@@ -225,6 +228,120 @@ export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerR
     } else {
       json(res, { ok: true });
     }
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/withdraw-unsigned                                  */
+/* Body: { repoId, amount, maintainerWallet }                          */
+/* ------------------------------------------------------------------ */
+export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; maintainerWallet: string };
+
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
+  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    const response = await twFetch('/escrow/multi-release/withdraw-funds', {
+      method: 'POST',
+      body: JSON.stringify({
+        contractId: repo.escrow_contract_id,
+        signer: body.maintainerWallet,
+        amount: body.amount,
+        receiver: body.maintainerWallet,
+      }),
+    }) as { unsignedTransaction: string };
+
+    json(res, { unsignedTransaction: response.unsignedTransaction });
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/submit-withdraw                                     */
+/* Body: { repoId, amount, signedXdr }                                  */
+/* ------------------------------------------------------------------ */
+export async function submitWithdrawHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; signedXdr: string };
+
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    await twFetch('/helper/send-transaction', {
+      method: 'POST',
+      body: JSON.stringify({ signedXdr: body.signedXdr }),
+    });
+
+    const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
+    if (repo) {
+      const newBalance = Math.max(0, repo.escrow_balance - body.amount);
+      await supabase.from('repos').update({ escrow_balance: newBalance }).eq('id', repo.id);
+      json(res, { ok: true, newBalance });
+    } else {
+      json(res, { ok: true });
+    }
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/close-unsigned                                     */
+/* Body: { repoId, maintainerWallet }                                  */
+/* ------------------------------------------------------------------ */
+export async function closeEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; maintainerWallet: string };
+
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
+  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    const response = await twFetch('/escrow/multi-release/close-escrow', {
+      method: 'POST',
+      body: JSON.stringify({
+        contractId: repo.escrow_contract_id,
+        signer: body.maintainerWallet,
+      }),
+    }) as { unsignedTransaction: string };
+
+    json(res, { unsignedTransaction: response.unsignedTransaction });
+  } catch (err: any) {
+    json(res, { error: err.message }, 500);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/escrow/submit-close                                        */
+/* Body: { repoId, signedXdr }                                         */
+/* ------------------------------------------------------------------ */
+export async function submitCloseHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
+
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    await twFetch('/helper/send-transaction', {
+      method: 'POST',
+      body: JSON.stringify({ signedXdr: body.signedXdr }),
+    });
+
+    await supabase.from('repos').update({ escrow_contract_id: null, escrow_balance: 0 }).eq('id', body.repoId);
+    json(res, { ok: true });
   } catch (err: any) {
     json(res, { error: err.message }, 500);
   }

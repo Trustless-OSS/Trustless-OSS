@@ -118,8 +118,8 @@ export default async function HomePage() {
                 <tbody className="bg-white border-4 border-t-0 border-slate-950">
                   {[
                     { label: 'low', amount: '0.01 USDC', note: 'Small fixes, typos', cls: 'diff-low' },
-                    { label: 'medium', amount: '75.0 USDC', note: 'Feature additions', cls: 'diff-medium' },
-                    { label: 'high', amount: '150.0 USDC', note: 'Complex features', cls: 'diff-high' },
+                    { label: 'medium', amount: '0.02 USDC', note: 'Feature additions', cls: 'diff-medium' },
+                    { label: 'high', amount: '0.03 USDC', note: 'Complex features', cls: 'diff-high' },
                     { label: 'custom', amount: 'custom amount set by maintainer', note: 'Variable addition', cls: 'status-active' },
                   ].map((row, i) => (
                     <tr key={row.label} className={i !== 3 ? "border-b-[4px] border-slate-950" : ""}>
