@@ -248,7 +248,7 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
-    const response = await twFetch('/escrow/multi-release/withdraw-funds', {
+    const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
       method: 'POST',
       body: JSON.stringify({
         contractId: repo.escrow_contract_id,

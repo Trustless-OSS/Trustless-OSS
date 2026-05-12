@@ -41,7 +41,18 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
         body: JSON.stringify({ repoId, amount: numAmount, maintainerWallet: address })
       });
 
-      if (!res1.ok) throw new Error(await res1.text());
+      if (!res1.ok) {
+        const errData = await res1.json();
+        const msg = errData.error || JSON.stringify(errData);
+        // Extract inner message if it's a TrustlessWork nested error
+        const match = msg.match(/→ \d+: ({.*})/);
+        if (match) {
+          const inner = JSON.parse(match[1]);
+          throw new Error(inner.message || inner.error || 'Blockchain operation failed');
+        }
+        throw new Error(msg);
+      }
+      
       const { unsignedTransaction } = await res1.json();
 
       const { signedTxXdr } = await kit.signTransaction(unsignedTransaction);
@@ -55,10 +66,18 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
         body: JSON.stringify({ repoId, amount: numAmount, signedXdr: signedTxXdr })
       });
 
-      if (!res2.ok) throw new Error(await res2.text());
+      if (!res2.ok) {
+        const errData = await res2.json();
+        throw new Error(errData.error || 'Transaction submission failed');
+      }
+
       window.location.reload(); 
     } catch (err: any) {
-      setError(err.message || 'Refund failed');
+      console.error('[Refund] Error:', err);
+      // Clean up the error message for the UI
+      let friendlyMsg = err.message;
+      if (friendlyMsg.includes('Failed to fetch')) friendlyMsg = 'NETWORK_ERROR: CANNOT_REACH_SERVER';
+      setError(friendlyMsg.toUpperCase());
     } finally {
       setLoading(false);
     }
@@ -77,20 +96,18 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
         }
       `}</style>
 
-      <div className="flex flex-col items-end gap-2">
-        <button 
-          onClick={() => { setShowModal(true); setError(''); }} 
-          disabled={loading}
-          className="brutal-button-outline px-5 py-3 text-sm flex items-center gap-2"
-        >
-          {loading ? 'PROCESSING...' : 'REFUND_FUNDS'}
-        </button>
-        {error && (
-          <div className="text-red-600 font-bold font-mono text-[10px] mt-1 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444] uppercase">
-            {error}
-          </div>
-        )}
-      </div>
+      <button 
+        onClick={() => { setShowModal(true); setError(''); }} 
+        disabled={loading}
+        className="brutal-button-outline px-5 py-3 text-sm flex items-center gap-2"
+      >
+        {loading ? 'PROCESSING...' : 'REFUND_FUNDS'}
+      </button>
+      {error && (
+        <div className="absolute right-0 top-full z-10 text-red-600 font-bold font-mono text-[10px] mt-2 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444] uppercase">
+          {error}
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -101,7 +118,13 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
               <div className="mb-8">
                 <div className="label-brutal bg-slate-950 text-white px-3 py-1 w-fit mb-4">ACTION // REMOVE_LIQUIDITY</div>
                 <h3 className="title-brutal text-3xl text-slate-950 mb-1">REFUND_FUNDS</h3>
-                <p className="text-slate-500 font-mono text-[10px] mt-2 font-bold uppercase tracking-tighter">
+                {error && (
+                  <div className="bg-red-50 border-l-8 border-red-600 p-4 mt-6 animate-in slide-in-from-top-2">
+                    <p className="text-red-600 font-black text-xs uppercase mb-1">ERR_PROTOCOL_REJECTION</p>
+                    <p className="text-red-950 font-mono text-[10px] font-bold leading-tight uppercase">{error}</p>
+                  </div>
+                )}
+                <p className="text-slate-500 font-mono text-[10px] mt-4 font-bold uppercase tracking-tighter">
                   Current Escrow Balance: <span className="text-slate-950">{currentBalance.toFixed(2)} USDC</span>
                 </p>
               </div>

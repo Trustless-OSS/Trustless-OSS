@@ -92,20 +92,18 @@ export default function FundEscrowButton({ repoId, token }: { repoId: string, to
         }
       `}</style>
 
-      <div className="mt-4 flex flex-col items-end gap-2">
-        <button 
-          onClick={() => { setShowModal(true); setError(''); }} 
-          disabled={loading}
-          className="brutal-button px-5 py-3 text-sm flex items-center gap-2"
-        >
-          {loading ? 'PROCESSING...' : 'FUND_ESCROW'}
-        </button>
-        {error && (
-          <div className="text-red-600 font-bold font-mono text-xs mt-1 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444]">
-            {error}
-          </div>
-        )}
-      </div>
+      <button 
+        onClick={() => { setShowModal(true); setError(''); }} 
+        disabled={loading}
+        className="brutal-button px-5 py-3 text-sm flex items-center gap-2"
+      >
+        {loading ? 'PROCESSING...' : 'FUND_ESCROW'}
+      </button>
+      {error && (
+        <div className="absolute right-0 top-full z-10 text-red-600 font-bold font-mono text-xs mt-2 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444]">
+          {error}
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
