@@ -56,11 +56,15 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
 
   let finalKey: string;
   if (normalizedKey.includes('-----BEGIN')) {
-    // Already PEM — unescape literal \n sequences into real newlines
+    // Already a full PEM string — unescape any literal \n sequences
     finalKey = normalizedKey.replace(/\\n/g, '\n');
   } else {
-    // Assume base64-encoded PEM
-    finalKey = Buffer.from(normalizedKey, 'base64').toString('utf-8');
+    // The env var holds the raw base64 body of the PEM (no headers/footers).
+    // DO NOT base64-decode it — the decoded bytes would be raw DER binary
+    // which JWT libraries reject. Instead, re-wrap it as a proper RSA PEM.
+    const b64Body = normalizedKey.replace(/\s/g, ''); // strip any stray whitespace
+    const wrapped = b64Body.match(/.{1,64}/g)?.join('\n') ?? b64Body;
+    finalKey = `-----BEGIN RSA PRIVATE KEY-----\n${wrapped}\n-----END RSA PRIVATE KEY-----`;
   }
 
   // Log key diagnostics (safe: only header/footer, no key body)

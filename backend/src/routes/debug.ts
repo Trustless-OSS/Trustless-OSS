@@ -58,8 +58,11 @@ export async function debugAuthHandler(
     finalKey = normalizedKey.replace(/\\n/g, '\n');
     steps.push(`Key: PEM detected. After \\n unescape: ${finalKey.length} chars`);
   } else {
-    finalKey = Buffer.from(normalizedKey, 'base64').toString('utf-8');
-    steps.push(`Key: treated as base64. Decoded: ${finalKey.length} chars`);
+    // Raw base64 PEM body — re-wrap with RSA headers instead of decoding to binary
+    const b64Body = normalizedKey.replace(/\s/g, '');
+    const wrapped = b64Body.match(/.{1,64}/g)?.join('\n') ?? b64Body;
+    finalKey = `-----BEGIN RSA PRIVATE KEY-----\n${wrapped}\n-----END RSA PRIVATE KEY-----`;
+    steps.push(`Key: base64 body detected. Wrapped as RSA PEM: ${finalKey.length} chars`);
   }
 
   const keyLines = finalKey.split('\n');
