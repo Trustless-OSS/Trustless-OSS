@@ -310,14 +310,9 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
       console.log('[Withdraw] Setup milestone cleanup skipped/failed:', err.message);
     }
 
-    // 2. Fetch the REAL on-chain balance to ensure distribution matches perfectly
-    const balanceInfo = await twFetch('/escrow/get-multiple-escrow-balance', {
-      method: 'POST',
-      body: JSON.stringify({ contractIds: [repo.escrow_contract_id] }),
-    }) as Array<{ balance: number }>;
-    
-    const onChainBalance = balanceInfo[0]?.balance ?? repo.escrow_balance;
-    console.log('[Withdraw] On-chain balance:', onChainBalance);
+    // 2. Use the database balance (fallback to 0 if not found)
+    const onChainBalance = repo.escrow_balance || 0;
+    console.log('[Withdraw] Using balance from DB:', onChainBalance);
 
     // 3. Now generate the sweep transaction
     const requestBody = {
