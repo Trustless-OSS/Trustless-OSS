@@ -251,10 +251,8 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
     const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
       method: 'POST',
       body: JSON.stringify({
-        escrowId: repo.escrow_contract_id,
+        contractId: repo.escrow_contract_id,
         signer: body.maintainerWallet,
-        amount: body.amount,
-        receiver: body.maintainerWallet,
       }),
     }) as { unsignedTransaction: string };
 
@@ -283,9 +281,9 @@ export async function submitWithdrawHandler(req: IncomingMessage, res: ServerRes
 
     const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
     if (repo) {
-      const newBalance = Math.max(0, repo.escrow_balance - body.amount);
-      await supabase.from('repos').update({ escrow_balance: newBalance }).eq('id', repo.id);
-      json(res, { ok: true, newBalance });
+      // After a full sweep, the available unassigned balance is 0
+      await supabase.from('repos').update({ escrow_balance: 0 }).eq('id', repo.id);
+      json(res, { ok: true, newBalance: 0 });
     } else {
       json(res, { ok: true });
     }
