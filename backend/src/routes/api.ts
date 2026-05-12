@@ -246,21 +246,28 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
 
-  try {
+    const requestBody = {
+      contractId: repo.escrow_contract_id,
+      disputeResolver: body.maintainerWallet,
+      distributions: [
+        {
+          address: body.maintainerWallet,
+          amount: repo.escrow_balance
+        }
+      ]
+    };
+    
+    console.log('[Withdraw] Request Body:', JSON.stringify(requestBody, null, 2));
+
     const { twFetch } = await import('../lib/trustless-work/client.js');
     const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
       method: 'POST',
-      body: JSON.stringify({
-        contractId: repo.escrow_contract_id,
-        escrowId: repo.escrow_contract_id,
-        signer: body.maintainerWallet,
-        receiver: body.maintainerWallet,
-        type: 'multi-release',
-      }),
+      body: JSON.stringify(requestBody),
     }) as { unsignedTransaction: string };
 
     json(res, { unsignedTransaction: response.unsignedTransaction });
   } catch (err: any) {
+    console.error('[Withdraw] Error from TrustlessWork:', err.message);
     json(res, { error: err.message }, 500);
   }
 }
