@@ -59,16 +59,12 @@ export default async function RepoDetailPage({
   const issues = await getIssues(repoId, session?.access_token ?? '');
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <nav className="border-b border-white/5 px-8 py-4 flex items-center gap-4">
-        <Link href="/" className="font-bold gradient-text text-lg">🔐 Trustless OSS</Link>
-        <span className="text-gray-600">|</span>
-        <Link href="/dashboard" className="text-gray-400 hover:text-white text-sm transition-colors">Dashboard</Link>
-        <span className="text-gray-700">/</span>
-        <span className="text-gray-300 text-sm">{repo?.full_name ?? repoId}</span>
-      </nav>
-
+    <div className="w-full">
       <div className="max-w-6xl mx-auto px-6 py-10">
+        <Link href="/dashboard" className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mb-6 transition-colors w-fit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back to Dashboard
+        </Link>
         {/* Repo header */}
         {repo && (
           <div className="glass rounded-2xl p-8 mb-8">
@@ -133,12 +129,12 @@ export default async function RepoDetailPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-gray-400 text-left">
-                  <th className="px-6 py-4 font-medium">Issue</th>
+                  <th className="px-6 py-4 font-medium rounded-tl-xl">Issue</th>
                   <th className="px-6 py-4 font-medium">Difficulty</th>
                   <th className="px-6 py-4 font-medium">Reward</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Assignee</th>
-                  <th className="px-6 py-4 font-medium">Actions</th>
+                  <th className="px-6 py-4 font-medium rounded-tr-xl">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">

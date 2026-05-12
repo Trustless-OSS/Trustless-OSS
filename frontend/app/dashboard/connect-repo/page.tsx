@@ -26,15 +26,7 @@ export default function ConnectRepoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <nav className="border-b border-white/5 px-8 py-4 flex items-center gap-4">
-        <Link href="/" className="font-bold gradient-text text-lg">🔐 Trustless OSS</Link>
-        <span className="text-gray-600">|</span>
-        <Link href="/dashboard" className="text-gray-400 hover:text-white text-sm">Dashboard</Link>
-        <span className="text-gray-700">/</span>
-        <span className="text-gray-300 text-sm">Connect repo</span>
-      </nav>
-
+    <div className="flex-1 flex flex-col">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="max-w-md w-full glass rounded-3xl p-10 relative overflow-hidden text-center">
           {/* Background decoration */}

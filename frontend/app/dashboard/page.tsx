@@ -49,40 +49,8 @@ export default async function DashboardPage(props: DashboardProps) {
     const now = new Date().getTime();
     return now - created < 5 * 60 * 1000; // 5 minutes
   };
-
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Nav */}
-      <nav className="border-b border-white/5 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="font-bold gradient-text text-lg">🔐 Trustless OSS</Link>
-          <span className="text-gray-600">|</span>
-          <span className="text-gray-400 text-sm">Dashboard</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            {user.user_metadata?.avatar_url && (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt="Profile"
-                className="w-8 h-8 rounded-full border border-white/10"
-              />
-            )}
-            <span className="text-sm text-gray-400">
-              {user.user_metadata?.user_name ?? user.email}
-            </span>
-          </div>
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      </nav>
-      
+    <div className="w-full">
       <InstallationSuccessHandler />
 
       <div className="max-w-6xl mx-auto px-6 py-10">
@@ -157,11 +125,13 @@ export default async function DashboardPage(props: DashboardProps) {
             }) => (
               <div
                 key={repo.id}
-                className={`glass rounded-2xl p-6 flex flex-col transition-all duration-500 ${isNew(repo.created_at) ? 'ring-2 ring-indigo-500/50 shadow-2xl shadow-indigo-500/10 scale-[1.02]' : ''}`}
+                className={`glass rounded-2xl p-6 flex flex-col h-full glow-hover ${isNew(repo.created_at) ? 'ring-2 ring-indigo-500/50 shadow-2xl shadow-indigo-500/10 scale-[1.02]' : ''}`}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">📁</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/5">
+                      <span className="text-xl">📁</span>
+                    </div>
                     {isNew(repo.created_at) && (
                       <span className="bg-indigo-500 text-[10px] text-white font-bold px-2 py-0.5 rounded-full animate-bounce">
                         NEW
@@ -179,7 +149,8 @@ export default async function DashboardPage(props: DashboardProps) {
                   )}
                 </div>
 
-                <h3 className="font-bold text-white text-base mb-1 truncate">{repo.full_name.split('/')[1] || repo.full_name}</h3>
+                <h3 className="font-bold text-white text-lg mb-1 truncate group-hover:text-indigo-300 transition-colors">{repo.full_name.split('/')[1] || repo.full_name}</h3>
+                <p className="text-xs text-gray-500 mb-6 truncate">{repo.full_name.split('/')[0]}</p>
 
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
                   <div>
