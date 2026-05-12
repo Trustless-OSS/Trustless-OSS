@@ -18,7 +18,7 @@ export default function DocsPage() {
       <Navbar user={user} breadcrumbs={[{ label: 'DOCS' }]} />
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-6 py-16">
-        <div className="label-brutal bg-slate-950 text-white inline-flex px-3 py-1 mb-8 shadow-[4px_4px_0_0_#2563eb] animate-pulse-brutal">
+        <div className="label-brutal bg-slate-950 text-white inline-flex px-3 py-1 mb-8 brutal-shadow animate-pulse-brutal">
           SYS.DOCS // END_TO_END_PROTOCOL_SPEC
         </div>
 
@@ -33,25 +33,25 @@ export default function DocsPage() {
             <h2 className="title-brutal text-3xl text-slate-950">VISUAL_WORKFLOW</h2>
           </div>
 
-          <div className="bg-slate-50 brutal-border p-8 md:p-12 shadow-[12px_12px_0_0_#2563eb] overflow-x-auto">
+          <div className="bg-slate-50 brutal-border p-8 md:p-12 brutal-shadow-blue overflow-x-auto">
             <div className="min-w-[900px] flex flex-col gap-16 relative">
               {/* Maintainer Start */}
               <div className="flex items-center gap-8">
-                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 shadow-[4px_4px_0_0_#2563eb]">
+                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-blue-600 mb-2 block">STEP_01</span>
                   <p className="font-bold text-xs uppercase">Maintainer Logs in & Connects Repo</p>
                 </div>
                 <div className="flex-grow h-1 bg-slate-950 relative">
                   <div className="absolute right-0 -top-1.5 w-4 h-4 border-r-4 border-t-4 border-slate-950 rotate-45"></div>
                 </div>
-                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 shadow-[4px_4px_0_0_#2563eb]">
+                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-blue-600 mb-2 block">STEP_02</span>
                   <p className="font-bold text-xs uppercase">Install GitHub App on Repo</p>
                 </div>
                 <div className="flex-grow h-1 bg-slate-950 relative">
                   <div className="absolute right-0 -top-1.5 w-4 h-4 border-r-4 border-t-4 border-slate-950 rotate-45"></div>
                 </div>
-                <div className="flex-shrink-0 w-48 bg-blue-600 text-white brutal-border p-4 shadow-[4px_4px_0_0_#020617]">
+                <div className="flex-shrink-0 w-48 bg-blue-600 text-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-white mb-2 block">STEP_03</span>
                   <p className="font-bold text-xs uppercase">Deploy Multi-Release Escrow (On-Chain)</p>
                 </div>
@@ -63,21 +63,21 @@ export default function DocsPage() {
               </div>
 
               <div className="flex items-center gap-8">
-                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 shadow-[4px_4px_0_0_#2563eb]">
+                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-blue-600 mb-2 block">STEP_04</span>
                   <p className="font-bold text-xs uppercase">Label Issue (Low/Med/High/Custom)</p>
                 </div>
                 <div className="flex-grow h-1 bg-slate-950 relative">
                   <div className="absolute right-0 -top-1.5 w-4 h-4 border-r-4 border-t-4 border-slate-950 rotate-45"></div>
                 </div>
-                <div className="flex-shrink-0 w-48 bg-slate-950 text-white brutal-border p-4 shadow-[4px_4px_0_0_#2563eb]">
+                <div className="flex-shrink-0 w-48 bg-slate-950 text-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-blue-400 mb-2 block">STEP_05</span>
                   <p className="font-bold text-xs uppercase">Bot Comments & Asks for Wallet</p>
                 </div>
                 <div className="flex-grow h-1 bg-slate-950 relative">
                   <div className="absolute right-0 -top-1.5 w-4 h-4 border-r-4 border-t-4 border-slate-950 rotate-45"></div>
                 </div>
-                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 shadow-[4px_4px_0_0_#2563eb]">
+                <div className="flex-shrink-0 w-48 bg-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-blue-600 mb-2 block">STEP_06</span>
                   <p className="font-bold text-xs uppercase">Contributor Links Stellar Wallet</p>
                 </div>
@@ -89,14 +89,14 @@ export default function DocsPage() {
               </div>
 
               <div className="flex justify-end gap-8">
-                <div className="flex-shrink-0 w-56 bg-white brutal-border p-4 shadow-[4px_4px_0_0_#2563eb]">
+                <div className="flex-shrink-0 w-56 bg-white brutal-border p-4 brutal-shadow">
                   <span className="label-brutal text-blue-600 mb-2 block">STEP_07</span>
                   <p className="font-bold text-xs uppercase">Milestone Created On-Chain</p>
                 </div>
                 <div className="w-24 h-1 bg-slate-950 self-center relative">
                   <div className="absolute right-0 -top-1.5 w-4 h-4 border-r-4 border-t-4 border-slate-950 rotate-45"></div>
                 </div>
-                <div className="flex-shrink-0 w-56 bg-blue-600 text-white brutal-border p-6 shadow-[8px_8px_0_0_#020617] animate-pulse-brutal">
+                <div className="flex-shrink-0 w-56 bg-blue-600 text-white brutal-border p-6 brutal-shadow-blue animate-pulse-brutal">
                   <span className="label-brutal text-white mb-2 block">FINAL_EXECUTION</span>
                   <p className="text-lg font-black uppercase">PR Merged → Instant Payout</p>
                 </div>
@@ -159,7 +159,7 @@ export default function DocsPage() {
           </div>
         </section>
 
-        <div className="bg-slate-950 text-white p-12 brutal-border shadow-[12px_12px_0_0_#2563eb] text-center">
+        <div className="bg-slate-950 text-white p-12 brutal-border brutal-shadow text-center">
           <h2 className="title-brutal text-3xl mb-8 uppercase">SECURE_TRANSPARENT_AUTOMATED</h2>
           <div className="flex flex-wrap justify-center gap-6">
             <Link href="/dashboard" className="brutal-button-outline bg-white text-slate-950 px-8 py-4">

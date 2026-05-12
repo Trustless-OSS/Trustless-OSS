@@ -49,7 +49,7 @@ export default function RetryProcessButton({
   }
 
   if (done) {
-    return <span className="text-green-400 text-xs font-semibold">✅ Completed</span>;
+    return <span className="status-badge status-completed">RELEASED</span>;
   }
 
   if (status === 'completed' || status === 'cancelled') return null;
