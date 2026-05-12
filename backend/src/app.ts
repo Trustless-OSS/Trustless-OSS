@@ -2,6 +2,7 @@ import 'dotenv/config';
 import http from 'http';
 import { addRoute, dispatch, json } from './router.js';
 import { githubWebhookHandler } from './routes/webhooks.js';
+import { debugAuthHandler } from './routes/debug.js';
 import {
   connectRepoHandler,
   createEscrowUnsignedHandler,
@@ -24,6 +25,9 @@ import {
 
 // Health
 addRoute('GET', '/api/health', healthHandler);
+
+// Debug (remove before going public with sensitive repos)
+addRoute('GET', '/api/debug/auth', debugAuthHandler);
 
 // GitHub webhook
 addRoute('POST', '/api/webhooks/github', githubWebhookHandler);
