@@ -204,7 +204,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
   const isPrivileged = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(comment.author_association);
 
   // Check for maintainer reject
-  if (isPrivileged && comment.body.includes('@Trustless-OSS /reject')) {
+  if (isPrivileged && comment.body.includes('@Trustless-OSS /rejected')) {
     const { data: repo } = await supabase.from('repos').select('*').eq('github_repo_id', repository.id).single<Repo>();
     if (!repo) return;
     const { data: existing } = await supabase.from('issues').select('*').eq('repo_id', repo.id).eq('github_issue_id', issue.id).single<Issue>();
@@ -234,7 +234,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
     const helpMsg = `🤖 **Trustless-OSS Bot Commands**\n\n` +
       `**For Maintainers:**\n` +
       `- \`@Trustless-OSS <amount>\` : Create a custom bounty (e.g. \`@Trustless-OSS 50\`)\n` +
-      `- \`@Trustless-OSS /reject\` : Cancel the bounty and refund the escrow\n` +
+      `- \`@Trustless-OSS /rejected\` : Cancel the bounty and refund the escrow\n` +
       `- \`@Trustless-OSS /retry\` : Retry a failed payout transaction\n\n` +
       `**For Contributors:**\n` +
       `- \`@Trustless-OSS /change-address\` : Get a link to update your connected Stellar wallet`;

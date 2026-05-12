@@ -131,6 +131,12 @@ export default function DocsPage() {
               <span className="text-yellow-200">@trustless-oss-bot 150</span><br />
               The bot will update the milestone in our database immediately.
             </div>
+            <div className="terminal-block">
+              <span className="text-blue-400">05_MANAGEMENT:</span><br />
+              Need to cancel a bounty? Comment:<br />
+              <span className="text-red-400">@trustless-oss-bot /rejected</span><br />
+              This cancels the milestone and refunds the USDC back to your repository pool.
+            </div>
           </div>
         </section>
 
