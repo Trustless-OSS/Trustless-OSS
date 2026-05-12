@@ -318,14 +318,14 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
 
     // 2. Fetch the REAL on-chain balance to ensure distribution matches perfectly
     try {
-      // Trying the direct GET endpoint for multi-release escrows
-      const info = await twFetch(`/escrow/multi-release/get/${repo.escrow_contract_id}`, {
+      // The API requires GET with addresses[] query param for balance
+      const balanceInfo = await twFetch(`/helper/get-multiple-escrow-balance?addresses[]=${repo.escrow_contract_id}`, {
         method: 'GET'
-      }) as any;
+      }) as Array<{ address: string, balance: number }>;
       
-      console.log('[Withdraw] Escrow Info:', JSON.stringify(info, null, 2));
+      console.log('[Withdraw] On-chain Balance Info:', JSON.stringify(balanceInfo, null, 2));
       
-      const onChainBalance = info?.balance ?? repo.escrow_balance;
+      const onChainBalance = balanceInfo[0]?.balance ?? repo.escrow_balance;
       console.log('[Withdraw] Final On-chain Balance:', onChainBalance);
 
       // 3. Now generate the sweep transaction
