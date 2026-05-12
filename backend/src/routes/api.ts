@@ -260,13 +260,16 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
       
       // Approve milestone 0
       try {
+        const appPayload = {
+          contractId: repo.escrow_contract_id,
+          approver: platformPair.publicKey(),
+          milestoneIndex: "0",
+        };
+        console.log('[Withdraw] Approval Payload:', JSON.stringify(appPayload));
+
         const appRes = await twFetch('/escrow/multi-release/approve-milestone', {
           method: 'POST',
-          body: JSON.stringify({
-            contractId: repo.escrow_contract_id,
-            approver: platformPair.publicKey(),
-            milestoneIndex: "0",
-          }),
+          body: JSON.stringify(appPayload),
         }) as { unsignedTransaction: string };
 
         if (appRes.unsignedTransaction) {
@@ -283,13 +286,16 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
 
       // Release milestone 0
       try {
+        const relPayload = {
+          contractId: repo.escrow_contract_id,
+          releaseSigner: platformPair.publicKey(),
+          milestoneIndex: "0",
+        };
+        console.log('[Withdraw] Release Payload:', JSON.stringify(relPayload));
+
         const relRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
           method: 'POST',
-          body: JSON.stringify({
-            contractId: repo.escrow_contract_id,
-            releaseSigner: platformPair.publicKey(),
-            milestoneIndex: "0",
-          }),
+          body: JSON.stringify(relPayload),
         }) as { unsignedTransaction: string };
 
         if (relRes.unsignedTransaction) {
