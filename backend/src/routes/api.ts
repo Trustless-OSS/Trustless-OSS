@@ -251,7 +251,7 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
     const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
       method: 'POST',
       body: JSON.stringify({
-        contractId: repo.escrow_contract_id,
+        escrowId: repo.escrow_contract_id,
         signer: body.maintainerWallet,
         amount: body.amount,
         receiver: body.maintainerWallet,

@@ -104,9 +104,13 @@ export default async function RepoDetailPage({
                   <div className="flex flex-col items-end">
                     <div className="label-brutal text-slate-500 mb-1">CONTRACT_LIQUIDITY</div>
                     <div className="text-4xl font-black text-slate-950">{repo.escrow_balance.toFixed(2)} <span className="text-lg text-slate-500">USDC</span></div>
-                    <div className="flex items-center gap-4 mt-6 relative">
-                      <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
-                      <RefundFundButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mt-6 relative w-full sm:w-auto">
+                      <div className="w-full sm:w-auto">
+                        <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                      </div>
+                      <div className="w-full sm:w-auto">
+                        <RefundFundButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
+                      </div>
                     </div>
                   </div>
                 </>

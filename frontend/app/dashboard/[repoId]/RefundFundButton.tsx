@@ -99,7 +99,7 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
       <button 
         onClick={() => { setShowModal(true); setError(''); }} 
         disabled={loading}
-        className="brutal-button-outline px-5 py-3 text-sm flex items-center gap-2"
+        className="brutal-button-outline px-5 py-3 text-sm flex items-center gap-2 w-full sm:w-auto"
       >
         {loading ? 'PROCESSING...' : 'REFUND_FUNDS'}
       </button>
