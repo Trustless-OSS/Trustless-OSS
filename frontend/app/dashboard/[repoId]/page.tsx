@@ -58,6 +58,12 @@ export default async function RepoDetailPage({
 
   const issues = await getIssues(repoId, session?.access_token ?? '');
 
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  const isRepoMaintainer = repo && (
+    Number(repo.owner_github_id) === githubId ||
+    Number(repo.installer_github_id) === githubId
+  );
+
   return (
     <div className="w-full">
       <Link href="/dashboard" className="label-brutal text-slate-500 hover:text-slate-950 flex items-center gap-2 mb-8 transition-colors w-fit underline underline-offset-4 decoration-2">
@@ -105,12 +111,16 @@ export default async function RepoDetailPage({
                     <div className="label-brutal text-slate-500 mb-1">CONTRACT_LIQUIDITY</div>
                     <div className="text-4xl font-black text-slate-950">{repo.escrow_balance.toFixed(2)} <span className="text-lg text-slate-500">USDC</span></div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mt-6 relative w-full sm:w-auto">
-                      <div className="w-full sm:w-auto">
-                        <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
-                      </div>
-                      <div className="w-full sm:w-auto">
-                        <RefundFundButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
-                      </div>
+                      {isRepoMaintainer && (
+                        <>
+                          <div className="w-full sm:w-auto">
+                            <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                          </div>
+                          <div className="w-full sm:w-auto">
+                            <RefundFundButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 </>
@@ -118,15 +128,29 @@ export default async function RepoDetailPage({
             </div>
           </div>
 
-          <div className="border-t-4 border-slate-950 pt-8 border-dashed">
-            <div className="label-brutal text-slate-500 mb-6">REWARD_PARAMETERS</div>
-            <RewardSettingsForm
-              repoId={repoId}
-              token={session?.access_token ?? ''}
-              initialLow={repo.reward_low}
-              initialMedium={repo.reward_medium}
-              initialHigh={repo.reward_high}
-            />
+          {isRepoMaintainer && (
+            <div className="border-t-4 border-slate-950 pt-8 border-dashed">
+              <div className="label-brutal text-slate-500 mb-6">REWARD_PARAMETERS</div>
+              <RewardSettingsForm
+                repoId={repoId}
+                token={session?.access_token ?? ''}
+                initialLow={repo.reward_low}
+                initialMedium={repo.reward_medium}
+                initialHigh={repo.reward_high}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isRepoMaintainer && repo && (
+        <div className="mb-12 p-6 bg-blue-50 border-[4px] border-slate-950 shadow-[4px_4px_0_0_#000]">
+          <div className="flex items-center gap-4">
+            <div className="text-4xl">🧑‍💻</div>
+            <div>
+              <h2 className="title-brutal text-xl text-slate-950 uppercase">Contributor_View</h2>
+              <p className="text-sm font-mono text-slate-600 font-bold uppercase">You are viewing this repository as a contributor.</p>
+            </div>
           </div>
         </div>
       )}
@@ -197,12 +221,16 @@ export default async function RepoDetailPage({
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <RetryProcessButton 
-                        issueId={issue.id}
-                        token={session?.access_token ?? ''}
-                        status={issue.status}
-                        payoutStatus={assignment?.payout_status ?? 'pending'}
-                      />
+                      {isRepoMaintainer ? (
+                        <RetryProcessButton 
+                          issueId={issue.id}
+                          token={session?.access_token ?? ''}
+                          status={issue.status}
+                          payoutStatus={assignment?.payout_status ?? 'pending'}
+                        />
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">N/A</span>
+                      )}
                     </td>
                   </tr>
                 );

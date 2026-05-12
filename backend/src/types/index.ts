@@ -4,6 +4,8 @@ export interface Repo {
   full_name: string;
   owner_github_id: number;
   owner_username: string;
+  installer_github_id: number | null;
+  github_installation_id: number | null;
   escrow_contract_id: string | null;
   escrow_balance: number;
   reward_low: number;

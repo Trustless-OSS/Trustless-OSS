@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Suspense } from 'react';
 import { getWalletKit } from '../lib/walletKit';
@@ -14,8 +15,49 @@ function ConnectForm() {
   const repoId = searchParams.get('repo');
 
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [isAssigned, setIsAssigned] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function checkAccess() {
+      if (!issueId || !repoId) {
+        setChecking(false);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // If not logged in, we can't check assignment yet, 
+          // handleConnect will redirect to login anyway.
+          setChecking(false);
+          setIsAssigned(true); // Allow showing the button so they click and get redirected
+          return;
+        }
+
+        const res = await fetch(`${BACKEND}/api/contributor/me`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (res.ok) {
+          const { contributor } = await res.json();
+          // Check if any of the user's assignments match this issue
+          const match = contributor?.assignments?.some((a: any) => 
+            String(a.issues?.github_issue_id) === String(issueId)
+          );
+          setIsAssigned(!!match);
+        }
+      } catch (e) {
+        console.error('Failed to check assignment:', e);
+      } finally {
+        setChecking(false);
+      }
+    }
+    checkAccess();
+  }, [issueId, repoId]);
 
   async function handleConnect() {
     setLoading(true);
@@ -82,7 +124,26 @@ function ConnectForm() {
       <div className="label-brutal bg-slate-950 text-white mb-6 w-fit border-2 border-slate-950 px-3 py-1">
         SYS_ACTION // CLAIM_BOUNTY
       </div>
-      <div className="text-6xl mb-6 grayscale text-center">🚀</div>
+
+      {checking ? (
+        <div className="text-center py-8">
+          <div className="w-12 h-12 border-4 border-slate-950 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-mono text-xs uppercase font-bold text-slate-500">Verifying Identity...</p>
+        </div>
+      ) : !isAssigned ? (
+        <div className="text-center">
+          <div className="text-6xl mb-6 grayscale">🚫</div>
+          <h2 className="title-brutal text-2xl text-slate-950 mb-4">ACCESS_DENIED</h2>
+          <div className="p-4 bg-red-100 border-[4px] border-slate-950 shadow-[4px_4px_0_0_#000] text-red-600 font-bold font-mono text-sm uppercase text-left mb-8">
+            This bounty is assigned to another contributor. Only the assigned actor can link their wallet to this module.
+          </div>
+          <Link href="/dashboard" className="brutal-button w-full py-3 inline-block">
+            RETURN_TO_BASE
+          </Link>
+        </div>
+      ) : (
+        <>
+          <div className="text-6xl mb-6 grayscale text-center">🚀</div>
       <h1 className="title-brutal text-3xl text-slate-950 mb-2 text-center">INITIALIZE_PAYOUT</h1>
       
       <div className="terminal-block text-left text-sm mb-8 mt-6">
@@ -113,6 +174,8 @@ function ConnectForm() {
           </a>
         </p>
       </div>
+        </>
+      )}
     </>
   );
 }

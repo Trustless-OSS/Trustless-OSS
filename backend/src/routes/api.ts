@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase.js';
 import { createRepoEscrow, fundEscrow } from '../lib/trustless-work/escrow.js';
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
 import type { Repo, Issue, Contributor, Assignment } from '../types/index.js';
+import { isMaintainer, isAssignedContributor, isAssignedContributorById } from '../lib/auth.js';
+
 
 /* ------------------------------------------------------------------ */
 /* POST /api/repos/connect                                              */
@@ -118,6 +120,12 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
 
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  if (!(await isMaintainer(githubId, repo.id))) {
+    json(res, { error: 'Forbidden: Only maintainers can perform this action' }, 403);
+    return;
+  }
+
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
   const TESTNET_USDC = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
@@ -159,6 +167,15 @@ export async function submitDeployEscrowHandler(req: IncomingMessage, res: Serve
 
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
 
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+
+  if (!(await isMaintainer(githubId, body.repoId))) {
+    json(res, { error: 'Forbidden: Only maintainers can perform this action' }, 403);
+    return;
+  }
+
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
     const result = await twFetch('/helper/send-transaction', {
@@ -185,6 +202,13 @@ export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: Serve
 
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+
+  const { data: { user } } = await supabase.auth.getUser(token);
+  const githubId = Number(user?.user_metadata?.provider_id ?? user?.user_metadata?.sub);
+  if (!(await isMaintainer(githubId, repo.id))) {
+    json(res, { error: 'Forbidden: Only maintainers can fund the escrow' }, 403);
+    return;
+  }
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
@@ -245,6 +269,15 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
 
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  if (!(await isMaintainer(githubId, repo.id))) {
+    json(res, { error: 'Forbidden: Only maintainers can withdraw funds' }, 403);
+    return;
+  }
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
@@ -366,6 +399,15 @@ export async function submitWithdrawHandler(req: IncomingMessage, res: ServerRes
 
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; signedXdr: string };
 
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+
+  if (!(await isMaintainer(githubId, body.repoId))) {
+    json(res, { error: 'Forbidden: Only maintainers can perform this action' }, 403);
+    return;
+  }
+
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
     await twFetch('/helper/send-transaction', {
@@ -399,6 +441,15 @@ export async function closeEscrowUnsignedHandler(req: IncomingMessage, res: Serv
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
 
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  if (!(await isMaintainer(githubId, repo.id))) {
+    json(res, { error: 'Forbidden: Only maintainers can close the escrow' }, 403);
+    return;
+  }
+
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
     const response = await twFetch('/escrow/multi-release/close-escrow', {
@@ -424,6 +475,15 @@ export async function submitCloseHandler(req: IncomingMessage, res: ServerRespon
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
 
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
+
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+
+  if (!(await isMaintainer(githubId, body.repoId))) {
+    json(res, { error: 'Forbidden: Only maintainers can perform this action' }, 403);
+    return;
+  }
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
@@ -520,8 +580,25 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
     wallet: string;
   };
 
-  // Save wallet to contributor
   const githubUserId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+
+  // 1. Find internal repo ID
+  const { data: repo } = await supabase
+    .from('repos')
+    .select('id, full_name, github_repo_id, escrow_contract_id')
+    .eq('github_repo_id', body.githubRepoId)
+    .single<Repo>();
+
+  if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
+
+  // 2. CHECK: Is this user assigned to this issue?
+  const isAssigned = await isAssignedContributor(githubUserId, repo.id, body.githubIssueId);
+  if (!isAssigned) {
+    json(res, { error: 'Forbidden: Only the assigned contributor can connect their wallet for this issue' }, 403);
+    return;
+  }
+
+  // Save wallet to contributor
   await supabase.from('contributors').upsert(
     {
       github_user_id: githubUserId,
@@ -532,13 +609,6 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
   );
 
   // Look up the issue
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('github_repo_id', body.githubRepoId)
-    .single<Repo>();
-
-  if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
 
   const { data: issue } = await supabase
     .from('issues')
@@ -630,6 +700,12 @@ export async function updateRepoRewardsHandler(
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
 
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  if (!(await isMaintainer(githubId, params.repoId!))) {
+    json(res, { error: 'Forbidden: Only maintainers can update reward levels' }, 403);
+    return;
+  }
+
   const body = JSON.parse((await readBody(req)).toString()) as {
     reward_low: number;
     reward_medium: number;
@@ -678,9 +754,9 @@ export async function retryIssueHandler(
 
   if (!issue) { json(res, { error: 'Issue not found' }, 404); return; }
 
-  // Check if user is the repo owner
-  if (Number(issue.repos.owner_github_id) !== Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub)) {
-    json(res, { error: 'Only the repository owner can retry' }, 403);
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  if (!(await isMaintainer(githubId, issue.repos.id))) {
+    json(res, { error: 'Forbidden: Only the repository owner or maintainer can retry' }, 403);
     return;
   }
 
