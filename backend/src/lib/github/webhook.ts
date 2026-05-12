@@ -656,6 +656,7 @@ export async function handleIssueClosed(payload: Record<string, unknown>): Promi
       `⚠️ Bounty release failed: ${releaseErr.message}\n\nPlease use the dashboard retry button.`
     );
   }
+}
 
 /* ------------------------------------------------------------------ */
 /* pull_request.closed (merged)                                         */
@@ -760,6 +761,7 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
       `⚠️ Bounty release failed: ${releaseErr.message}\n\nPlease use the dashboard retry button.`
     );
   }
+}
 
 /* ------------------------------------------------------------------ */
 /* installation & installation_repositories                             */
