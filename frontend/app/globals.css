@@ -5,6 +5,23 @@
   --color-bg: #f8fafc;
   --color-black: #020617;
   --color-blue: #2563eb;
+  --color-text: #020617;
+  --color-border: #020617;
+}
+
+.dark {
+  --color-bg: #020617;
+  --color-black: #f8fafc;
+  --color-blue: #3b82f6;
+  --color-text: #f8fafc;
+  --color-border: #f8fafc;
+}
+
+@theme {
+  --color-slate-50: var(--color-bg);
+  --color-slate-950: var(--color-black);
+  --color-blue-600: var(--color-blue);
+  --font-sans: var(--font-space-grotesk);
 }
 
 * {
@@ -13,20 +30,21 @@
 
 body {
   background: var(--color-bg);
-  color: var(--color-black);
+  color: var(--color-text);
+  font-family: var(--font-space-grotesk), sans-serif;
 }
 
 /* Brutalist Utilities */
 .brutal-border {
-  border: 4px solid var(--color-black);
+  border: 4px solid var(--color-border);
 }
 
 .brutal-border-b {
-  border-bottom: 4px solid var(--color-black);
+  border-bottom: 4px solid var(--color-border);
 }
 
 .brutal-shadow {
-  box-shadow: 8px 8px 0px 0px var(--color-black);
+  box-shadow: 8px 8px 0px 0px var(--color-border);
   transition: all 0.2s ease;
 }
 
@@ -37,13 +55,13 @@ body {
 
 .brutal-shadow:hover, .brutal-shadow-blue:hover, .brutal-button:hover {
   transform: translate(2px, 2px);
-  box-shadow: 4px 4px 0px 0px var(--color-black);
+  box-shadow: 4px 4px 0px 0px var(--color-border);
 }
 
 .brutal-button {
-  background: var(--color-black);
-  color: #fff;
-  border: 4px solid var(--color-black);
+  background: var(--color-border);
+  color: var(--color-bg);
+  border: 4px solid var(--color-border);
   text-transform: uppercase;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -56,12 +74,12 @@ body {
 
 .brutal-button-outline {
   background: var(--color-bg);
-  color: var(--color-black);
-  border: 4px solid var(--color-black);
+  color: var(--color-text);
+  border: 4px solid var(--color-border);
   text-transform: uppercase;
   font-weight: 800;
   letter-spacing: 0.1em;
-  box-shadow: 6px 6px 0px 0px var(--color-black);
+  box-shadow: 6px 6px 0px 0px var(--color-border);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -70,7 +88,7 @@ body {
 
 .brutal-button:active, .brutal-button-outline:active {
   transform: translate(6px, 6px);
-  box-shadow: 0px 0px 0px 0px var(--color-black);
+  box-shadow: 0px 0px 0px 0px var(--color-border);
 }
 
 /* Typography Helpers */
@@ -93,7 +111,7 @@ body {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  border: 2px solid var(--color-black);
+  border: 2px solid var(--color-border);
   padding: 0.125rem 0.5rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -101,23 +119,76 @@ body {
   letter-spacing: 0.1em;
 }
 
-.status-pending   { background: #fef08a; color: var(--color-black); }
-.status-active    { background: #bfdbfe; color: var(--color-black); }
-.status-completed { background: #bbf7d0; color: var(--color-black); }
-.status-cancelled { background: #fecaca; color: var(--color-black); }
+.status-pending   { background: #fef08a; color: #020617; }
+.status-active    { background: #bfdbfe; color: #020617; }
+.status-completed { background: #bbf7d0; color: #020617; }
+.status-cancelled { background: #fecaca; color: #020617; }
 
-.diff-low    { background: #a7f3d0; color: var(--color-black); }
-.diff-medium { background: #fed7aa; color: var(--color-black); }
-.diff-high   { background: #fecaca; color: var(--color-black); }
-.diff-custom { background: #c7d2fe; color: var(--color-black); }
+.diff-low    { background: #a7f3d0; color: #020617; }
+.diff-medium { background: #fed7aa; color: #020617; }
+.diff-high   { background: #fecaca; color: #020617; }
+.diff-custom { background: #c7d2fe; color: #020617; }
 
-/* Monospace Container */
+/* Technical Animations */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulse-brutal {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.98); }
+}
+
+@keyframes drift {
+  0% { background-position: 0px 0px; }
+  100% { background-position: 30px 30px; }
+}
+
+.animate-scan {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-scan::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-blue);
+  opacity: 0.2;
+  pointer-events: none;
+  animation: scanline 8s linear infinite;
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+.animate-pulse-brutal {
+  animation: pulse-brutal 3s ease-in-out infinite;
+}
+
+.bg-dot-drift {
+  animation: drift 20s linear infinite;
+}
+
+/* Monospace Container Override */
 .terminal-block {
   background: var(--color-black);
-  color: #fff;
-  border: 4px solid var(--color-black);
+  color: var(--color-bg);
+  border: 4px solid var(--color-border);
   font-family: var(--font-mono);
   padding: 1rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .terminal-block::before {
@@ -126,4 +197,16 @@ body {
   color: var(--color-blue);
   font-size: 0.75rem;
   margin-bottom: 0.5rem;
+}
+
+.terminal-block::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 155, 0.03));
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
 }

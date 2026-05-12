@@ -15,8 +15,8 @@ export default async function HomePage() {
         <section className="flex flex-col max-w-6xl mt-12 mb-32 border-l-8 border-slate-950 pl-8 md:pl-16 relative">
           <div className="absolute -left-[5px] top-0 w-2 h-20 bg-blue-600"></div>
 
-          <div className="label-brutal mb-8 bg-slate-950 text-white inline-flex px-3 py-1 w-fit brutal-shadow">
-            SYS.STATUS // OPERATIONAL
+          <div className="label-brutal mb-8 bg-slate-950 text-white inline-flex px-3 py-1 w-fit brutal-shadow animate-pulse-brutal">
+            SYS.STATUS // <span className="text-blue-400">OPERATIONAL</span>
           </div>
 
           <h1 className="text-5xl md:text-8xl lg:text-[7rem] font-black leading-[0.85] tracking-tighter mb-8 text-slate-950 uppercase italic">
@@ -26,8 +26,9 @@ export default async function HomePage() {
           </h1>
 
           <div className="terminal-block max-w-3xl mb-12 brutal-shadow">
-            <span className="text-blue-400">const</span> <span className="text-white">protocol</span> = <span className="text-green-400">"Trustless Escrow"</span>;<br />
+            <span className="text-blue-400">const</span> <span className="text-slate-50">protocol</span> = <span className="text-blue-400">"Trustless Escrow"</span>;<br />
             <span className="text-slate-500">// Fund GitHub issues with USDC</span><br />
+            <span className="text-slate-50 font-bold">&gt; Initializing protocol interface...</span><span className="inline-block w-2 h-4 bg-blue-600 ml-1 animate-blink"></span><br />
             <span className="text-slate-500">// PR Merge triggers automatic on-chain release</span><br />
             <span className="text-blue-400">await</span> <span className="text-yellow-200">executeRelease</span>();
           </div>
