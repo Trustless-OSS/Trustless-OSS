@@ -316,28 +316,41 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
       console.log('[Withdraw] Setup milestone cleanup skipped/failed:', err.message);
     }
 
-    // 2. Use the database balance (fallback to 0 if not found)
-    const onChainBalance = repo.escrow_balance || 0;
-    console.log('[Withdraw] Using balance from DB:', onChainBalance);
+    // 2. Fetch the REAL on-chain balance to ensure distribution matches perfectly
+    try {
+      const info = await twFetch('/helper/get-escrow-by-contract-ids', {
+        method: 'POST',
+        body: JSON.stringify({ contractIds: [repo.escrow_contract_id] }),
+      }) as any[];
+      
+      console.log('[Withdraw] Escrow Info:', JSON.stringify(info, null, 2));
+      
+      // The balance is usually in the first element
+      const onChainBalance = info[0]?.balance ?? repo.escrow_balance;
+      console.log('[Withdraw] Final On-chain Balance:', onChainBalance);
 
-    // 3. Now generate the sweep transaction
-    const requestBody = {
-      contractId: repo.escrow_contract_id,
-      disputeResolver: body.maintainerWallet,
-      distributions: [
-        {
-          address: body.maintainerWallet,
-          amount: onChainBalance
-        }
-      ]
-    };
-    
-    const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
-      method: 'POST',
-      body: JSON.stringify(requestBody),
-    }) as { unsignedTransaction: string };
+      // 3. Now generate the sweep transaction
+      const requestBody = {
+        contractId: repo.escrow_contract_id,
+        disputeResolver: body.maintainerWallet,
+        distributions: [
+          {
+            address: body.maintainerWallet,
+            amount: onChainBalance
+          }
+        ]
+      };
+      
+      const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+      }) as { unsignedTransaction: string };
 
-    json(res, { unsignedTransaction: response.unsignedTransaction });
+      json(res, { unsignedTransaction: response.unsignedTransaction });
+    } catch (err: any) {
+      console.error('[Withdraw] Balance fetch or Sweep failed:', err.message);
+      json(res, { error: `On-chain Sync Failed: ${err.message}` }, 500);
+    }
   } catch (err: any) {
     console.error('[Withdraw] Error from TrustlessWork:', err.message);
     json(res, { error: err.message }, 500);
