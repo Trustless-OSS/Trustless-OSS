@@ -5,8 +5,7 @@ import DeployEscrowButton from './DeployEscrowButton';
 import FundEscrowButton from './FundEscrowButton';
 import RewardSettingsForm from './RewardSettingsForm';
 import RetryProcessButton from './ReleaseBountyButton';
-import WithdrawEscrowButton from './WithdrawEscrowButton';
-import CloseEscrowButton from './CloseEscrowButton';
+import RefundFundButton from './RefundFundButton';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -107,10 +106,9 @@ export default async function RepoDetailPage({
                     <div className="text-4xl font-black text-slate-950">{repo.escrow_balance.toFixed(2)} <span className="text-lg text-slate-500">USDC</span></div>
                     <div className="flex gap-4 mt-4">
                       <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
-                      <WithdrawEscrowButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
+                      <RefundFundButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
                     </div>
                   </div>
-                  <CloseEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
                 </>
               )}
             </div>

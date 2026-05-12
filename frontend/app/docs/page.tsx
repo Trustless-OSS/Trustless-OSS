@@ -132,10 +132,8 @@ export default function DocsPage() {
               The bot will update the milestone in our database immediately.
             </div>
             <div className="terminal-block">
-              <span className="text-blue-400">05_MANAGEMENT:</span><br />
-              Need to cancel a bounty? Comment:<br />
-              <span className="text-red-400">@trustless-oss-bot /rejected</span><br />
-              This cancels the milestone and refunds the USDC back to your repository pool.
+              <span className="text-blue-400">05_LIQUIDITY_MANAGEMENT:</span><br />
+              Need your funds back? Use the <span className="text-white bg-red-600 px-1">REFUND_FUNDS</span> button in your dashboard. This generates an on-chain transaction to pull USDC from the escrow back to your wallet.
             </div>
           </div>
         </section>
