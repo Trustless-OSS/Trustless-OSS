@@ -264,8 +264,8 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
           method: 'POST',
           body: JSON.stringify({
             contractId: repo.escrow_contract_id,
-            signer: platformPair.publicKey(),
-            milestoneIndex: 0,
+            approver: platformPair.publicKey(),
+            milestoneIndex: "0",
           }),
         }) as { unsignedTransaction: string };
 
@@ -287,8 +287,8 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
           method: 'POST',
           body: JSON.stringify({
             contractId: repo.escrow_contract_id,
-            signer: platformPair.publicKey(),
-            milestoneIndex: 0,
+            releaseSigner: platformPair.publicKey(),
+            milestoneIndex: "0",
           }),
         }) as { unsignedTransaction: string };
 
