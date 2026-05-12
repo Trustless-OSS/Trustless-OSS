@@ -252,7 +252,10 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
       method: 'POST',
       body: JSON.stringify({
         contractId: repo.escrow_contract_id,
+        escrowId: repo.escrow_contract_id,
         signer: body.maintainerWallet,
+        receiver: body.maintainerWallet,
+        type: 'multi-release',
       }),
     }) as { unsignedTransaction: string };
 
