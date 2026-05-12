@@ -58,15 +58,15 @@ export default function RewardSettingsForm({
   if (!editing) {
     return (
       <div className="flex gap-4 mt-6 pt-6 border-t-4 border-slate-950 border-dashed flex-wrap items-end">
-        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#020617]">
+        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#2563eb]">
           <div className="label-brutal text-slate-500 mb-1">CLASS // LOW</div>
           <div className="text-sm font-mono font-black text-slate-950">{low} USDC</div>
         </div>
-        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#020617]">
+        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#2563eb]">
           <div className="label-brutal text-slate-500 mb-1">CLASS // MEDIUM</div>
           <div className="text-sm font-mono font-black text-slate-950">{medium} USDC</div>
         </div>
-        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#020617]">
+        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#2563eb]">
           <div className="label-brutal text-slate-500 mb-1">CLASS // HIGH</div>
           <div className="text-sm font-mono font-black text-slate-950">{high} USDC</div>
         </div>

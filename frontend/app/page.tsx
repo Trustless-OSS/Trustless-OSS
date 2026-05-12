@@ -41,14 +41,12 @@ export default async function HomePage() {
               {user ? "ACCESS_DASHBOARD" : "INIT_PROTOCOL"}
             </Link>
             
-            <a
-              href="https://docs.trustlesswork.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="brutal-button-outline px-8 py-5 text-lg w-full sm:w-auto"
+            <Link
+              href="/docs"
+              className="brutal-button-outline px-8 py-5 text-lg w-full sm:w-auto text-center"
             >
               READ_DOCS
-            </a>
+            </Link>
           </div>
         </section>
 
@@ -122,7 +120,7 @@ export default async function HomePage() {
                     { label: 'low', amount: '0.01 USDC', note: 'Small fixes, typos', cls: 'diff-low' },
                     { label: 'medium', amount: '75.0 USDC', note: 'Feature additions', cls: 'diff-medium' },
                     { label: 'high', amount: '150.0 USDC', note: 'Complex features', cls: 'diff-high' },
-                    { label: 'bonus:N', amount: '+N USDC', note: 'Variable addition', cls: 'status-active' },
+                    { label: 'custom', amount: 'custom amount set by maintainer', note: 'Variable addition', cls: 'status-active' },
                   ].map((row, i) => (
                     <tr key={row.label} className={i !== 3 ? "border-b-[4px] border-slate-950" : ""}>
                       <td className="p-4 border-r-[4px] border-slate-950">
@@ -141,15 +139,7 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t-[4px] border-slate-950 bg-white py-8 px-6 font-mono text-sm font-bold uppercase">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
-          <p className="tracking-widest">© {new Date().getFullYear()} TRUSTLESS <span className="text-blue-600">OSS</span> [V1.0.0]</p>
-          <div className="flex gap-8 mt-4 sm:mt-0">
-            <a href="https://github.com/Trustless-OSS" className="hover:text-blue-600 hover:underline underline-offset-4 decoration-4 transition-colors">GITHUB_REPO</a>
-            <a href="https://trustlesswork.com" className="hover:text-blue-600 hover:underline underline-offset-4 decoration-4 transition-colors">TRUSTLESS_WORK</a>
-          </div>
-        </div>
-      </footer>
+
     </div>
   );
 }

@@ -44,18 +44,18 @@ body {
 }
 
 .brutal-shadow {
-  box-shadow: 8px 8px 0px 0px var(--color-border);
-  transition: all 0.2s ease;
+  box-shadow: 8px 8px 0px 0px var(--color-blue);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .brutal-shadow-blue {
   box-shadow: 8px 8px 0px 0px var(--color-blue);
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .brutal-shadow:hover, .brutal-shadow-blue:hover, .brutal-button:hover {
-  transform: translate(2px, 2px);
-  box-shadow: 4px 4px 0px 0px var(--color-border);
+  transform: translate(6px, 6px);
+  box-shadow: 0px 0px 0px 0px var(--color-blue);
 }
 
 .brutal-button {
@@ -79,7 +79,7 @@ body {
   text-transform: uppercase;
   font-weight: 800;
   letter-spacing: 0.1em;
-  box-shadow: 6px 6px 0px 0px var(--color-border);
+  box-shadow: 6px 6px 0px 0px var(--color-blue);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -87,8 +87,8 @@ body {
 }
 
 .brutal-button:active, .brutal-button-outline:active {
-  transform: translate(6px, 6px);
-  box-shadow: 0px 0px 0px 0px var(--color-border);
+  transform: translate(8px, 8px);
+  box-shadow: 0px 0px 0px 0px var(--color-blue);
 }
 
 /* Typography Helpers */

@@ -99,7 +99,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[Maintainer creates GitHub issue] --> B[Adds labels: rewarded + high/medium/low + bonus:N]
+    A[Maintainer creates GitHub issue] --> B[Adds labels: rewarded + high/medium/low + custom]
     B --> C[GitHub webhook fires]
     C --> D{Solvency check:\nbalance >= reward?}
     D -- No --> E[Bot comments: Insufficient funds\nTop up link]
@@ -155,7 +155,7 @@ sequenceDiagram
 | `low` | 25 USDC |
 | `medium` | 75 USDC |
 | `high` | 150 USDC |
-| `bonus:N` | +N USDC added to base |
+| `custom` | custom amount set by maintainer |
 
 Maintainer can override defaults in repo settings on your platform.
 
