@@ -26,10 +26,10 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
   // Determine the correct webhook URL
   const protocol = req.headers['x-forwarded-proto'] || 'http';
   const host = req.headers['host'];
-  const defaultWebhook = host 
+  const defaultWebhook = host
     ? `${protocol}://${host}/api/webhooks/github`
     : 'https://smee.io/trustless-oss-dev-webhook';
-    
+
   const webhookUrl = process.env.WEBHOOK_URL ?? defaultWebhook;
   const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET!;
 
@@ -138,7 +138,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
           disputeResolver: body.maintainerWallet, // maintainer resolves disputes
         },
         platformFee: 0,
-        milestones: [{ description: `Initial Escrow Setup`, amount: 0.0001, receiver: platformKey }],
+        milestones: [{ description: `Initial Escrow Setup and fees of platform 0.01 USDC`, amount: 0.01, receiver: platformKey }],
         trustline: { address: TESTNET_USDC, symbol: 'USDC' },
       }),
     }) as { unsignedTransaction: string };
@@ -246,6 +246,62 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
   if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
 
+  try {
+    const { twFetch } = await import('../lib/trustless-work/client.js');
+    const { Transaction, Keypair, Networks } = await import('stellar-sdk');
+
+    const networkPassphrase = process.env.STELLAR_NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
+    const platformSecret = process.env.PLATFORM_STELLAR_SECRET_KEY!;
+    const platformPair = Keypair.fromSecret(platformSecret);
+
+    // 1. Try to release the setup milestone (milestone 0) just in case it's blocking
+    try {
+      console.log('[Withdraw] Attempting to clear setup milestone (0)...');
+      
+      // Approve milestone 0
+      const appRes = await twFetch('/escrow/multi-release/approve-milestone', {
+        method: 'POST',
+        body: JSON.stringify({
+          contractId: repo.escrow_contract_id,
+          signer: platformPair.publicKey(),
+          milestoneIndex: 0,
+        }),
+      }) as { unsignedTransaction: string };
+
+      if (appRes.unsignedTransaction) {
+        const tx = new Transaction(appRes.unsignedTransaction, networkPassphrase);
+        tx.sign(platformPair);
+        await twFetch('/helper/send-transaction', {
+          method: 'POST',
+          body: JSON.stringify({ signedXdr: tx.toXDR() }),
+        });
+      }
+
+      // Release milestone 0
+      const relRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
+        method: 'POST',
+        body: JSON.stringify({
+          contractId: repo.escrow_contract_id,
+          signer: platformPair.publicKey(),
+          milestoneIndex: 0,
+        }),
+      }) as { unsignedTransaction: string };
+
+      if (relRes.unsignedTransaction) {
+        const tx = new Transaction(relRes.unsignedTransaction, networkPassphrase);
+        tx.sign(platformPair);
+        await twFetch('/helper/send-transaction', {
+          method: 'POST',
+          body: JSON.stringify({ signedXdr: tx.toXDR() }),
+        });
+      }
+      
+      console.log('[Withdraw] Setup milestone cleared.');
+    } catch (err: any) {
+      console.log('[Withdraw] Setup milestone cleanup skipped/failed (might already be released):', err.message);
+    }
+
+    // 2. Now generate the sweep transaction
     const requestBody = {
       contractId: repo.escrow_contract_id,
       disputeResolver: body.maintainerWallet,
@@ -257,9 +313,6 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
       ]
     };
     
-    console.log('[Withdraw] Request Body:', JSON.stringify(requestBody, null, 2));
-
-    const { twFetch } = await import('../lib/trustless-work/client.js');
     const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
       method: 'POST',
       body: JSON.stringify(requestBody),
@@ -702,8 +755,8 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
 
     // 3. Environment Check (Required Variables)
     const requiredVars = [
-      'SUPABASE_URL', 
-      'SUPABASE_SERVICE_ROLE_KEY', 
+      'SUPABASE_URL',
+      'SUPABASE_SERVICE_ROLE_KEY',
       'PLATFORM_STELLAR_PUBLIC_KEY',
       'GITHUB_BOT_TOKEN',
       'GITHUB_WEBHOOK_SECRET'

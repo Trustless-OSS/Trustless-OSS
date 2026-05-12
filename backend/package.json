@@ -17,6 +17,7 @@
     "dotenv": "^17.4.2",
     "pg": "^8.20.0",
     "smee-client": "^5.0.0",
+    "stellar-sdk": "^13.3.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
