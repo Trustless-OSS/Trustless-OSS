@@ -8,65 +8,67 @@ interface NavbarProps {
 
 export default function Navbar({ user, breadcrumbs }: NavbarProps) {
   return (
-    <nav className="sticky top-0 z-50 w-full backdrop-blur-xl bg-gray-950/70 border-b border-white/5 shadow-2xl shadow-black/50">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 group transition-transform hover:scale-105">
-            <span className="text-2xl drop-shadow-[0_0_15px_rgba(129,140,248,0.5)]">🔐</span>
-            <span className="font-bold text-lg tracking-tight gradient-text">Trustless OSS</span>
+    <nav className="sticky top-0 z-50 w-full bg-slate-50 brutal-border-b">
+      <div className="px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-slate-950 flex items-center justify-center text-white font-black text-xl brutal-shadow-blue">
+              T
+            </div>
+            <span className="title-brutal text-2xl tracking-tighter">TRUSTLESS.OSS</span>
           </Link>
 
           {breadcrumbs && breadcrumbs.length > 0 && (
-            <div className="hidden sm:flex items-center gap-2 text-sm ml-4">
-              <span className="text-gray-600">|</span>
+            <div className="hidden sm:flex items-center gap-4 text-sm ml-4 font-mono font-bold">
+              <span className="text-slate-950/30">{'//'}</span>
               {breadcrumbs.map((crumb, i) => (
-                <div key={crumb.label} className="flex items-center gap-2">
+                <div key={crumb.label} className="flex items-center gap-4">
                   {crumb.href ? (
-                    <Link href={crumb.href} className="text-gray-400 hover:text-white transition-colors">
+                    <Link href={crumb.href} className="text-slate-600 hover:text-blue-600 hover:underline underline-offset-4 decoration-2 transition-colors uppercase">
                       {crumb.label}
                     </Link>
                   ) : (
-                    <span className="text-gray-200 font-medium">{crumb.label}</span>
+                    <span className="text-slate-950 uppercase bg-slate-200 px-2 py-0.5 border border-slate-950">{crumb.label}</span>
                   )}
-                  {i < breadcrumbs.length - 1 && <span className="text-gray-700">/</span>}
+                  {i < breadcrumbs.length - 1 && <span className="text-slate-950/30">/</span>}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           {user ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <Link
                 href="/dashboard"
-                className="hidden sm:block text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                className="hidden sm:block text-sm font-bold uppercase tracking-widest text-slate-950 hover:bg-slate-950 hover:text-white px-3 py-1 border-2 border-transparent hover:border-slate-950 transition-all"
               >
-                Dashboard
+                [ Dashboard ]
               </Link>
-              <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
-              <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-full py-1.5 pl-1.5 pr-4">
+              <div className="w-1 h-8 bg-slate-950 hidden sm:block" />
+              <div className="flex items-center gap-3 bg-white brutal-border px-2 py-1 brutal-shadow">
                 {user.user_metadata?.avatar_url ? (
                   <img
                     src={user.user_metadata.avatar_url}
                     alt="Profile"
-                    className="w-7 h-7 rounded-full border border-indigo-500/30 object-cover"
+                    className="w-8 h-8 border-2 border-slate-950 object-cover grayscale hover:grayscale-0 transition-all"
                   />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-indigo-600/50 flex items-center justify-center text-xs border border-indigo-500/30">
+                  <div className="w-8 h-8 bg-slate-950 text-white font-bold flex items-center justify-center text-xs">
                     {(user.user_metadata?.user_name || user.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
-                <span className="text-sm font-medium text-gray-200 hidden sm:block">
+                <span className="font-mono font-bold text-slate-950 text-sm hidden sm:block">
                   {user.user_metadata?.user_name ?? user.email?.split('@')[0]}
                 </span>
-                <form action="/auth/signout" method="post" className="ml-2">
+                <form action="/auth/signout" method="post" className="ml-2 border-l-2 border-slate-950 pl-2">
                   <button
                     type="submit"
-                    className="text-xs font-semibold text-gray-500 hover:text-red-400 transition-colors"
+                    className="text-xs font-bold text-slate-950 hover:text-red-600 uppercase tracking-widest"
                     title="Sign Out"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    EXIT
                   </button>
                 </form>
               </div>
@@ -74,10 +76,9 @@ export default function Navbar({ user, breadcrumbs }: NavbarProps) {
           ) : (
             <Link
               href="/login"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-all hover:scale-105 shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] flex items-center gap-2"
+              className="brutal-button px-6 py-2 text-sm"
             >
-              Sign In
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              Init_Session
             </Link>
           )}
         </div>

@@ -60,7 +60,7 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
       <button 
         onClick={handleDeploy} 
         disabled={loading}
-        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+        className="brutal-button px-4 py-2 text-sm"
       >
         {loading ? 'Deploying...' : 'Deploy Escrow Contract'}
       </button>

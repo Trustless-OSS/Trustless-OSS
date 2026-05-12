@@ -8,7 +8,6 @@ export default function ConnectRepoPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Listen for the "success" message from the installation tab
     const handleMessage = (event: MessageEvent) => {
       if (event.data === 'github-installation-success') {
         router.push('/dashboard?syncing=true');
@@ -21,39 +20,41 @@ export default function ConnectRepoPage() {
 
   const handleInstall = () => {
     const slug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'Trustless-OSS';
-    // Open GitHub App installation page in a new window
     window.open(`https://github.com/apps/${slug}/installations/new`, 'github_install', 'width=600,height=800');
   };
 
   return (
     <div className="flex-1 flex flex-col">
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="max-w-md w-full glass rounded-3xl p-10 relative overflow-hidden text-center">
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-indigo-600/10 rounded-full blur-3xl" />
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-lg bg-white brutal-border p-8 md:p-12 brutal-shadow relative text-center">
+          <div className="absolute top-0 right-0 w-8 h-8 bg-blue-600 border-b-4 border-l-4 border-slate-950"></div>
           
-          <div className="relative">
-            <div className="w-20 h-20 bg-indigo-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">🚀</span>
-            </div>
+          <div className="label-brutal mb-6 bg-slate-200 text-slate-950 inline-flex px-3 py-1 border-2 border-slate-950">
+            MODULE_INSTALL // REPO_SYNC
+          </div>
+          
+          <div className="w-20 h-20 bg-slate-950 flex items-center justify-center text-white text-4xl font-black brutal-border brutal-shadow-blue mx-auto mb-8">
+            +
+          </div>
             
-            <h1 className="text-3xl font-extrabold text-white mb-3">Install GitHub App</h1>
-            <p className="text-gray-400 text-sm mb-10 leading-relaxed">
-              To start rewarding contributors, you need to install our bot on your repository. 
-            </p>
+          <h1 className="title-brutal text-3xl text-slate-950 mb-4">INSTALL_GITHUB_APP</h1>
+          
+          <div className="terminal-block text-left mb-8 brutal-shadow">
+            <span className="text-blue-400">sudo</span> <span className="text-yellow-200">apt-get install</span> <span className="text-white">trustless-bot</span><br />
+            <span className="text-slate-500">// Requires repository access permissions</span>
+          </div>
 
-            <button
-              onClick={handleInstall}
-              className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-lg transition-all shadow-xl shadow-indigo-600/20 active:scale-95 flex items-center justify-center gap-3"
-            >
-              🔐 Connect to GitHub →
-            </button>
-            
-            <div className="mt-8 pt-8 border-t border-white/5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest text-center animate-pulse">
-                Waiting for installation...
-              </p>
-            </div>
+          <button
+            onClick={handleInstall}
+            className="brutal-button w-full py-4 text-lg"
+          >
+            EXECUTE_INSTALLATION
+          </button>
+          
+          <div className="mt-8 pt-6 border-t-4 border-slate-950 border-dashed">
+            <p className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-widest text-center animate-pulse">
+              Awaiting user authorization...
+            </p>
           </div>
         </div>
       </div>

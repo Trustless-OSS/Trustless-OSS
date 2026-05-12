@@ -28,13 +28,13 @@ function statusBadge(status: string) {
     completed: 'status-completed',
     cancelled: 'status-cancelled',
   };
-  return `${map[status] ?? 'status-pending'} px-2 py-0.5 rounded-full text-xs font-medium`;
+  return `${map[status] ?? 'status-pending'} status-badge`;
 }
 
 function diffBadge(diff: string | null) {
   if (!diff) return '';
   const map: Record<string, string> = { low: 'diff-low', medium: 'diff-medium', high: 'diff-high', custom: 'diff-custom' };
-  return `${map[diff] ?? ''} px-2 py-0.5 rounded-full text-xs font-medium`;
+  return `${map[diff] ?? ''} border-2 border-slate-950 px-2 py-0.5 font-bold uppercase text-xs tracking-widest`;
 }
 
 export default async function RepoDetailPage({
@@ -49,7 +49,6 @@ export default async function RepoDetailPage({
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  // Get repo from supabase directly
   const { data: repo } = await supabase
     .from('repos')
     .select('*')
@@ -60,50 +59,57 @@ export default async function RepoDetailPage({
 
   return (
     <div className="w-full">
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        <Link href="/dashboard" className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mb-6 transition-colors w-fit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-          Back to Dashboard
-        </Link>
-        {/* Repo header */}
-        {repo && (
-          <div className="glass rounded-2xl p-8 mb-8">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-extrabold text-white mb-1">{repo.full_name}</h1>
-                {repo.escrow_contract_id ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-400 font-mono">
-                      {repo.escrow_contract_id.slice(0, 8)}…{repo.escrow_contract_id.slice(-6)}
-                    </span>
-                    <a
-                      href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-indigo-400 hover:text-indigo-300"
-                    >
-                      Escrow Viewer ↗
-                    </a>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2 items-start mt-2">
-                    <span className="text-sm text-yellow-400">⚠️ No escrow created yet</span>
-                    <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
-                  </div>
-                )}
-              </div>
+      <Link href="/dashboard" className="label-brutal text-slate-500 hover:text-slate-950 flex items-center gap-2 mb-8 transition-colors w-fit underline underline-offset-4 decoration-2">
+        &lt; RETURN_TO_DASHBOARD
+      </Link>
 
-              <div className="text-right">
-                <div className="text-xs text-gray-500 mb-1">Escrow Balance</div>
-                <div className="text-3xl font-bold text-green-400 font-mono">
-                  {repo.escrow_balance} <span className="text-sm">USDC</span>
+      {/* Repo header */}
+      {repo && (
+        <div className="bg-white brutal-border p-8 md:p-12 mb-16 brutal-shadow relative">
+          <div className="absolute top-0 right-0 bg-slate-950 text-white font-mono font-bold px-3 py-1 border-b-4 border-l-4 border-slate-950">
+            CONFIG
+          </div>
+
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
+            <div>
+              <div className="label-brutal text-slate-500 mb-2">TARGET_MODULE</div>
+              <h1 className="title-brutal text-3xl md:text-5xl text-slate-950 mb-4">{repo.full_name}</h1>
+              {repo.escrow_contract_id ? (
+                <div className="flex items-center gap-4 bg-slate-100 p-2 border-2 border-slate-950 w-fit">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse border border-slate-950"></div>
+                  <span className="text-sm font-mono font-bold text-slate-950">
+                    {repo.escrow_contract_id.slice(0, 8)}…{repo.escrow_contract_id.slice(-6)}
+                  </span>
+                  <a
+                    href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="label-brutal bg-slate-950 text-white px-2 py-1 hover:bg-blue-600 transition-colors"
+                  >
+                    INSPECT
+                  </a>
                 </div>
-                {repo.escrow_contract_id && (
-                  <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
-                )}
-              </div>
+              ) : (
+                <div className="flex flex-col gap-4 mt-4">
+                  <span className="label-brutal text-red-600 bg-red-100 border-2 border-red-600 px-2 py-1 w-fit">ERR_NO_ESCROW</span>
+                  <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                </div>
+              )}
             </div>
 
+            <div className="lg:text-right border-l-4 border-slate-950 pl-8 border-dashed">
+              <div className="label-brutal text-slate-500 mb-2">AVAILABLE_LIQUIDITY</div>
+              <div className="text-5xl font-black text-slate-950 font-mono mb-6">
+                {repo.escrow_balance} <span className="text-lg">USDC</span>
+              </div>
+              {repo.escrow_contract_id && (
+                <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+              )}
+            </div>
+          </div>
+
+          <div className="border-t-4 border-slate-950 pt-8 border-dashed">
+            <div className="label-brutal text-slate-500 mb-6">REWARD_PARAMETERS</div>
             <RewardSettingsForm
               repoId={repoId}
               token={session?.access_token ?? ''}
@@ -112,83 +118,89 @@ export default async function RepoDetailPage({
               initialHigh={repo.reward_high}
             />
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Issues table */}
-        <h2 className="text-xl font-bold text-white mb-4">Bounty Issues</h2>
-
-        {issues.length === 0 ? (
-          <div className="glass rounded-2xl p-12 text-center">
-            <div className="text-4xl mb-4">🏷️</div>
-            <p className="text-gray-400">
-              No bounty issues yet. Add <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">rewarded</code> + a difficulty label (<code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">low</code> / <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">medium</code> / <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">high</code> / <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">custom</code>), or comment <code className="text-indigo-300 bg-indigo-900/20 px-1.5 py-0.5 rounded">@Trustless-OSS 50</code> on any issue.
-            </p>
-          </div>
-        ) : (
-          <div className="glass rounded-2xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-gray-400 text-left">
-                  <th className="px-6 py-4 font-medium rounded-tl-xl">Issue</th>
-                  <th className="px-6 py-4 font-medium">Difficulty</th>
-                  <th className="px-6 py-4 font-medium">Reward</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Assignee</th>
-                  <th className="px-6 py-4 font-medium rounded-tr-xl">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {issues.map((issue: {
-                  id: string;
-                  github_issue_number: number;
-                  title: string;
-                  difficulty_label: string | null;
-                  reward_amount: number;
-                  status: string;
-                  assignments?: { contributors?: { github_username: string }; payout_status: string };
-                }) => {
-                  const assignment = issue.assignments;
-                  const contributor = assignment?.contributors;
-                  return (
-                    <tr key={issue.id} className="text-gray-300 hover:bg-white/2 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="text-gray-500 mr-2">#{issue.github_issue_number}</span>
-                        <span className="text-white font-medium">{issue.title}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {issue.difficulty_label && (
-                          <span className={diffBadge(issue.difficulty_label)}>{issue.difficulty_label}</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono font-semibold text-green-400">{issue.reward_amount} USDC</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={statusBadge(issue.status)}>{issue.status}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {contributor ? (
-                          <span className="text-indigo-300">@{contributor.github_username}</span>
-                        ) : (
-                          <span className="text-gray-600">unassigned</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <RetryProcessButton 
-                          issueId={issue.id}
-                          token={session?.access_token ?? ''}
-                          status={issue.status}
-                          payoutStatus={assignment?.payout_status ?? 'pending'}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Issues table */}
+      <div className="flex items-end justify-between mb-8 border-b-[4px] border-slate-950 pb-4">
+        <h2 className="title-brutal text-3xl text-slate-950">ACTIVE_BOUNTIES</h2>
+        <div className="label-brutal text-slate-500">ISSUES_TRACKED: {issues.length}</div>
       </div>
+
+      {issues.length === 0 ? (
+        <div className="bg-white brutal-border p-16 text-center brutal-shadow">
+          <div className="text-4xl mb-4 grayscale">🏷️</div>
+          <p className="font-mono font-bold text-slate-500 mb-4 uppercase text-sm">
+            No tracked issues in current repository.
+          </p>
+          <p className="font-mono text-sm text-slate-950">
+            Append <span className="bg-slate-200 border-2 border-slate-950 px-1 font-black">rewarded</span> label with difficulty (<span className="bg-slate-200 border-2 border-slate-950 px-1 font-black">low</span>, <span className="bg-slate-200 border-2 border-slate-950 px-1 font-black">medium</span>, <span className="bg-slate-200 border-2 border-slate-950 px-1 font-black">high</span>), or comment <span className="bg-slate-200 border-2 border-slate-950 px-1 font-black">@Trustless-OSS 50</span> on target issue.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white brutal-border brutal-shadow overflow-x-auto">
+          <table className="w-full text-sm font-mono">
+            <thead>
+              <tr className="bg-slate-950 text-white border-b-4 border-slate-950 uppercase tracking-widest text-xs font-bold">
+                <th className="px-6 py-4 border-r-4 border-slate-950 text-left">Target</th>
+                <th className="px-6 py-4 border-r-4 border-slate-950 text-left">Class</th>
+                <th className="px-6 py-4 border-r-4 border-slate-950 text-left">Bounty</th>
+                <th className="px-6 py-4 border-r-4 border-slate-950 text-left">State</th>
+                <th className="px-6 py-4 border-r-4 border-slate-950 text-left">Actor</th>
+                <th className="px-6 py-4 text-left">Exec</th>
+              </tr>
+            </thead>
+            <tbody>
+              {issues.map((issue: {
+                id: string;
+                github_issue_number: number;
+                title: string;
+                difficulty_label: string | null;
+                reward_amount: number;
+                status: string;
+                assignments?: { contributors?: { github_username: string }; payout_status: string };
+              }, idx: number) => {
+                const assignment = issue.assignments;
+                const contributor = assignment?.contributors;
+                return (
+                  <tr key={issue.id} className={`text-slate-950 ${idx !== issues.length - 1 ? 'border-b-4 border-slate-950' : ''} hover:bg-slate-50 transition-colors`}>
+                    <td className="px-6 py-4 border-r-4 border-slate-950">
+                      <span className="text-blue-600 font-bold mr-2">#{issue.github_issue_number}</span>
+                      <span className="font-semibold text-slate-800">{issue.title}</span>
+                    </td>
+                    <td className="px-6 py-4 border-r-4 border-slate-950">
+                      {issue.difficulty_label && (
+                        <span className={diffBadge(issue.difficulty_label)}>{issue.difficulty_label}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 border-r-4 border-slate-950">
+                      <span className="font-black text-slate-950 text-lg">{issue.reward_amount}</span> <span className="text-xs text-slate-500 font-bold">USDC</span>
+                    </td>
+                    <td className="px-6 py-4 border-r-4 border-slate-950">
+                      <span className={statusBadge(issue.status)}>{issue.status}</span>
+                    </td>
+                    <td className="px-6 py-4 border-r-4 border-slate-950">
+                      {contributor ? (
+                        <span className="font-bold underline decoration-2 underline-offset-4">@{contributor.github_username}</span>
+                      ) : (
+                        <span className="text-slate-400 italic">null</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <RetryProcessButton 
+                        issueId={issue.id}
+                        token={session?.access_token ?? ''}
+                        status={issue.status}
+                        payoutStatus={assignment?.payout_status ?? 'pending'}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

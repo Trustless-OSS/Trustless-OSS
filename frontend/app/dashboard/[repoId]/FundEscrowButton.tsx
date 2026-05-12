@@ -96,80 +96,66 @@ export default function FundEscrowButton({ repoId, token }: { repoId: string, to
         <button 
           onClick={() => { setShowModal(true); setError(''); }} 
           disabled={loading}
-          className="px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-xl text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-green-500/20 flex items-center gap-2"
+          className="brutal-button px-5 py-3 text-sm flex items-center gap-2"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3 1.343 3 3-1.343 3-3 3m0-12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4m0 12V4" />
-          </svg>
-          {loading ? 'Processing...' : 'Fund Escrow'}
+          {loading ? 'PROCESSING...' : 'FUND_ESCROW'}
         </button>
         {error && (
-          <div className="text-red-400 text-xs mt-1 max-w-[280px] text-right bg-red-500/10 p-3 rounded-xl border border-red-500/20 backdrop-blur-md animate-in slide-in-from-top-1 duration-200">
+          <div className="text-red-600 font-bold font-mono text-xs mt-1 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444]">
             {error}
           </div>
         )}
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-[#0F0F0F] border border-white/10 rounded-[2rem] w-full max-w-md overflow-hidden shadow-[0_0_50px_-12px_rgba(16,185,129,0.25)] animate-in zoom-in-95 duration-300">
-            <div className="h-2 bg-gradient-to-r from-green-500 to-emerald-500 w-full" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-white border-[6px] border-slate-950 w-full max-w-md shadow-[16px_16px_0px_0px_#2563eb]">
+            <div className="h-4 bg-blue-600 border-b-4 border-slate-950 w-full" />
             
             <div className="p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-green-500/10 rounded-2xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-white leading-none mb-1">Fund Escrow</h3>
-                  <p className="text-gray-500 text-sm">Add liquidity to your bounty pool</p>
-                </div>
+              <div className="mb-8">
+                <div className="label-brutal bg-slate-950 text-white px-3 py-1 w-fit mb-4">ACTION // ADD_LIQUIDITY</div>
+                <h3 className="title-brutal text-3xl text-slate-950 mb-1">FUND_ESCROW</h3>
               </div>
               
               <div className="space-y-6">
-                <div className="relative group">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">Deposit Amount</label>
+                <div>
+                  <label className="label-brutal text-slate-500 block mb-3">DEPOSIT_AMOUNT</label>
                   <div className="relative">
                     <input 
                       type="number"
                       autoFocus
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className={`w-full bg-white/5 border ${Number(amount) <= 0 ? 'border-red-500/50 focus:ring-red-500/20' : 'border-white/10 focus:ring-green-500/20'} rounded-2xl px-6 py-5 text-white focus:outline-none focus:ring-4 transition-all text-2xl font-mono`}
+                      className={`w-full bg-slate-100 border-[4px] ${Number(amount) <= 0 ? 'border-red-500' : 'border-slate-950'} px-6 py-5 text-slate-950 focus:outline-none focus:border-blue-600 transition-all text-3xl font-black font-mono`}
                       placeholder="0.00"
                     />
-                    <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                      <span className="w-px h-8 bg-white/10 mx-2" />
-                      <span className="text-green-500 font-black text-sm tracking-tighter">USDC</span>
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-4">
+                      <div className="w-1 h-8 bg-slate-950" />
+                      <span className="text-blue-600 font-black text-lg tracking-tighter">USDC</span>
                     </div>
                   </div>
                   {Number(amount) <= 0 && (
-                    <p className="text-red-500/80 text-[10px] mt-2 ml-1 font-medium animate-pulse">Amount must be greater than 0</p>
+                    <p className="text-red-600 text-xs mt-2 font-bold uppercase tracking-widest font-mono">ERR_INVALID_AMOUNT: &gt; 0 REQUIRED</p>
                   )}
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 mt-8 pt-8 border-t-4 border-slate-950 border-dashed">
                   <button 
                     onClick={() => setShowModal(false)}
-                    className="flex-1 py-4 px-6 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-bold transition-all border border-white/5"
+                    className="brutal-button-outline py-4 px-6 flex-1 text-sm"
                   >
-                    Cancel
+                    ABORT
                   </button>
                   <button 
                     onClick={handleFund}
                     disabled={Number(amount) <= 0}
-                    className="flex-[1.5] py-4 px-6 rounded-2xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold transition-all shadow-xl shadow-green-600/20 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed"
+                    className="brutal-button py-4 px-6 flex-[1.5] text-sm disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                   >
-                    Confirm & Sign
+                    SIGN_TX
                   </button>
                 </div>
               </div>
-              
-              <p className="text-center text-[10px] text-gray-600 mt-8 uppercase tracking-widest font-bold">
-                Securely signed via Stellar Wallets Kit
-              </p>
             </div>
           </div>
         </div>

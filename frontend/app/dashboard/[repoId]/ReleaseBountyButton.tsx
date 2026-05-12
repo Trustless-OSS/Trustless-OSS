@@ -58,17 +58,12 @@ export default function RetryProcessButton({
     <button
       onClick={handleRetry}
       disabled={loading}
-      className="px-3 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-2"
+      className="brutal-button px-3 py-1 text-[10px]"
     >
       {loading ? (
-        'Retrying...'
+        'RETRYING...'
       ) : (
-        <>
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Retry Process
-        </>
+        'EXEC_RETRY'
       )}
     </button>
   );

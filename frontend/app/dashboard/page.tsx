@@ -43,146 +43,143 @@ export default async function DashboardPage(props: DashboardProps) {
   const { data: { session } } = await supabase.auth.getSession();
   const { repos, error: reposError } = await getRepos(session?.access_token ?? '');
 
-  // Calculate if a repo is "new" (added in the last 5 minutes)
   const isNew = (createdAt: string) => {
     const created = new Date(createdAt).getTime();
     const now = new Date().getTime();
-    return now - created < 5 * 60 * 1000; // 5 minutes
+    return now - created < 5 * 60 * 1000;
   };
+
   return (
     <div className="w-full">
       <InstallationSuccessHandler />
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        {/* Syncing Banner */}
-        {isSyncing && (
-          <div className="mb-8 p-4 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-between animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-              <p className="text-sm text-indigo-300">
-                Background sync active. We are waiting for GitHub to notify us about your new repository...
-              </p>
-            </div>
-            <Link href="/dashboard" className="text-xs text-indigo-400 hover:underline">Dismiss</Link>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white mb-1">Your Repos</h1>
-            <p className="text-gray-400 text-sm">Manage escrow bounties across your repositories.</p>
-          </div>
-          <Link
-            href="/dashboard/connect-repo"
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all hover:scale-105"
-          >
-            + Connect repo
-          </Link>
-        </div>
-
-        {/* API Error Banner */}
-        {reposError && (
-          <div className="mb-8 p-4 rounded-2xl bg-red-600/10 border border-red-500/20 flex items-center gap-3">
-            <span className="text-red-400 text-lg">⚠️</span>
-            <div>
-              <p className="text-sm text-red-300 font-medium">Failed to load repositories</p>
-              <p className="text-xs text-red-400/70 font-mono mt-0.5">{reposError}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Repos grid */}
-        {repos.length === 0 ? (
-          <div className="glass rounded-2xl p-16 text-center">
-            <div className="text-5xl mb-4">📦</div>
-            <h2 className="text-xl font-semibold text-white mb-2">No repos connected yet</h2>
-            <p className="text-gray-400 text-sm mb-6">
-              Connect a GitHub repo to start creating trustless bounties.
+      {isSyncing && (
+        <div className="mb-8 p-4 bg-white brutal-border brutal-shadow-blue flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-slate-950 animate-pulse" />
+            <p className="font-mono font-bold text-sm text-slate-950">
+              SYS_SYNC // AWAITING GITHUB_WEBHOOK_EVENT
             </p>
-            <div className="flex flex-col items-center gap-4">
-              <Link
-                href="/dashboard/connect-repo"
-                className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold"
-              >
-                Connect your first repo →
-              </Link>
-              {isSyncing && (
-                <p className="text-[10px] text-gray-600 uppercase tracking-widest animate-pulse">
-                  Checking for updates... Try refreshing in a few seconds.
-                </p>
-              )}
-            </div>
           </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {repos.map((repo: {
-              id: string;
-              full_name: string;
-              escrow_contract_id: string | null;
-              escrow_balance: number;
-              created_at: string;
-            }) => (
-              <div
-                key={repo.id}
-                className={`glass rounded-2xl p-6 flex flex-col h-full glow-hover ${isNew(repo.created_at) ? 'ring-2 ring-indigo-500/50 shadow-2xl shadow-indigo-500/10 scale-[1.02]' : ''}`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/5">
-                      <span className="text-xl">📁</span>
-                    </div>
-                    {isNew(repo.created_at) && (
-                      <span className="bg-indigo-500 text-[10px] text-white font-bold px-2 py-0.5 rounded-full animate-bounce">
-                        NEW
-                      </span>
-                    )}
+          <Link href="/dashboard" className="text-xs font-bold uppercase underline">Dismiss</Link>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 border-b-[4px] border-slate-950 pb-4">
+        <div>
+          <h1 className="title-brutal text-4xl text-slate-950">
+            DASHBOARD_
+          </h1>
+          <p className="text-slate-500 font-mono font-bold uppercase tracking-widest text-sm mt-2">
+            Repository Escrow Management
+          </p>
+        </div>
+        <Link
+          href="/dashboard/connect-repo"
+          className="brutal-button px-6 py-3 mt-4 md:mt-0 text-sm"
+        >
+          + ADD_REPO
+        </Link>
+      </div>
+
+      {reposError && (
+        <div className="mb-8 p-6 bg-red-100 brutal-border flex flex-col gap-2 brutal-shadow">
+          <div className="label-brutal bg-red-500 text-white w-fit px-2 py-1 border-2 border-slate-950">ERR_FETCH</div>
+          <p className="font-bold text-slate-950 uppercase tracking-widest text-sm">Failed to load repositories</p>
+          <p className="text-xs text-slate-600 font-mono bg-white p-2 border-2 border-slate-950">{reposError}</p>
+        </div>
+      )}
+
+      {repos.length === 0 ? (
+        <div className="bg-white brutal-border p-16 text-center brutal-shadow flex flex-col items-center">
+          <div className="text-6xl mb-6 grayscale">📦</div>
+          <h2 className="title-brutal text-2xl text-slate-950 mb-2">NO_MODULES_FOUND</h2>
+          <p className="text-slate-500 font-mono font-bold uppercase text-sm mb-8">
+            Connect a GitHub repo to initialize.
+          </p>
+          <div className="flex flex-col items-center gap-4">
+            <Link
+              href="/dashboard/connect-repo"
+              className="brutal-button px-8 py-4"
+            >
+              INITIALIZE_CONNECTION
+            </Link>
+            {isSyncing && (
+              <p className="text-xs font-mono font-bold uppercase tracking-widest text-blue-600 animate-pulse mt-4">
+                &gt; Polling for updates...
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {repos.map((repo: {
+            id: string;
+            full_name: string;
+            escrow_contract_id: string | null;
+            escrow_balance: number;
+            created_at: string;
+          }) => (
+            <div
+              key={repo.id}
+              className={`bg-white brutal-border p-6 flex flex-col h-full relative ${isNew(repo.created_at) ? 'brutal-shadow-blue border-blue-600' : 'brutal-shadow'}`}
+            >
+              {isNew(repo.created_at) && (
+                <div className="absolute -top-4 -right-4 bg-blue-600 text-white px-3 py-1 font-bold font-mono text-xs uppercase border-2 border-slate-950">
+                  NEW
+                </div>
+              )}
+              
+              <div className="flex items-start justify-between mb-6">
+                <div className="w-12 h-12 bg-slate-950 text-white flex items-center justify-center border-4 border-slate-950 font-black text-2xl">
+                  {repo.full_name[0].toUpperCase()}
+                </div>
+                {repo.escrow_contract_id ? (
+                  <span className="status-badge status-completed">
+                    ESCROW_ACTIVE
+                  </span>
+                ) : (
+                  <span className="status-badge status-pending">
+                    UNCONFIGURED
+                  </span>
+                )}
+              </div>
+
+              <h3 className="title-brutal text-xl text-slate-950 mb-1 truncate">{repo.full_name.split('/')[1] || repo.full_name}</h3>
+              <p className="text-xs text-slate-500 font-mono font-bold uppercase truncate mb-8">{repo.full_name.split('/')[0]}</p>
+
+              <div className="flex flex-col mt-auto pt-4 border-t-4 border-slate-950 border-dashed">
+                <div className="flex justify-between items-end mb-4">
+                  <div className="label-brutal text-slate-500">BALANCE</div>
+                  <div className="text-xl font-black font-mono text-slate-950">
+                    {repo.escrow_balance} <span className="text-sm">USDC</span>
                   </div>
-                  {repo.escrow_contract_id ? (
-                    <span className="status-completed px-2 py-0.5 rounded-full text-xs font-medium">
-                      Escrow ✓
-                    </span>
-                  ) : (
-                    <span className="status-pending px-2 py-0.5 rounded-full text-xs font-medium">
-                      No escrow
-                    </span>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <Link
+                    href={`/dashboard/${repo.id}`}
+                    className="brutal-button flex-1 py-2 text-sm"
+                  >
+                    MANAGE
+                  </Link>
+                  {repo.escrow_contract_id && (
+                    <a
+                      href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="brutal-button-outline px-4 py-2 text-sm"
+                      title="View Contract"
+                    >
+                      ↗
+                    </a>
                   )}
                 </div>
-
-                <h3 className="font-bold text-white text-lg mb-1 truncate group-hover:text-indigo-300 transition-colors">{repo.full_name.split('/')[1] || repo.full_name}</h3>
-                <p className="text-xs text-gray-500 mb-6 truncate">{repo.full_name.split('/')[0]}</p>
-
-                <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
-                  <div>
-                    <div className="text-xs text-gray-500">Balance</div>
-                    <div className="text-sm font-mono font-semibold text-green-400">
-                      {repo.escrow_balance} USDC
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {repo.escrow_contract_id && (
-                      <a
-                        href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-                      >
-                        Escrow ↗
-                      </a>
-                    )}
-                    <Link
-                      href={`/dashboard/${repo.id}`}
-                      className="text-xs font-medium text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      View →
-                    </Link>
-                  </div>
-                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
