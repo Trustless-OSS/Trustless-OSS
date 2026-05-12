@@ -626,9 +626,9 @@ export async function handleIssueClosed(payload: Record<string, unknown>): Promi
   }
 
   // Approve + release via Trustless Work
-  const txHash = await releaseEscrowMilestone(repo, issueRecord);
+  try {
+    const txHash = await releaseEscrowMilestone(repo, issueRecord);
 
-  if (txHash) {
     await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
     await supabase.from('issues').update({ status: 'completed' }).eq('id', issueRecord.id);
 
@@ -648,8 +648,14 @@ export async function handleIssueClosed(payload: Record<string, unknown>): Promi
       `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
       `Thanks for your contribution! 🚀`
     );
+  } catch (releaseErr: any) {
+    console.error('[Webhook] releaseEscrowMilestone failed (issue closed):', releaseErr.message);
+    await postComment(
+      repository.full_name,
+      issue.number,
+      `⚠️ Bounty release failed: ${releaseErr.message}\n\nPlease use the dashboard retry button.`
+    );
   }
-}
 
 /* ------------------------------------------------------------------ */
 /* pull_request.closed (merged)                                         */
@@ -723,9 +729,9 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
     .eq('id', assignment.id);
 
   // Approve + release via Trustless Work
-  const txHash = await releaseEscrowMilestone(repo, issueRecord);
+  try {
+    const txHash = await releaseEscrowMilestone(repo, issueRecord);
 
-  if (txHash) {
     await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
     await supabase.from('issues').update({ status: 'completed' }).eq('id', issueRecord.id);
 
@@ -745,15 +751,15 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
       `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
       `Thanks for your contribution! 🚀`
     );
-  } else {
+  } catch (releaseErr: any) {
+    console.error('[Webhook] releaseEscrowMilestone failed (PR merged):', releaseErr.message);
     await supabase.from('assignments').update({ payout_status: 'failed' }).eq('id', assignment.id);
     await postComment(
       repository.full_name,
       issueNumber,
-      `⚠️ Bounty release failed. Please contact the platform admin.`
+      `⚠️ Bounty release failed: ${releaseErr.message}\n\nPlease use the dashboard retry button.`
     );
   }
-}
 
 /* ------------------------------------------------------------------ */
 /* installation & installation_repositories                             */

@@ -69,39 +69,38 @@ export async function pushMilestoneOnChain(
   console.log(`[Milestone] Issue #${issue.github_issue_number} pushed on-chain at index ${milestoneIndex}`);
 }
 
-export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<string | null> {
+export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<string> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
-  try {
-    // Step 1: Approve milestone
-    const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
-      method: 'POST',
-      body: JSON.stringify({
-        approver: platformKey,
-        contractId: repo.escrow_contract_id,
-        milestoneIndex: String(issue.milestone_index),
-      }),
-    }) as { unsignedTransaction: string };
-
-    await signAndSendTransaction(approveRes.unsignedTransaction);
-
-    // Step 2: Release milestone
-    const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
-      method: 'POST',
-      body: JSON.stringify({
-        releaseSigner: platformKey,
-        contractId: repo.escrow_contract_id,
-        milestoneIndex: String(issue.milestone_index),
-      }),
-    }) as { unsignedTransaction: string };
-
-    const result = await signAndSendTransaction(releaseRes.unsignedTransaction) as { hash?: string; transactionHash?: string };
-    const hash = result.hash || result.transactionHash;
-
-    console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`);
-    return hash ?? 'success';
-  } catch (err) {
-    console.error('[Milestone] Release failed:', err);
-    return null;
+  if (issue.milestone_index == null) {
+    throw new Error(`milestone_index is null for issue #${issue.github_issue_number} — was pushMilestoneOnChain called?`);
   }
+
+  // Step 1: Approve milestone (platformKey must be the escrow approver role)
+  const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
+    method: 'POST',
+    body: JSON.stringify({
+      approver: platformKey,
+      contractId: repo.escrow_contract_id,
+      milestoneIndex: String(issue.milestone_index),
+    }),
+  }) as { unsignedTransaction: string };
+
+  await signAndSendTransaction(approveRes.unsignedTransaction);
+
+  // Step 2: Release milestone funds
+  const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
+    method: 'POST',
+    body: JSON.stringify({
+      releaseSigner: platformKey,
+      contractId: repo.escrow_contract_id,
+      milestoneIndex: String(issue.milestone_index),
+    }),
+  }) as { unsignedTransaction: string };
+
+  const result = await signAndSendTransaction(releaseRes.unsignedTransaction) as { hash?: string; transactionHash?: string };
+  const hash = result.hash || result.transactionHash;
+
+  console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`);
+  return hash ?? 'success';
 }

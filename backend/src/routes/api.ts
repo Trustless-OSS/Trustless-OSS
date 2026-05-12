@@ -128,11 +128,11 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
         title: `OSS Bounty: ${repo.full_name}`,
         description: `Escrow for OSS bounty rewards in ${repo.full_name}`,
         roles: {
-          approver: body.maintainerWallet,
-          serviceProvider: platformKey, // Automated fee payer
+          approver: platformKey,      // platform auto-approves on PR merge
+          serviceProvider: platformKey,
           platformAddress: platformKey,
-          releaseSigner: platformKey,
-          disputeResolver: body.maintainerWallet,
+          releaseSigner: platformKey, // platform auto-releases
+          disputeResolver: body.maintainerWallet, // maintainer resolves disputes
         },
         platformFee: 0,
         milestones: [{ description: `Initial Escrow Setup`, amount: 0.1, receiver: platformKey }],
@@ -493,19 +493,19 @@ export async function retryIssueHandler(
       }
     } catch (e) {
       console.error('[API] Failed to verify GitHub issue state:', e);
-      // Proceed anyway if it's a manual retry and GitHub is down? 
-      // Better to fail safe.
       json(res, { error: 'Could not verify GitHub issue state' }, 500);
       return;
     }
 
-    const txHash = await releaseEscrowMilestone(issue.repos, currentIssue);
-    if (txHash) {
+    try {
+      const txHash = await releaseEscrowMilestone(issue.repos, currentIssue);
       await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
       await supabase.from('issues').update({ status: 'completed' }).eq('id', currentIssue.id);
       json(res, { ok: true, step: 'released', txHash });
-    } else {
-      json(res, { error: 'On-chain release failed' }, 500);
+    } catch (releaseErr: any) {
+      console.error('[API] releaseEscrowMilestone threw:', releaseErr.message);
+      // Return the actual TW API error so the frontend can display it
+      json(res, { error: `On-chain release failed: ${releaseErr.message}` }, 500);
     }
     return;
   }
