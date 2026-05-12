@@ -142,7 +142,7 @@ export default async function HomePage() {
 
       <footer className="border-t-[4px] border-slate-950 bg-white py-8 px-6 font-mono text-sm font-bold uppercase">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
-          <p className="tracking-widest">© {new Date().getFullYear()} TRUSTLESS_OSS [V1.0.0]</p>
+          <p className="tracking-widest">© {new Date().getFullYear()} TRUSTLESS <span className="text-blue-600">OSS</span> [V1.0.0]</p>
           <div className="flex gap-8 mt-4 sm:mt-0">
             <a href="https://github.com/Trustless-OSS" className="hover:text-blue-600 hover:underline underline-offset-4 decoration-4 transition-colors">GITHUB_REPO</a>
             <a href="https://trustlesswork.com" className="hover:text-blue-600 hover:underline underline-offset-4 decoration-4 transition-colors">TRUSTLESS_WORK</a>

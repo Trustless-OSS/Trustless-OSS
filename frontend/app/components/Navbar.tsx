@@ -15,7 +15,9 @@ export default function Navbar({ user, breadcrumbs }: NavbarProps) {
             <div className="w-8 h-8 bg-slate-950 flex items-center justify-center text-white font-black text-xl brutal-shadow-blue">
               T
             </div>
-            <span className="title-brutal text-2xl tracking-tighter">TRUSTLESS.OSS</span>
+            <span className="title-brutal text-2xl tracking-tighter">
+              TRUSTLESS <span className="text-blue-600">OSS</span>
+            </span>
           </Link>
 
           {breadcrumbs && breadcrumbs.length > 0 && (
