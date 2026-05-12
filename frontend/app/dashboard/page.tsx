@@ -5,16 +5,19 @@ import InstallationSuccessHandler from './InstallationSuccessHandler';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
-async function getRepos(token: string) {
+async function getRepos(token: string): Promise<{ repos: any[]; error: string | null }> {
   try {
     const res = await fetch(`${BACKEND}/api/repos`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
     const data = await res.json();
-    return data.repos ?? [];
-  } catch {
-    return [];
+    if (!res.ok) {
+      return { repos: [], error: data.error ?? `API error ${res.status}` };
+    }
+    return { repos: data.repos ?? [], error: null };
+  } catch (e: any) {
+    return { repos: [], error: `Network error: ${e.message}` };
   }
 }
 
@@ -31,7 +34,7 @@ export default async function DashboardPage(props: DashboardProps) {
   if (!user) redirect('/login');
 
   const { data: { session } } = await supabase.auth.getSession();
-  const repos = await getRepos(session?.access_token ?? '');
+  const { repos, error: reposError } = await getRepos(session?.access_token ?? '');
 
   // Calculate if a repo is "new" (added in the last 5 minutes)
   const isNew = (createdAt: string) => {
@@ -102,6 +105,17 @@ export default async function DashboardPage(props: DashboardProps) {
             + Connect repo
           </Link>
         </div>
+
+        {/* API Error Banner */}
+        {reposError && (
+          <div className="mb-8 p-4 rounded-2xl bg-red-600/10 border border-red-500/20 flex items-center gap-3">
+            <span className="text-red-400 text-lg">⚠️</span>
+            <div>
+              <p className="text-sm text-red-300 font-medium">Failed to load repositories</p>
+              <p className="text-xs text-red-400/70 font-mono mt-0.5">{reposError}</p>
+            </div>
+          </div>
+        )}
 
         {/* Repos grid */}
         {repos.length === 0 ? (

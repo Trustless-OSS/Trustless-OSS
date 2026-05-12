@@ -240,16 +240,40 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
 
+  // GitHub user ID — present on GitHub OAuth logins
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  const githubUsername = user.user_metadata?.user_name ?? user.user_metadata?.preferred_username ?? '';
 
+  console.log(`[API] listRepos: user=${user.id}, githubId=${githubId}, username=${githubUsername}`);
+
+  if (!githubId || isNaN(githubId)) {
+    console.error(`[API] listRepos: could not resolve GitHub ID from user metadata:`, JSON.stringify(user.user_metadata));
+    // Fall back to username-based lookup
+    if (githubUsername) {
+      const { data, error } = await supabase
+        .from('repos')
+        .select('*')
+        .eq('owner_username', githubUsername)
+        .order('created_at', { ascending: false });
+      if (error) { json(res, { error: error.message }, 400); return; }
+      return json(res, { repos: data ?? [] });
+    }
+    json(res, { error: 'Could not determine GitHub identity from session' }, 400);
+    return;
+  }
+
+  // Match repos where user is the owner OR the installer
+  // (both fields are populated by the GitHub App installation webhook)
   const { data, error } = await supabase
     .from('repos')
     .select('*')
-    .eq('owner_github_id', githubId)
+    .or(`owner_github_id.eq.${githubId},installer_github_id.eq.${githubId}`)
     .order('created_at', { ascending: false });
 
+  console.log(`[API] listRepos: found ${data?.length ?? 0} repos for githubId=${githubId}`);
+
   if (error) { json(res, { error: error.message }, 400); return; }
-  json(res, { repos: data });
+  json(res, { repos: data ?? [] });
 }
 
 /* ------------------------------------------------------------------ */
