@@ -49,7 +49,11 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
       normalizedKey = normalizedKey.substring(1, normalizedKey.length - 1);
     }
 
-    const finalKey = normalizedKey.includes('-----BEGIN PRIVATE KEY-----')
+    // GitHub App keys are RSA PEM format ("-----BEGIN RSA PRIVATE KEY-----")
+    // PKCS#8 keys use "-----BEGIN PRIVATE KEY-----"
+    // Either way, if it's a PEM string, just unescape literal \n → real newlines.
+    // Only base64-decode if it does NOT look like a PEM at all.
+    const finalKey = normalizedKey.includes('-----BEGIN')
       ? normalizedKey.replace(/\\n/g, '\n')
       : Buffer.from(normalizedKey, 'base64').toString('utf-8');
 
