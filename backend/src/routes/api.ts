@@ -259,56 +259,74 @@ export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: S
       console.log('[Withdraw] Attempting to clear setup milestone (0)...');
       
       // Approve milestone 0
-      const appRes = await twFetch('/escrow/multi-release/approve-milestone', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: repo.escrow_contract_id,
-          signer: platformPair.publicKey(),
-          milestoneIndex: 0,
-        }),
-      }) as { unsignedTransaction: string };
-
-      if (appRes.unsignedTransaction) {
-        const tx = new Transaction(appRes.unsignedTransaction, networkPassphrase);
-        tx.sign(platformPair);
-        await twFetch('/helper/send-transaction', {
+      try {
+        const appRes = await twFetch('/escrow/multi-release/approve-milestone', {
           method: 'POST',
-          body: JSON.stringify({ signedXdr: tx.toXDR() }),
-        });
+          body: JSON.stringify({
+            contractId: repo.escrow_contract_id,
+            signer: platformPair.publicKey(),
+            milestoneIndex: 0,
+          }),
+        }) as { unsignedTransaction: string };
+
+        if (appRes.unsignedTransaction) {
+          const tx = new Transaction(appRes.unsignedTransaction, networkPassphrase);
+          tx.sign(platformPair);
+          await twFetch('/helper/send-transaction', {
+            method: 'POST',
+            body: JSON.stringify({ signedXdr: tx.toXDR() }),
+          });
+        }
+      } catch (e: any) {
+        console.log('[Withdraw] Approval skip:', e.message);
       }
 
       // Release milestone 0
-      const relRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
-        method: 'POST',
-        body: JSON.stringify({
-          contractId: repo.escrow_contract_id,
-          signer: platformPair.publicKey(),
-          milestoneIndex: 0,
-        }),
-      }) as { unsignedTransaction: string };
-
-      if (relRes.unsignedTransaction) {
-        const tx = new Transaction(relRes.unsignedTransaction, networkPassphrase);
-        tx.sign(platformPair);
-        await twFetch('/helper/send-transaction', {
+      try {
+        const relRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
           method: 'POST',
-          body: JSON.stringify({ signedXdr: tx.toXDR() }),
-        });
+          body: JSON.stringify({
+            contractId: repo.escrow_contract_id,
+            signer: platformPair.publicKey(),
+            milestoneIndex: 0,
+          }),
+        }) as { unsignedTransaction: string };
+
+        if (relRes.unsignedTransaction) {
+          const tx = new Transaction(relRes.unsignedTransaction, networkPassphrase);
+          tx.sign(platformPair);
+          await twFetch('/helper/send-transaction', {
+            method: 'POST',
+            body: JSON.stringify({ signedXdr: tx.toXDR() }),
+          });
+        }
+      } catch (e: any) {
+        console.log('[Withdraw] Release skip:', e.message);
       }
       
-      console.log('[Withdraw] Setup milestone cleared.');
+      console.log('[Withdraw] Setup milestone cleared. Waiting for settlement...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
     } catch (err: any) {
-      console.log('[Withdraw] Setup milestone cleanup skipped/failed (might already be released):', err.message);
+      console.log('[Withdraw] Setup milestone cleanup skipped/failed:', err.message);
     }
 
-    // 2. Now generate the sweep transaction
+    // 2. Fetch the REAL on-chain balance to ensure distribution matches perfectly
+    const balanceInfo = await twFetch('/escrow/get-multiple-escrow-balance', {
+      method: 'POST',
+      body: JSON.stringify({ contractIds: [repo.escrow_contract_id] }),
+    }) as Array<{ balance: number }>;
+    
+    const onChainBalance = balanceInfo[0]?.balance ?? repo.escrow_balance;
+    console.log('[Withdraw] On-chain balance:', onChainBalance);
+
+    // 3. Now generate the sweep transaction
     const requestBody = {
       contractId: repo.escrow_contract_id,
       disputeResolver: body.maintainerWallet,
       distributions: [
         {
           address: body.maintainerWallet,
-          amount: repo.escrow_balance
+          amount: onChainBalance
         }
       ]
     };

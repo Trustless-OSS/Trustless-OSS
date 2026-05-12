@@ -72,6 +72,7 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
       let friendlyMsg = err.message;
       if (friendlyMsg.includes('Failed to fetch')) friendlyMsg = 'NETWORK_ERROR: CANNOT_REACH_SERVER';
       setError(friendlyMsg.toUpperCase());
+      setShowModal(true); // Ensure modal stays open to show the error
     } finally {
       setLoading(false);
     }
