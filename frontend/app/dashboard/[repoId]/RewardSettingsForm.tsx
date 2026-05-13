@@ -78,7 +78,7 @@ export default function RewardSettingsForm({
                 setEditing(false);
               }}
               disabled={saving}
-              className="px-4 py-2 font-mono font-black text-[10px] bg-white text-red-600 border-l-4 border-b-4 border-slate-950 hover:bg-red-50 transition-colors uppercase"
+              className="px-4 py-2 font-mono font-black text-[10px] bg-white text-red-600 border-l-4 border-b-4 border-slate-950 hover:bg-red-50 transition-colors uppercase shadow-[4px_4px_0_0_#000]"
             >
               Discard
             </button>
@@ -86,7 +86,7 @@ export default function RewardSettingsForm({
           <button
             onClick={editing ? handleSave : () => setEditing(true)}
             disabled={saving}
-            className={`px-6 py-2 font-mono font-black text-sm transition-all duration-200 border-l-4 border-b-4 border-slate-950 z-30 ${
+            className={`px-6 py-2 font-mono font-black text-sm transition-all duration-200 border-l-4 border-b-4 border-slate-950 z-30 shadow-[4px_4px_0_0_#000] ${
               editing 
                 ? 'bg-blue-600 text-white hover:bg-blue-700' 
                 : 'bg-slate-950 text-white hover:bg-slate-800'
@@ -101,19 +101,18 @@ export default function RewardSettingsForm({
       <div className="mt-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full">
           {[
-            { label: 'LOW', value: low, setter: setLow, color: 'border-green-500' },
-            { label: 'MEDIUM', value: medium, setter: setMedium, color: 'border-yellow-500' },
-            { label: 'HIGH', value: high, setter: setHigh, color: 'border-red-500' },
+            { label: 'LOW', value: low, setter: setLow, color: 'bg-[#A7F3D0]' },
+            { label: 'MEDIUM', value: medium, setter: setMedium, color: 'bg-[#FDE68A]' },
+            { label: 'HIGH', value: high, setter: setHigh, color: 'bg-[#FECACA]' },
           ].map((tier) => (
             <div 
               key={tier.label}
-              className={`bg-white border-4 border-slate-950 p-6 transition-all ${
-                editing ? 'shadow-[4px_4px_0_0_#2563eb] -translate-y-1' : 'shadow-[2px_2px_0_0_#000]'
+              className={`${tier.color} border-4 border-slate-950 p-4 transition-all ${
+                editing ? 'shadow-[4px_4px_0_0_#2563eb] -translate-y-1' : 'shadow-[4px_4px_0_0_#000]'
               }`}
             >
-              <div className="flex justify-between items-center mb-4">
-                <span className="label-brutal text-[10px] text-slate-500 tracking-tighter">CLASS // {tier.label}</span>
-                {!editing && <div className={`w-3 h-3 rounded-full ${tier.color.replace('border-', 'bg-')}`}></div>}
+              <div className="flex justify-between items-center mb-2">
+                <span className="label-brutal text-[10px] text-slate-800 tracking-tighter bg-white/50 px-1 border border-slate-950/20">CLASS // {tier.label}</span>
               </div>
               
               {editing ? (
@@ -124,14 +123,14 @@ export default function RewardSettingsForm({
                     min="0"
                     value={tier.value}
                     onChange={(e) => tier.setter(e.target.value)}
-                    className="w-full bg-slate-50 border-2 border-slate-950 px-4 py-3 font-mono font-black text-2xl focus:outline-none focus:bg-white focus:ring-4 ring-blue-500/10 transition-all"
+                    className="w-full bg-white border-2 border-slate-950 px-3 py-2 font-mono font-black text-xl focus:outline-none focus:ring-4 ring-blue-500/20 transition-all"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">USDC</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500">USDC</span>
                 </div>
               ) : (
-                <div className="flex items-baseline gap-3">
-                  <span className="text-3xl font-black text-slate-950">{tier.value}</span>
-                  <span className="text-xs font-bold text-slate-400 font-mono tracking-widest">USDC</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-950">{tier.value}</span>
+                  <span className="text-[10px] font-bold text-slate-600 font-mono tracking-widest uppercase">USDC</span>
                 </div>
               )}
             </div>
