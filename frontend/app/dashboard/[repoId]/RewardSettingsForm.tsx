@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { notifySuccess, handleError } from '@/lib/notifications';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -46,10 +47,14 @@ export default function RewardSettingsForm({
       if (res.ok) {
         setSaved(true);
         setEditing(false);
+        notifySuccess('Configuration Updated', 'Reward levels have been saved successfully.');
         setTimeout(() => setSaved(false), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update rewards');
       }
     } catch (e) {
-      console.error('Failed to update rewards:', e);
+      handleError(e, 'Update Rewards');
     } finally {
       setSaving(false);
     }

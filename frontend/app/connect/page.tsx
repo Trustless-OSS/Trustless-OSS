@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Suspense } from 'react';
 import { getWalletKit } from '../lib/walletKit';
+import { handleError, notifySuccess } from '@/lib/notifications';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -95,8 +96,10 @@ function ConnectForm() {
         throw new Error(data.error ?? 'Failed to connect wallet');
       }
 
+      notifySuccess('Wallet Connected', 'Your payout address has been successfully linked to this issue.');
       setDone(true);
     } catch (e: any) {
+      handleError(e, 'Connect Wallet');
       setError(e.message || 'Failed to connect wallet');
     } finally {
       setLoading(false);

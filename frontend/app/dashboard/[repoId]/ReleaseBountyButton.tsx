@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { notifySuccess, handleError } from '@/lib/notifications';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -35,14 +36,14 @@ export default function RetryProcessButton({
         if (data.step === 'released') {
           setDone(true);
         }
+        notifySuccess('Process Triggered', 'Bounty release process has been initiated/retried.');
         window.location.reload(); 
       } else {
         const err = await res.json();
-        alert(`Failed: ${err.error}`);
+        throw new Error(err.error || 'Failed to retry process');
       }
     } catch (e) {
-      console.error(e);
-      alert('Network error');
+      handleError(e, 'Retry Process');
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getWalletKit } from '../../lib/walletKit';
+import { handleError, notifySuccess } from '@/lib/notifications';
 
 export default function RefundFundButton({ repoId, token, currentBalance }: { repoId: string, token: string, currentBalance: number }) {
   const [loading, setLoading] = useState(false);
@@ -66,9 +67,10 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
         throw new Error(errData.error || 'Transaction submission failed');
       }
 
+      notifySuccess('Refund Successful', 'Funds have been swept back to your wallet.');
       window.location.reload(); 
     } catch (err: any) {
-      console.error('[Refund] Error:', err);
+      handleError(err, 'Refund Funds');
       let friendlyMsg = err.message;
       if (friendlyMsg.includes('Failed to fetch')) friendlyMsg = 'NETWORK_ERROR: CANNOT_REACH_SERVER';
       setError(friendlyMsg.toUpperCase());

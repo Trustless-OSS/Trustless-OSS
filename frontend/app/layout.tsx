@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Footer from './components/Footer';
+import { Toaster } from './components/Toaster';
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk' });
 const jbMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="relative z-10 flex-1 flex flex-col">
             {children}
             <Footer />
+            <Toaster richColors closeButton position="top-right" />
           </div>
         </div>
       </body>
