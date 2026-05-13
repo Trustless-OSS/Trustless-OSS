@@ -72,10 +72,7 @@ export default async function RepoDetailPage({
 
       {/* Repo header */}
       {repo && (
-        <div className="bg-white brutal-border p-8 md:p-12 mb-16 brutal-shadow relative">
-          <div className="absolute top-0 right-0 bg-slate-950 text-white font-mono font-bold px-3 py-1 border-b-4 border-l-4 border-slate-950">
-            CONFIG
-          </div>
+        <div className="bg-white brutal-border p-8 md:p-12 mb-16 brutal-shadow relative overflow-hidden md:overflow-visible">
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
             <div>

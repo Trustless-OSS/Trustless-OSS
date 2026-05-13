@@ -25,11 +25,9 @@ export default function RewardSettingsForm({
   const [high, setHigh] = useState(String(initialHigh));
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   async function handleSave() {
     setSaving(true);
-    setSaved(false);
     try {
       const res = await fetch(`${BACKEND}/api/repos/${repoId}/rewards`, {
         method: 'PUT',
@@ -45,10 +43,8 @@ export default function RewardSettingsForm({
       });
 
       if (res.ok) {
-        setSaved(true);
         setEditing(false);
         notifySuccess('Configuration Updated', 'Reward levels have been saved successfully.');
-        setTimeout(() => setSaved(false), 3000);
       } else {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to update rewards');
@@ -60,96 +56,88 @@ export default function RewardSettingsForm({
     }
   }
 
-  if (!editing) {
-    return (
-      <div className="flex gap-4 mt-6 pt-6 border-t-4 border-slate-950 border-dashed flex-wrap items-end">
-        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#2563eb]">
-          <div className="label-brutal text-slate-500 mb-1">CLASS // LOW</div>
-          <div className="text-sm font-mono font-black text-slate-950">{low} USDC</div>
-        </div>
-        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#2563eb]">
-          <div className="label-brutal text-slate-500 mb-1">CLASS // MEDIUM</div>
-          <div className="text-sm font-mono font-black text-slate-950">{medium} USDC</div>
-        </div>
-        <div className="bg-slate-200 border-2 border-slate-950 px-4 py-3 shadow-[4px_4px_0_0_#2563eb]">
-          <div className="label-brutal text-slate-500 mb-1">CLASS // HIGH</div>
-          <div className="text-sm font-mono font-black text-slate-950">{high} USDC</div>
-        </div>
-        <button
-          onClick={() => setEditing(true)}
-          className="brutal-button-outline px-4 py-3 text-xs"
-        >
-          EDIT_REWARDS
-        </button>
-        {saved && (
-          <span className="text-blue-600 font-bold font-mono text-sm uppercase animate-pulse border-2 border-blue-600 px-2 py-1">✓ CONFIG_SAVED</span>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="mt-6 pt-6 border-t-4 border-slate-950 border-dashed">
-      <div className="label-brutal text-slate-500 mb-4">CONFIG_INPUT // REWARD_LEVELS_USDC</div>
-      <div className="flex gap-4 flex-wrap items-end">
-        <div>
-          <label className="label-brutal block text-slate-950 mb-1">CLASS // LOW</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={low}
-            onChange={(e) => setLow(e.target.value)}
-            className="w-24 px-3 py-2 border-4 border-slate-950 bg-white text-slate-950 text-sm font-mono font-bold focus:outline-none focus:border-blue-600"
-          />
+    <div className="relative">
+      {/* Top-right Toggle/Save Button */}
+      <button
+        onClick={editing ? handleSave : () => setEditing(true)}
+        disabled={saving}
+        className={`absolute -top-[116px] -right-[32px] md:-top-[132px] md:-right-[48px] px-6 py-2 font-mono font-black text-sm transition-all duration-200 border-b-4 border-l-4 border-slate-950 z-30 ${
+          editing 
+            ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-[4px_4px_0_0_#000]' 
+            : 'bg-slate-950 text-white hover:bg-slate-800'
+        }`}
+      >
+        {editing ? (saving ? 'WRITING...' : 'SAVE_CHANGES') : 'CONFIG_REWARDS'}
+      </button>
+
+      <div className="mt-4">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+            {[
+              { label: 'LOW', value: low, setter: setLow, color: 'border-green-500' },
+              { label: 'MEDIUM', value: medium, setter: setMedium, color: 'border-yellow-500' },
+              { label: 'HIGH', value: high, setter: setHigh, color: 'border-red-500' },
+            ].map((tier) => (
+              <div 
+                key={tier.label}
+                className={`bg-white border-4 border-slate-950 p-4 transition-all ${
+                  editing ? 'shadow-[4px_4px_0_0_#2563eb]' : 'shadow-[2px_2px_0_0_#000]'
+                }`}
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className="label-brutal text-[10px] text-slate-500 tracking-tighter">CLASS // {tier.label}</span>
+                  {!editing && <div className={`w-2 h-2 rounded-full ${tier.color.replace('border-', 'bg-')}`}></div>}
+                </div>
+                
+                {editing ? (
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={tier.value}
+                      onChange={(e) => tier.setter(e.target.value)}
+                      className="w-full bg-slate-50 border-2 border-slate-950 px-3 py-2 font-mono font-black text-lg focus:outline-none focus:bg-white focus:ring-2 ring-blue-500/20"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">USDC</span>
+                  </div>
+                ) : (
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-slate-950">{tier.value}</span>
+                    <span className="text-xs font-bold text-slate-500 font-mono tracking-widest">USDC</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {editing && (
+            <button
+              onClick={() => {
+                setLow(String(initialLow));
+                setMedium(String(initialMedium));
+                setHigh(String(initialHigh));
+                setEditing(false);
+              }}
+              className="px-4 py-2 text-[10px] font-black font-mono text-red-600 hover:bg-red-50 border-2 border-red-600 uppercase transition-colors whitespace-nowrap mt-2 md:mt-0"
+            >
+              Cancel
+            </button>
+          )}
         </div>
-        <div>
-          <label className="label-brutal block text-slate-950 mb-1">CLASS // MEDIUM</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={medium}
-            onChange={(e) => setMedium(e.target.value)}
-            className="w-24 px-3 py-2 border-4 border-slate-950 bg-white text-slate-950 text-sm font-mono font-bold focus:outline-none focus:border-blue-600"
-          />
-        </div>
-        <div>
-          <label className="label-brutal block text-slate-950 mb-1">CLASS // HIGH</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={high}
-            onChange={(e) => setHigh(e.target.value)}
-            className="w-24 px-3 py-2 border-4 border-slate-950 bg-white text-slate-950 text-sm font-mono font-bold focus:outline-none focus:border-blue-600"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="brutal-button px-4 py-2 text-xs"
-          >
-            {saving ? 'SAVING...' : 'CONFIRM_WRITE'}
-          </button>
-          <button
-            onClick={() => {
-              setLow(String(initialLow));
-              setMedium(String(initialMedium));
-              setHigh(String(initialHigh));
-              setEditing(false);
-            }}
-            className="brutal-button-outline px-4 py-2 text-xs"
-          >
-            ABORT
-          </button>
-        </div>
-      </div>
-      <div className="terminal-block mt-6 max-w-2xl">
-        <span className="text-slate-500">// Custom bounty assignment override</span><br />
-        <span className="text-blue-400">@Trustless-OSS</span> <span className="text-yellow-200">50</span>
+
+        {editing && (
+          <div className="mt-6 p-4 bg-blue-50 border-2 border-dashed border-blue-600 flex items-start gap-3">
+            <div className="text-blue-600 mt-0.5 font-bold">!</div>
+            <p className="text-[11px] font-mono font-bold text-blue-800 leading-tight">
+              NOTE: UPDATING THESE VALUES WILL ONLY AFFECT <span className="underline">NEW</span> ISSUES. 
+              EXISTING BOUNTIES MUST BE MANUALLY OVERRIDDEN VIA THE GITHUB COMMAND INTERFACE.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

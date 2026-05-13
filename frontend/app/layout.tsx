@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="relative z-10 flex-1 flex flex-col">
             {children}
             <Footer />
-            <Toaster richColors closeButton position="top-right" />
+            <Toaster richColors closeButton position="bottom-right" />
           </div>
         </div>
       </body>
