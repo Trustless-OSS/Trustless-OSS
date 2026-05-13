@@ -146,7 +146,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
           disputeResolver: body.maintainerWallet, // maintainer resolves disputes
         },
         platformFee: 0,
-        milestones: [{ description: `Initial Escrow Setup and fees of platform 0.01 USDC`, amount: 0.01, receiver: platformKey }],
+        milestones: [{ description: `Escrow Initialized`, amount: 0.000001, receiver: platformKey }],
         trustline: { address: TESTNET_USDC, symbol: 'USDC' },
       }),
     }) as { unsignedTransaction: string };
