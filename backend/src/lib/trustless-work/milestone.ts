@@ -121,6 +121,15 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
       console.log(`[Milestone] Milestone ${issue.milestone_index} already released, returning success.`);
       return 'success';
     }
+
+    // Special case: 0-amount milestones sometimes fail with dispute errors or other contract restrictions
+    // Since there's no actual value to transfer, we can safely treat it as a database-only completion
+    const isDisputeError = err.message.includes('Only the dispute resolver can execute this function');
+    if (isDisputeError && Number(issue.reward_amount) === 0) {
+      console.log(`[Milestone] Milestone ${issue.milestone_index} (0.00 USDC) encountered a contract restriction. Marking as success locally.`);
+      return 'success';
+    }
+
     throw err;
   }
 }
