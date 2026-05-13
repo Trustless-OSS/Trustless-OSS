@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Suspense } from 'react';
 import { getWalletKit } from '../lib/walletKit';
+import { useRouter } from 'next/navigation';
+import { X } from 'lucide-react';
 import { handleError, notifySuccess } from '@/lib/notifications';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
@@ -184,10 +186,18 @@ function ConnectForm() {
 }
 
 export default function ConnectPage() {
+  const router = useRouter();
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white brutal-border p-8 md:p-12 brutal-shadow relative">
-        <div className="absolute top-0 left-0 w-8 h-8 bg-blue-600 border-b-4 border-r-4 border-slate-950"></div>
+        {/* Interactive Close Element */}
+        <button 
+          onClick={() => router.back()}
+          className="absolute top-0 right-0 w-8 h-8 bg-blue-600 border-b-4 border-l-4 border-slate-950 flex items-center justify-center text-white hover:bg-slate-950 transition-colors cursor-pointer group z-20"
+          aria-label="Go back"
+        >
+          <X size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+        </button>
         <Suspense fallback={<div className="font-mono font-bold text-sm uppercase text-slate-500 animate-pulse">LOADING_MODULE...</div>}>
           <ConnectForm />
         </Suspense>

@@ -1,9 +1,12 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { X } from 'lucide-react';
 
 export default function LoginPage() {
   const supabase = createClient();
+  const router = useRouter();
 
   async function handleLogin() {
     await supabase.auth.signInWithOAuth({
@@ -19,8 +22,14 @@ export default function LoginPage() {
     <div className="min-h-[calc(100vh-24px)] flex items-center justify-center p-6 selection:bg-blue-600 selection:text-white">
       <div className="w-full max-w-md">
         <div className="bg-white brutal-border p-8 md:p-12 brutal-shadow relative">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-8 h-8 bg-blue-600 border-b-4 border-l-4 border-slate-950"></div>
+          {/* Interactive Close Element */}
+          <button 
+            onClick={() => router.back()}
+            className="absolute top-0 right-0 w-8 h-8 bg-blue-600 border-b-4 border-l-4 border-slate-950 flex items-center justify-center text-white hover:bg-slate-950 transition-colors cursor-pointer group"
+            aria-label="Go back"
+          >
+            <X size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+          </button>
           <div className="absolute top-4 right-12 w-4 h-4 rounded-full bg-slate-950 animate-pulse"></div>
 
           <div className="label-brutal mb-6 bg-slate-200 text-slate-950 inline-flex px-3 py-1 border-2 border-slate-950">
