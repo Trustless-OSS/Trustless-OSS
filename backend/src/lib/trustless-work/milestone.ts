@@ -77,30 +77,50 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
   }
 
   // Step 1: Approve milestone (platformKey must be the escrow approver role)
-  const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
-    method: 'POST',
-    body: JSON.stringify({
-      approver: platformKey,
-      contractId: repo.escrow_contract_id,
-      milestoneIndex: String(issue.milestone_index),
-    }),
-  }) as { unsignedTransaction: string };
+  try {
+    const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
+      method: 'POST',
+      body: JSON.stringify({
+        approver: platformKey,
+        contractId: repo.escrow_contract_id,
+        milestoneIndex: String(issue.milestone_index),
+      }),
+    }) as { unsignedTransaction: string };
 
-  await signAndSendTransaction(approveRes.unsignedTransaction);
+    await signAndSendTransaction(approveRes.unsignedTransaction);
+  } catch (err: any) {
+    // If it's already approved, we can safely proceed to release
+    const isAlreadyApproved = err.message.includes('already been approved previously');
+    if (isAlreadyApproved) {
+      console.log(`[Milestone] Milestone ${issue.milestone_index} already approved, skipping approval step.`);
+    } else {
+      throw err;
+    }
+  }
 
   // Step 2: Release milestone funds
-  const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
-    method: 'POST',
-    body: JSON.stringify({
-      releaseSigner: platformKey,
-      contractId: repo.escrow_contract_id,
-      milestoneIndex: String(issue.milestone_index),
-    }),
-  }) as { unsignedTransaction: string };
+  try {
+    const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
+      method: 'POST',
+      body: JSON.stringify({
+        releaseSigner: platformKey,
+        contractId: repo.escrow_contract_id,
+        milestoneIndex: String(issue.milestone_index),
+      }),
+    }) as { unsignedTransaction: string };
 
-  const result = await signAndSendTransaction(releaseRes.unsignedTransaction) as { hash?: string; transactionHash?: string };
-  const hash = result.hash || result.transactionHash;
+    const result = await signAndSendTransaction(releaseRes.unsignedTransaction) as { hash?: string; transactionHash?: string };
+    const hash = result.hash || result.transactionHash;
 
-  console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`);
-  return hash ?? 'success';
+    console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`);
+    return hash ?? 'success';
+  } catch (err: any) {
+    // If it's already released, we are done
+    const isAlreadyReleased = err.message.includes('already been released previously') || err.message.includes('already been paid');
+    if (isAlreadyReleased) {
+      console.log(`[Milestone] Milestone ${issue.milestone_index} already released, returning success.`);
+      return 'success';
+    }
+    throw err;
+  }
 }
