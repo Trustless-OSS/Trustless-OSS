@@ -72,7 +72,9 @@ export default async function RepoDetailPage({
 
       {/* Repo header */}
       {repo && (
-        <div className="bg-white brutal-border p-8 md:p-12 mb-16 brutal-shadow relative overflow-hidden md:overflow-visible">
+        <div className="bg-white brutal-border p-8 md:p-12 mb-16 brutal-shadow relative">
+          {/* Portal target for config buttons */}
+          <div id="repo-config-actions" className="absolute top-0 right-0 z-50 flex items-stretch"></div>
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
             <div>
