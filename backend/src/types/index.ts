@@ -11,6 +11,9 @@ export interface Repo {
   reward_low: number;
   reward_medium: number;
   reward_high: number;
+  is_fork: boolean;
+  is_private: boolean;
+  owner_type: 'User' | 'Organization';
   created_at: string;
 }
 

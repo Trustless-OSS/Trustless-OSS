@@ -769,19 +769,41 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
 
 export async function handleInstallation(payload: Record<string, unknown>): Promise<void> {
   const action = payload.action as string;
-  const installation = payload.installation as { account: { id: number; login: string } };
-  const repositories = (payload.repositories ?? []) as { id: number; full_name: string }[];
+  const installation = payload.installation as { 
+    id: number; 
+    account: { id: number; login: string; type: string };
+  };
+  const repositories = (payload.repositories ?? []) as { 
+    id: number; 
+    full_name: string;
+    private: boolean;
+    fork: boolean;
+  }[];
   const sender = payload.sender as { id: number };
 
   if (action === 'created') {
-    // Add all repositories the user granted access to
+    // Only allow installations on User accounts (not Organizations)
+    if (installation.account.type !== 'User') {
+      console.log(`[Webhook] ⏭️ Skipping installation on ${installation.account.type}: ${installation.account.login}`);
+      return;
+    }
+
     for (const repo of repositories) {
+      // Filter out forks and private repositories
+      if (repo.fork || repo.private) {
+        console.log(`[Webhook] ⏭️ Skipping repo (fork/private): ${repo.full_name}`);
+        continue;
+      }
+
       const { error } = await supabase.from('repos').upsert(
         {
           github_repo_id: repo.id,
           full_name: repo.full_name,
           owner_github_id: installation.account.id,
           owner_username: installation.account.login,
+          owner_type: installation.account.type,
+          is_fork: repo.fork,
+          is_private: repo.private,
           installer_github_id: sender.id,
           github_installation_id: (installation as any).id,
         },
@@ -802,19 +824,42 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
 
 export async function handleInstallationRepositories(payload: Record<string, unknown>): Promise<void> {
   const action = payload.action as string;
-  const installation = payload.installation as { account: { id: number; login: string }; id: number };
-  const repositoriesAdded = (payload.repositories_added ?? []) as { id: number; full_name: string }[];
+  const installation = payload.installation as { 
+    id: number; 
+    account: { id: number; login: string; type: string };
+  };
+  const repositoriesAdded = (payload.repositories_added ?? []) as { 
+    id: number; 
+    full_name: string;
+    private: boolean;
+    fork: boolean;
+  }[];
   const repositoriesRemoved = (payload.repositories_removed ?? []) as { id: number; full_name: string }[];
   const sender = payload.sender as { id: number };
 
   if (action === 'added') {
+    // Only allow for User accounts
+    if (installation.account.type !== 'User') {
+      console.log(`[Webhook] ⏭️ Skipping added repos for ${installation.account.type}: ${installation.account.login}`);
+      return;
+    }
+
     for (const repo of repositoriesAdded) {
+      // Filter out forks and private repositories
+      if (repo.fork || repo.private) {
+        console.log(`[Webhook] ⏭️ Skipping added repo (fork/private): ${repo.full_name}`);
+        continue;
+      }
+
       const { error } = await supabase.from('repos').upsert(
         {
           github_repo_id: repo.id,
           full_name: repo.full_name,
           owner_github_id: installation.account.id,
           owner_username: installation.account.login,
+          owner_type: installation.account.type,
+          is_fork: repo.fork,
+          is_private: repo.private,
           installer_github_id: sender.id,
           github_installation_id: installation.id,
         },

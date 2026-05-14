@@ -532,14 +532,17 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
   }
 
   // Match repos where user is the owner OR the installer
-  // (both fields are populated by the GitHub App installation webhook)
+  // AND filter by non-fork, public, and user-owned (personal) repos
   const { data, error } = await supabase
     .from('repos')
     .select('*')
     .or(`owner_github_id.eq.${githubId},installer_github_id.eq.${githubId}`)
+    .eq('is_fork', false)
+    .eq('is_private', false)
+    .eq('owner_type', 'User')
     .order('created_at', { ascending: false });
 
-  console.log(`[API] listRepos: found ${data?.length ?? 0} repos for githubId=${githubId}`);
+  console.log(`[API] listRepos: found ${data?.length ?? 0} filtered repos for githubId=${githubId}`);
 
   if (error) { json(res, { error: error.message }, 400); return; }
   json(res, { repos: data ?? [] });
