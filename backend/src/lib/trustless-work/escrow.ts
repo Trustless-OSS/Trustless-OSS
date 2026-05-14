@@ -28,7 +28,7 @@ export async function createRepoEscrow(params: {
       milestones: [
         {
           description: `Initial Escrow Setup`,
-          amount: 0.1, // Minimum amount required to satisfy contract checks
+          amount: 0, // Minimum amount required to satisfy contract checks
           receiver: platformKey, // Placeholder receiver
         }
       ],
