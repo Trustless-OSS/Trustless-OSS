@@ -265,10 +265,11 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
 
     const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
     const maintainerGithubId = repo.installer_github_id ?? repo.owner_github_id;
-    const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_id', maintainerGithubId).single();
+    const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_user_id', maintainerGithubId).single();
 
     if (!maintainer?.stellar_wallet) {
-      await postComment(repository.full_name, issue.number, `⚠️ The maintainer must connect a Stellar wallet to process this command.`);
+      const connectUrl = `${process.env.APP_URL}/connect`;
+      await postComment(repository.full_name, issue.number, `⚠️ @${comment.user.login}, you must connect your Stellar wallet to process this command. \n\n[**Connect Wallet Here →**](${connectUrl})`);
       return;
     }
 

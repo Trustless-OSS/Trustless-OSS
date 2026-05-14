@@ -278,7 +278,7 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
   }
 
   // Fetch maintainer's stellar wallet
-  const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_id', githubId).single();
+  const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_user_id', githubId).single();
   if (!maintainer?.stellar_wallet) {
     json(res, { error: 'You must link your Stellar wallet before refunding' }, 400);
     return;
