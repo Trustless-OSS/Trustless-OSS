@@ -144,7 +144,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
           serviceProvider: platformKey,
           platformAddress: platformKey,
           releaseSigner: platformKey, // platform auto-releases
-          disputeResolver: body.maintainerWallet, // maintainer resolves disputes
+          disputeResolver: platformKey, // platform resolves disputes for automated flows
         },
         platformFee: 0,
         milestones: [{ description: `Escrow Initialized`, amount: 0.000001, receiver: platformKey }],

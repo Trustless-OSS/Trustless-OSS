@@ -18,11 +18,11 @@ export async function createRepoEscrow(params: {
       title: `OSS Bounty: ${params.repoName}`,
       description: `Escrow for OSS bounty rewards in ${params.repoName}`,
       roles: {
-        approver: params.maintainerWallet,
+        approver: platformKey, // platform auto-approves on PR merge
         serviceProvider: platformKey,
         platformAddress: platformKey,
         releaseSigner: platformKey,
-        disputeResolver: params.maintainerWallet,
+        disputeResolver: platformKey, // platform resolves disputes for automated flows
       },
       platformFee: 0,
       milestones: [

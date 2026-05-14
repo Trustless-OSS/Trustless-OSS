@@ -71,7 +71,8 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
       await supabase.from('issues').update({ status: 'cancelled' }).eq('id', existing.id);
       await supabase.from('assignments').delete().eq('issue_id', existing.id);
       await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + existing.reward_amount }).eq('id', repo.id);
-      await postComment(repository.full_name, issue.number, `🚫 **Bounty Cancelled.**\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been refunded to the pool.`);
+      await postComment(repository.full_name, issue.number, `### 🛑 Bounty Cancelled\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been returned to the pool.`);
+
     }
     return;
   }
@@ -91,7 +92,8 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
         await postComment(
           repository.full_name,
           issue.number,
-          `⚠️ Custom bounty requires an amount. comment with \`@Trustless-OSS <amount>\` in the issue comment section.`
+          `### ⚠️ Missing Amount\n\n` +
+          `Custom bounties require an amount. Please comment with \`@Trustless-OSS <amount>\` to set it.`
         );
       }
       return;
@@ -115,7 +117,7 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
     await postComment(
       repository.full_name, 
       issue.number, 
-      `🔄 Bounty updated to **${rewardAmount} USDC** (Level: \`${parsed.difficulty}\`)`
+      `🔄 **Bounty Updated:** **${rewardAmount} USDC** (\`${parsed.difficulty}\`)`
     );
     return;
   }
@@ -138,7 +140,9 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
     await postComment(
       repository.full_name,
       issue.number,
-      `⚠️ Insufficient escrow balance (**${repo.escrow_balance} USDC**). Need **${rewardAmount} USDC** to reward this issue.\n\n[Top up your escrow →](${process.env.APP_URL}/dashboard)`
+      `### ⚠️ Insufficient Balance\n\n` +
+      `Escrow balance (**${repo.escrow_balance} USDC**) is too low for this **${rewardAmount} USDC** bounty.\n\n` +
+      `[**Top Up Escrow →**](${process.env.APP_URL}/dashboard)`
     );
     return;
   }
@@ -169,12 +173,11 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
   await postComment(
     repository.full_name,
     issue.number,
-    `🎯 Bounty of **${rewardAmount} USDC** created for this issue!\n\n` +
-    `| Detail | Value |\n|---|---|\n` +
-    `| 💰 Reward | **${rewardAmount} USDC** |\n` +
-    `| 📊 Level | \`${parsed.difficulty}\` |\n` +
-    `| 📋 Escrow | [View on-chain →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
-    `Assign a contributor to get started.`
+    `### 💰 Bounty Created!\n\n` +
+    `| Reward | Level | Escrow |\n` +
+    `| :--- | :--- | :--- |\n` +
+    `| **${rewardAmount} USDC** | \`${parsed.difficulty}\` | [View On-Chain →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
+    `Assign a contributor to lock the funds.`
   );
 
   console.log(`[Webhook] Created bounty issue: ${repository.full_name}#${issue.number} → ${rewardAmount} USDC`);
@@ -205,9 +208,9 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
 
   const isPrivileged = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(comment.author_association);
 
-  // Check for maintainer PR commands (/work-completion or /rejected)
-  const isWorkCompletion = comment.body.match(/@Trustless-OSS\s+\/work-completion\s+(\d+)/i);
-  const isRejected = comment.body.includes('@Trustless-OSS /rejected');
+  // Check for maintainer PR commands (payout split or rejection)
+  const isWorkCompletion = comment.body.match(/@Trustless-OSS\s+\/(pay|split|work|work-completion)\s+(\d+)/i);
+  const isRejected = comment.body.match(/@Trustless-OSS\s+\/(reject|rejected|no)/i);
 
   if (isPrivileged && (isWorkCompletion || isRejected)) {
     const isPR = !!(payload.issue as any).pull_request;
@@ -239,7 +242,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
         await supabase.from('issues').update({ status: 'cancelled' }).eq('id', existing.id);
         await supabase.from('assignments').delete().eq('issue_id', existing.id);
         await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + existing.reward_amount }).eq('id', repo.id);
-        await postComment(repository.full_name, issue.number, `🚫 **Bounty Cancelled.**\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been refunded to the pool.`);
+        await postComment(repository.full_name, issue.number, `### 🛑 Bounty Cancelled\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been returned to the pool.`);
       }
       return;
     }
@@ -269,19 +272,19 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
 
     if (!maintainer?.stellar_wallet) {
       const connectUrl = `${process.env.APP_URL}/connect`;
-      await postComment(repository.full_name, issue.number, `⚠️ @${comment.user.login}, you must connect your Stellar wallet to process this command. \n\n[**Connect Wallet Here →**](${connectUrl})`);
+      await postComment(repository.full_name, issue.number, `### 🔑 Wallet Required\n\n@${comment.user.login}, you must connect your Stellar wallet to use this command:\n[**Connect Wallet →**](${connectUrl})`);
       return;
     }
 
     if (isWorkCompletion) {
       const percentage = parseInt(isWorkCompletion[1]!, 10);
       if (percentage < 1 || percentage > 99) {
-        await postComment(repository.full_name, issue.number, `⚠️ Percentage must be between 1 and 99. No changes made.`);
+        await postComment(repository.full_name, issue.number, `⚠️ **Invalid Split:** Percentage must be between 1 and 99.`);
         return;
       }
 
       if (!assignment.contributors.stellar_wallet) {
-        await postComment(repository.full_name, issue.number, `⚠️ @${assignment.contributors.github_username} must connect their Stellar wallet before a partial payment can be configured.`);
+        await postComment(repository.full_name, issue.number, `### 🔑 Contributor Wallet Missing\n\n@${assignment.contributors.github_username} needs to connect their Stellar wallet before a split can be configured.`);
         return;
       }
 
@@ -294,12 +297,11 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
       await postComment(
         repository.full_name,
         targetIssueNumber,
-        `📋 **Work Completion Intent Saved** (${percentage}%)\n\n` +
-        `When this PR is merged, the bounty will be split as follows:\n` +
+        `### 📋 Payout Intent Saved (${percentage}%)\n\n` +
+        `When this PR is merged, the bounty will be split:\n` +
         `- **${contributorAmount} USDC** → @${assignment.contributors.github_username}\n` +
-        `- **${maintainerAmount} USDC** → returned to maintainer\n\n` +
-        `_You can update this at any time before merging by posting a new \`/work-completion <percentage>\` command._\n\n` +
-        `[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
+        `- **${maintainerAmount} USDC** → maintainer\n\n` +
+        `_Update anytime with \`/pay <percentage>\` before merging._`
       );
 
       return;
@@ -342,7 +344,9 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
       await postComment(
         repository.full_name,
         targetIssueNumber,
-        `🚫 **Bounty Rejected.**\n\nThe maintainer rejected the work. **${targetIssue.reward_amount} USDC** was returned to the maintainer's wallet.\n\n[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
+        `### 🛑 Bounty Rejected\n\n` +
+        `The maintainer rejected the work. **${targetIssue.reward_amount} USDC** has been returned to the maintainer's wallet.\n\n` +
+        `[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
       );
 
       return;
@@ -350,7 +354,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
   }
 
   // Check for contributor address change via connect link
-  if (comment.body.match(/@Trustless-OSS\s+\/change-address/i)) {
+  if (comment.body.match(/@Trustless-OSS\s+\/(wallet|address|connect|change-address)/i)) {
     const connectUrl = `${process.env.APP_URL}/connect?issue=${issue.id}&repo=${repository.id}`;
     await postComment(
       repository.full_name,
@@ -364,12 +368,16 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
   if (comment.body.match(/@Trustless-OSS\s+\/help/i)) {
     const helpMsg = `🤖 **Trustless-OSS Bot Commands**\n\n` +
       `**For Maintainers:**\n` +
-      `- \`@Trustless-OSS <amount>\` : Create a custom bounty (e.g. \`@Trustless-OSS 50\`)\n` +
-      `- \`@Trustless-OSS /rejected\` : Cancel the bounty and refund the escrow\n` +
+      `- \`@Trustless-OSS <amount>\` : Set a bounty (e.g. \`@Trustless-OSS 50\`)\n` +
+      `- \`@Trustless-OSS /pay <percentage>\` : Split bounty on merge (e.g. \`/pay 75\`)\n` +
+      `- \`@Trustless-OSS /reject\` : Reject work and refund the escrow\n` +
       `- \`@Trustless-OSS /retry\` : Retry a failed payout transaction\n\n` +
       `**For Contributors:**\n` +
-      `- \`@Trustless-OSS /change-address\` : Get a link to update your connected Stellar wallet`;
-      
+      `- \`@Trustless-OSS /wallet\` : Connect/update your Stellar wallet\n\n` +
+      `**General:**\n` +
+      `- \`@Trustless-OSS /help\` : Show this command list\n\n` +
+      `_Commands are case-insensitive and work with or without aliases._`;
+
     await postComment(repository.full_name, issue.number, helpMsg);
     return;
   }
@@ -605,11 +613,11 @@ export async function handleIssueAssigned(payload: Record<string, unknown>): Pro
     await postComment(
       repository.full_name,
       issue.number,
-      `✅ Bounty of **${issueRecord.reward_amount} USDC** locked on-chain for @${assignee.login}!\n\n` +
-      `| Detail | Value |\n|---|---|\n` +
-      `| 🔒 Locked | **${issueRecord.reward_amount} USDC** |\n` +
-      `| 👤 Contributor | @${assignee.login} |\n` +
-      `| 📋 Escrow | [View on-chain →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
+      `### 🚀 Contributor Assigned\n\n` +
+      `**${issueRecord.reward_amount} USDC** has been locked for @${assignee.login}.\n\n` +
+      `| Status | Reward | Escrow |\n` +
+      `| :--- | :--- | :--- |\n` +
+      `| 🔒 **Locked** | ${issueRecord.reward_amount} USDC | [View On-Chain →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
       `Merge the PR to release funds.`
     );
   } else {
@@ -618,7 +626,10 @@ export async function handleIssueAssigned(payload: Record<string, unknown>): Pro
     await postComment(
       repository.full_name,
       issue.number,
-      `👋 Hey @${assignee.login}! You've been assigned a bounty of **${issueRecord.reward_amount} USDC**.\n\nConnect your Stellar wallet to claim it: [**Click here →**](${connectUrl})`
+      `### 🔑 Wallet Required\n\n` +
+      `Hey @${assignee.login}, you've been assigned this **${issueRecord.reward_amount} USDC** bounty!\n\n` +
+      `To lock the funds, please connect your Stellar wallet:\n` +
+      `[**Connect Wallet →**](${connectUrl})`
     );
   }
 }
@@ -720,73 +731,9 @@ export async function handleIssueClosed(payload: Record<string, unknown>): Promi
   // Only proceed if closed as "completed" (not "not_planned")
   if (issue.state_reason !== 'completed') return;
 
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('github_repo_id', repository.id)
-    .single<Repo>();
-
-  if (!repo) return;
-
-  const { data: issueRecord } = await supabase
-    .from('issues')
-    .select('*')
-    .eq('repo_id', repo.id)
-    .eq('github_issue_id', issue.id)
-    .single<Issue>();
-
-  if (!issueRecord || (issueRecord.status !== 'pending' && issueRecord.status !== 'active')) return;
-
-  const { data: assignment } = await supabase
-    .from('assignments')
-    .select('*, contributors(*)')
-    .eq('issue_id', issueRecord.id)
-    .single<Assignment>();
-
-  if (!assignment || assignment.payout_status === 'released') return;
-  if (!assignment.contributors?.stellar_wallet) return;
-
-  // If issue is still pending, push milestone first
-  if (issueRecord.status === 'pending') {
-    console.log(`[Webhook] Issue #${issue.number} is still pending. Pushing milestone before release...`);
-    await pushMilestoneOnChain(repo, issueRecord, assignment.contributors.stellar_wallet);
-    // Refresh issueRecord after push
-    issueRecord.status = 'active';
-    const { data: updatedIssue } = await supabase.from('issues').select('*').eq('id', issueRecord.id).single<Issue>();
-    if (updatedIssue) issueRecord.milestone_index = updatedIssue.milestone_index;
-  }
-
-  // Approve + release via Trustless Work
-  try {
-    const txHash = await releaseEscrowMilestone(repo, issueRecord);
-
-    await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
-    await supabase.from('issues').update({ status: 'completed' }).eq('id', issueRecord.id);
-
-    const username = assignment.contributors?.github_username ?? 'contributor';
-    const explorerUrl = txHash !== 'success'
-      ? `https://stellar.expert/explorer/testnet/tx/${txHash}`
-      : `https://stellar.expert/explorer/testnet/contract/${repo.escrow_contract_id}`;
-
-    await postComment(
-      repository.full_name,
-      issue.number,
-      `🎉 **Bounty Released (Issue Closed)!**\n\n` +
-      `| Detail | Value |\n|---|---|\n` +
-      `| 💰 Amount | **${issueRecord.reward_amount} USDC** |\n` +
-      `| 👤 Recipient | @${username} |\n` +
-      `| 🔗 Transaction | [View on Stellar Explorer →](${explorerUrl}) |\n` +
-      `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
-      `Thanks for your contribution! 🚀`
-    );
-  } catch (releaseErr: any) {
-    console.error('[Webhook] releaseEscrowMilestone failed (issue closed):', releaseErr.message);
-    await postComment(
-      repository.full_name,
-      issue.number,
-      `⚠️ Bounty release failed: ${releaseErr.message}\n\nPlease use the dashboard retry button.`
-    );
-  }
+  // We no longer trigger automated payouts on issue close to avoid race conditions with PR merges.
+  // Payouts are handled by handlePRMerged or explicit commands.
+  console.log(`[Webhook] Issue #${issue.number} closed as completed. Skipping automated payout.`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -930,12 +877,12 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
       await postComment(
         repository.full_name,
         issueNumber,
-        `✅ **Partial Payment Released (${completionPct}%)!**\n\n` +
-        `| Detail | Value |\n|---|---|\n` +
-        `| 💰 Contributor (${completionPct}%) | **${contributorAmount} USDC** → @${username} |\n` +
-        `| 🔄 Returned to Maintainer | **${maintainerAmount} USDC** |\n` +
-        `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
-        `Thanks for your contribution! 🚀`
+        `### ✅ Payout Released (${completionPct}%)\n\n` +
+        `| Recipient | Amount | Role |\n` +
+        `| :--- | :--- | :--- |\n` +
+        `| @${username} | **${contributorAmount} USDC** | Contributor |\n` +
+        `| Maintainer | **${maintainerAmount} USDC** | Refund |\n\n` +
+        `[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
       );
     } catch (releaseErr: any) {
       console.error('[Webhook] Partial payment failed on merge:', releaseErr.message);
@@ -960,12 +907,11 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
     await postComment(
       repository.full_name,
       issueNumber,
-      `🎉 **Bounty Released!**\n\n` +
-      `| Detail | Value |\n|---|---|\n` +
-      `| 💰 Amount | **${issueRecord.reward_amount} USDC** |\n` +
-      `| 👤 Recipient | @${username} |\n` +
-      `| 🔗 Transaction | [View on Stellar Explorer →](${explorerUrl}) |\n` +
-      `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
+      `### 🎉 Bounty Released!\n\n` +
+      `**${issueRecord.reward_amount} USDC** has been sent to @${username}.\n\n` +
+      `| Recipient | Amount | Status |\n` +
+      `| :--- | :--- | :--- |\n` +
+      `| @${username} | ${issueRecord.reward_amount} USDC | [View Transaction](${explorerUrl}) |\n\n` +
       `Thanks for your contribution! 🚀`
     );
   } catch (releaseErr: any) {
