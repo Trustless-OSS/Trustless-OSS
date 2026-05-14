@@ -34,10 +34,8 @@ function ConnectForm() {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // If not logged in, we can't check assignment yet, 
-          // handleConnect will redirect to login anyway.
-          setChecking(false);
-          setIsAssigned(true); // Allow showing the button so they click and get redirected
+          // Not logged in — redirect to login immediately, preserving the return URL
+          window.location.href = `/login?next=/connect?issue=${issueId}&repo=${repoId}`;
           return;
         }
 
