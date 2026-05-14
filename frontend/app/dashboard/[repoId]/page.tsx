@@ -6,6 +6,7 @@ import FundEscrowButton from './FundEscrowButton';
 import RewardSettingsForm from './RewardSettingsForm';
 import RetryProcessButton from './ReleaseBountyButton';
 import RefundFundButton from './RefundFundButton';
+import DeleteRepoButton from './DeleteRepoButton';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -116,7 +117,15 @@ export default async function RepoDetailPage({
                             <FundEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
                           </div>
                           <div className="w-full sm:w-auto">
-                            <RefundFundButton repoId={repoId} token={session?.access_token ?? ''} currentBalance={repo.escrow_balance} />
+                            {repo.escrow_balance > 0 ? (
+                              <RefundFundButton
+                                repoId={repoId}
+                                token={session?.access_token ?? ''}
+                                currentBalance={repo.escrow_balance}
+                              />
+                            ) : (
+                              <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
+                            )}
                           </div>
                         </>
                       )}

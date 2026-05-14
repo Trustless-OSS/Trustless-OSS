@@ -21,6 +21,7 @@ import {
   submitWithdrawHandler,
   closeEscrowUnsignedHandler,
   submitCloseHandler,
+  deleteRepoHandler,
 } from './routes/api.js';
 
 /* ------------------------------------------------------------------ */
@@ -41,6 +42,7 @@ addRoute('GET', '/api/repos', listReposHandler);
 addRoute('POST', '/api/repos/connect', connectRepoHandler);
 addRoute('GET', '/api/repos/:repoId/issues', listIssuesHandler);
 addRoute('PUT', '/api/repos/:repoId/rewards', updateRepoRewardsHandler);
+addRoute('DELETE', '/api/repos/:repoId', deleteRepoHandler);
 
 // Escrow
 addRoute('POST', '/api/escrow/create-unsigned', createEscrowUnsignedHandler);

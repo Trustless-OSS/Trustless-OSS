@@ -888,6 +888,95 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
 }
 
 /* ------------------------------------------------------------------ */
+/* DELETE /api/repos/:repoId                                            */
+/* Permanently removes repo, its issues, assignments, and GitHub App   */
+/* connection. Only allowed when escrow_balance is 0.                  */
+/* ------------------------------------------------------------------ */
+export async function deleteRepoHandler(
+  req: IncomingMessage,
+  res: ServerResponse,
+  params: Record<string, string>
+): Promise<void> {
+  const token = getToken(req);
+  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const { data: { user } } = await supabase.auth.getUser(token);
+  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+  const { repoId } = params;
+
+  if (!(await isMaintainer(githubId, repoId))) {
+    json(res, { error: 'Forbidden: Only maintainers can delete a repository' }, 403);
+    return;
+  }
+
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', repoId).single<Repo>();
+  if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
+
+  // Safety guard — cannot delete while funds remain in escrow
+  if (repo.escrow_balance > 0) {
+    json(res, { error: 'Repo still has escrow funds. Withdraw all funds before deleting.' }, 400);
+    return;
+  }
+
+  // 1. Remove GitHub App from this specific repository
+  if (repo.github_installation_id) {
+    try {
+      const { App } = await import('@octokit/app');
+      const appId = process.env.GITHUB_APP_ID;
+      const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+
+      if (appId && privateKey) {
+        let finalKey = privateKey.trim();
+        if (finalKey.startsWith('"') && finalKey.endsWith('"')) finalKey = finalKey.slice(1, -1);
+        if (finalKey.includes('-----BEGIN')) {
+          finalKey = finalKey.replace(/\\n/g, '\n');
+        } else {
+          const b64Body = finalKey.replace(/\s/g, '');
+          const wrapped = b64Body.match(/.{1,64}/g)?.join('\n') ?? b64Body;
+          finalKey = `-----BEGIN RSA PRIVATE KEY-----\n${wrapped}\n-----END RSA PRIVATE KEY-----`;
+        }
+
+        const app = new App({ appId: Number(appId), privateKey: finalKey });
+
+        // Remove app access from this single repository
+        const [owner, repoName] = repo.full_name.split('/');
+        await app.octokit.request(
+          'DELETE /installations/{installation_id}/repositories/{repository_id}',
+          {
+            installation_id: repo.github_installation_id,
+            repository_id: repo.github_repo_id,
+          }
+        );
+        console.log(`[API] ✅ Removed GitHub App from repo: ${repo.full_name}`);
+      }
+    } catch (ghErr: any) {
+      // Log but don't fail — still proceed with DB cleanup
+      console.error(`[API] ⚠️ GitHub App removal failed (continuing): ${ghErr.message}`);
+    }
+  }
+
+  // 2. Cascade-delete DB records
+  // Get all issue IDs for this repo first
+  const { data: issueRows } = await supabase.from('issues').select('id').eq('repo_id', repoId);
+  const issueIds = (issueRows ?? []).map((r: { id: string }) => r.id);
+
+  if (issueIds.length > 0) {
+    await supabase.from('assignments').delete().in('issue_id', issueIds);
+  }
+  await supabase.from('issues').delete().eq('repo_id', repoId);
+  const { error: deleteErr } = await supabase.from('repos').delete().eq('id', repoId);
+
+  if (deleteErr) {
+    json(res, { error: deleteErr.message }, 500);
+    return;
+  }
+
+  console.log(`[API] 🗑️ Repo deleted: ${repo.full_name} (id=${repoId})`);
+  json(res, { ok: true });
+}
+
+/* ------------------------------------------------------------------ */
 /* util                                                                 */
 /* ------------------------------------------------------------------ */
 
