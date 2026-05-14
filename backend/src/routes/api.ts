@@ -334,7 +334,7 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
             disputeResolver: platformKey,
             contractId: repo.escrow_contract_id,
             milestoneIndex: String(i),
-            distributions: [{ destination: maintainer.stellar_wallet, amount: String(m.amount) }]
+            distributions: [{ address: maintainer.stellar_wallet, amount: Number(m.amount) }]
           })
         }) as { unsignedTransaction: string };
         await signAndSendTransaction(resolveRes.unsignedTransaction);

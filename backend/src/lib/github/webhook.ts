@@ -276,59 +276,29 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
     if (isWorkCompletion) {
       const percentage = parseInt(isWorkCompletion[1]!, 10);
       if (percentage < 1 || percentage > 99) {
-        await postComment(repository.full_name, issue.number, `⚠️ Percentage must be between 1 and 99.`);
+        await postComment(repository.full_name, issue.number, `⚠️ Percentage must be between 1 and 99. No changes made.`);
         return;
       }
 
       if (!assignment.contributors.stellar_wallet) {
-        await postComment(repository.full_name, issue.number, `⚠️ Contributor must connect their wallet before partial payment can be processed.`);
+        await postComment(repository.full_name, issue.number, `⚠️ @${assignment.contributors.github_username} must connect their Stellar wallet before a partial payment can be configured.`);
         return;
       }
 
-      // Dispute
-      try {
-        const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
-          method: 'POST',
-          body: JSON.stringify({ signer: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(targetIssue.milestone_index) })
-        }) as { unsignedTransaction: string };
-        const { signAndSendTransaction } = await import('../stellar/signer.js');
-        await signAndSendTransaction(disputeRes.unsignedTransaction);
-      } catch (e: any) {
-        if (!e.message.includes('already in dispute')) throw e;
-      }
+      // Store intent — no on-chain transaction yet
+      await supabase.from('assignments').update({ completion_percentage: percentage }).eq('id', assignment.id);
 
       const contributorAmount = parseFloat((targetIssue.reward_amount * (percentage / 100)).toFixed(7));
       const maintainerAmount = parseFloat((targetIssue.reward_amount - contributorAmount).toFixed(7));
 
-      // Resolve
-      try {
-        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
-          method: 'POST',
-          body: JSON.stringify({
-            disputeResolver: platformKey,
-            contractId: repo.escrow_contract_id,
-            milestoneIndex: String(targetIssue.milestone_index),
-            distributions: [
-              { destination: assignment.contributors.stellar_wallet, amount: String(contributorAmount) },
-              { destination: maintainer.stellar_wallet, amount: String(maintainerAmount) }
-            ]
-          })
-        }) as { unsignedTransaction: string };
-        const { signAndSendTransaction } = await import('../stellar/signer.js');
-        await signAndSendTransaction(resolveRes.unsignedTransaction);
-      } catch (e: any) {
-        if (!e.message.includes('already resolved') && !e.message.includes('already released')) throw e;
-      }
-
-      await supabase.from('assignments').update({ payout_status: 'released', pr_number: isPR ? issue.number : null, pr_merged_at: isPR ? new Date().toISOString() : null }).eq('id', assignment.id);
-      await supabase.from('issues').update({ status: 'completed' }).eq('id', targetIssue.id);
-
       await postComment(
         repository.full_name,
         targetIssueNumber,
-        `✅ **Partial Payment Released!**\n\n` +
-        `- **${contributorAmount} USDC** sent to @${assignment.contributors.github_username}\n` +
-        `- **${maintainerAmount} USDC** returned to maintainer\n\n` +
+        `📋 **Work Completion Intent Saved** (${percentage}%)\n\n` +
+        `When this PR is merged, the bounty will be split as follows:\n` +
+        `- **${contributorAmount} USDC** → @${assignment.contributors.github_username}\n` +
+        `- **${maintainerAmount} USDC** → returned to maintainer\n\n` +
+        `_You can update this at any time before merging by posting a new \`/work-completion <percentage>\` command._\n\n` +
         `[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
       );
 
@@ -355,7 +325,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
             contractId: repo.escrow_contract_id,
             milestoneIndex: String(targetIssue.milestone_index),
             distributions: [
-              { destination: maintainer.stellar_wallet, amount: String(targetIssue.reward_amount) }
+              { address: maintainer.stellar_wallet, amount: Number(targetIssue.reward_amount) }
             ]
           })
         }) as { unsignedTransaction: string };
@@ -900,7 +870,82 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
     .update({ pr_number: pr.number, pr_merged_at: new Date().toISOString() })
     .eq('id', assignment.id);
 
-  // Approve + release via Trustless Work
+  const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
+  const completionPct = (assignment as any).completion_percentage as number | null;
+
+  if (completionPct != null && completionPct > 0 && completionPct < 100) {
+    // Partial payment flow — maintainer set /work-completion before merge
+    const maintainerGithubId = repo.installer_github_id ?? repo.owner_github_id;
+    const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_user_id', maintainerGithubId).single();
+
+    if (!maintainer?.stellar_wallet) {
+      const connectUrl = `${process.env.APP_URL}/connect`;
+      await postComment(repository.full_name, issueNumber,
+        `⚠️ Partial payment could not be processed — the maintainer has not connected a Stellar wallet. [Connect here →](${connectUrl})`);
+      return;
+    }
+
+    if (!assignment.contributors?.stellar_wallet) {
+      await postComment(repository.full_name, issueNumber,
+        `⚠️ Partial payment could not be processed — @${assignment.contributors?.github_username} has not connected a Stellar wallet.`);
+      return;
+    }
+
+    const contributorAmount = parseFloat((issueRecord.reward_amount * (completionPct / 100)).toFixed(7));
+    const maintainerAmount = parseFloat((issueRecord.reward_amount - contributorAmount).toFixed(7));
+
+    try {
+      // Dispute
+      try {
+        const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
+          method: 'POST',
+          body: JSON.stringify({ signer: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(issueRecord.milestone_index) })
+        }) as { unsignedTransaction: string };
+        const { signAndSendTransaction } = await import('../stellar/signer.js');
+        await signAndSendTransaction(disputeRes.unsignedTransaction);
+      } catch (e: any) {
+        if (!e.message.includes('already in dispute')) throw e;
+      }
+
+      // Resolve split
+      const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
+        method: 'POST',
+        body: JSON.stringify({
+          disputeResolver: platformKey,
+          contractId: repo.escrow_contract_id,
+          milestoneIndex: String(issueRecord.milestone_index),
+          distributions: [
+            { address: assignment.contributors.stellar_wallet, amount: contributorAmount },
+            { address: maintainer.stellar_wallet, amount: maintainerAmount }
+          ]
+        })
+      }) as { unsignedTransaction: string };
+      const { signAndSendTransaction } = await import('../stellar/signer.js');
+      await signAndSendTransaction(resolveRes.unsignedTransaction);
+
+      await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
+      await supabase.from('issues').update({ status: 'completed' }).eq('id', issueRecord.id);
+
+      const username = assignment.contributors.github_username ?? 'contributor';
+      await postComment(
+        repository.full_name,
+        issueNumber,
+        `✅ **Partial Payment Released (${completionPct}%)!**\n\n` +
+        `| Detail | Value |\n|---|---|\n` +
+        `| 💰 Contributor (${completionPct}%) | **${contributorAmount} USDC** → @${username} |\n` +
+        `| 🔄 Returned to Maintainer | **${maintainerAmount} USDC** |\n` +
+        `| 📋 Escrow | [View on Trustless Work →](https://viewer.trustlesswork.com/${repo.escrow_contract_id}) |\n\n` +
+        `Thanks for your contribution! 🚀`
+      );
+    } catch (releaseErr: any) {
+      console.error('[Webhook] Partial payment failed on merge:', releaseErr.message);
+      await postComment(repository.full_name, issueNumber,
+        `⚠️ Partial payment failed: ${releaseErr.message}\n\nPlease use the dashboard retry button.`);
+    }
+    return;
+  }
+
+  // Full release via Trustless Work (no /work-completion set)
   try {
     const txHash = await releaseEscrowMilestone(repo, issueRecord);
 

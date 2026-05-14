@@ -46,6 +46,7 @@ export interface Assignment {
   pr_number: number | null;
   pr_merged_at: string | null;
   payout_status: 'pending' | 'released' | 'failed';
+  completion_percentage: number | null;
   contributors?: Contributor;
 }
 
