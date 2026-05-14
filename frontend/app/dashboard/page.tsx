@@ -163,17 +163,15 @@ export default async function DashboardPage(props: DashboardProps) {
                   >
                     MANAGE
                   </Link>
-                  {repo.escrow_contract_id && (
-                    <a
-                      href={`https://viewer.trustlesswork.com/${repo.escrow_contract_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="brutal-button-outline px-4 py-2 text-sm"
-                      title="View Contract"
-                    >
-                      ↗
-                    </a>
-                  )}
+                  <a
+                    href={`https://github.com/${repo.full_name}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="brutal-button-outline px-4 py-2 text-sm flex items-center justify-center"
+                    title="View on GitHub"
+                  >
+                    ↗
+                  </a>
                 </div>
               </div>
             </div>
