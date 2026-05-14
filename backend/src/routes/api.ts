@@ -226,12 +226,13 @@ export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: Serve
       body: JSON.stringify({
         contractId: repo.escrow_contract_id,
         signer: body.funderWallet,
-        amount: body.amount,
+        amount: Number(body.amount),
       }),
     }) as { unsignedTransaction: string };
 
     json(res, { unsignedTransaction: response.unsignedTransaction });
   } catch (err: any) {
+    console.error(`[Fund] TrustlessWork Error: ${err.message}`);
     json(res, { error: err.message }, 500);
   }
 }
