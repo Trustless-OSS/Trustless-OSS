@@ -277,7 +277,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
     }
 
     if (isWorkCompletion) {
-      const percentage = parseInt(isWorkCompletion[1]!, 10);
+      const percentage = parseInt(isWorkCompletion[2]!, 10);
       if (percentage < 1 || percentage > 99) {
         await postComment(repository.full_name, issue.number, `⚠️ **Invalid Split:** Percentage must be between 1 and 99.`);
         return;
@@ -820,7 +820,7 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
   const completionPct = (assignment as any).completion_percentage as number | null;
 
-  if (completionPct != null && completionPct > 0 && completionPct < 100) {
+  if (completionPct != null && !isNaN(completionPct) && completionPct > 0 && completionPct < 100) {
     // Partial payment flow — maintainer set /work-completion before merge
     const maintainerGithubId = repo.installer_github_id ?? repo.owner_github_id;
     const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_user_id', maintainerGithubId).single();
@@ -855,16 +855,21 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
       }
 
       // Resolve split
+      const distributions = [];
+      if (assignment.contributors.stellar_wallet === maintainer.stellar_wallet) {
+        distributions.push({ address: maintainer.stellar_wallet, amount: Number(issueRecord.reward_amount) });
+      } else {
+        distributions.push({ address: assignment.contributors.stellar_wallet, amount: contributorAmount });
+        distributions.push({ address: maintainer.stellar_wallet, amount: maintainerAmount });
+      }
+
       const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
         method: 'POST',
         body: JSON.stringify({
           disputeResolver: platformKey,
           contractId: repo.escrow_contract_id,
           milestoneIndex: String(issueRecord.milestone_index),
-          distributions: [
-            { address: assignment.contributors.stellar_wallet, amount: contributorAmount },
-            { address: maintainer.stellar_wallet, amount: maintainerAmount }
-          ]
+          distributions
         })
       }) as { unsignedTransaction: string };
       const { signAndSendTransaction } = await import('../stellar/signer.js');
