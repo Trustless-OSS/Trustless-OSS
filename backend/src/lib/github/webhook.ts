@@ -190,7 +190,9 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
     id: number;
     number: number;
     title: string;
+    body: string | null;
     labels: { name: string }[];
+    user: { id: number; login: string };
   };
   const comment = payload.comment as {
     body: string;
@@ -203,19 +205,177 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
 
   const isPrivileged = ['OWNER', 'MEMBER', 'COLLABORATOR'].includes(comment.author_association);
 
-  // Check for maintainer reject
-  if (isPrivileged && comment.body.includes('@Trustless-OSS /rejected')) {
+  // Check for maintainer PR commands (/work-completion or /rejected)
+  const isWorkCompletion = comment.body.match(/@Trustless-OSS\s+\/work-completion\s+(\d+)/i);
+  const isRejected = comment.body.includes('@Trustless-OSS /rejected');
+
+  if (isPrivileged && (isWorkCompletion || isRejected)) {
+    const isPR = !!(payload.issue as any).pull_request;
     const { data: repo } = await supabase.from('repos').select('*').eq('github_repo_id', repository.id).single<Repo>();
     if (!repo) return;
-    const { data: existing } = await supabase.from('issues').select('*').eq('repo_id', repo.id).eq('github_issue_id', issue.id).single<Issue>();
 
-    if (existing && existing.status !== 'completed' && existing.status !== 'cancelled') {
-      await supabase.from('issues').update({ status: 'cancelled' }).eq('id', existing.id);
-      await supabase.from('assignments').delete().eq('issue_id', existing.id);
-      await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + existing.reward_amount }).eq('id', repo.id);
-      await postComment(repository.full_name, issue.number, `🚫 **Bounty Cancelled.**\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been refunded to the pool.`);
+    let targetIssue: Issue | null = null;
+    let targetIssueNumber: number = issue.number;
+    let prAuthorId: number | null = null;
+
+    if (isPR) {
+      // It's a PR, so issue.body is the PR body
+      const extractedNumber = extractIssueNumber(issue.body);
+      if (!extractedNumber) {
+        console.log('[Webhook] PR comment command but no linked issue found in PR body');
+        return;
+      }
+      targetIssueNumber = extractedNumber;
+      prAuthorId = issue.user.id; // Issue author IS the PR author in this payload context
+    } else {
+      // It's an issue comment, so it targets this exact issue
+      targetIssueNumber = issue.number;
     }
-    return;
+
+    const { data: existing } = await supabase.from('issues').select('*').eq('repo_id', repo.id).eq('github_issue_number', targetIssueNumber).single<Issue>();
+    if (!existing || existing.status !== 'active') {
+      if (isRejected && existing && existing.status !== 'completed' && existing.status !== 'cancelled') {
+        // Fallback for non-active rejected (from before milestone was active)
+        await supabase.from('issues').update({ status: 'cancelled' }).eq('id', existing.id);
+        await supabase.from('assignments').delete().eq('issue_id', existing.id);
+        await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + existing.reward_amount }).eq('id', repo.id);
+        await postComment(repository.full_name, issue.number, `🚫 **Bounty Cancelled.**\n\nThis issue was rejected by a maintainer. The **${existing.reward_amount} USDC** bounty has been refunded to the pool.`);
+      }
+      return;
+    }
+
+    targetIssue = existing;
+
+    const { data: assignment } = await supabase.from('assignments').select('*, contributors(*)').eq('issue_id', targetIssue.id).single<Assignment>();
+    if (!assignment || !assignment.contributors) return;
+
+    if (isPR && assignment.contributors.github_user_id !== prAuthorId) {
+      await postComment(
+        repository.full_name,
+        issue.number,
+        `⚠️ The author of this PR does not match the assigned contributor for issue #${targetIssueNumber}.`
+      );
+      return;
+    }
+
+    if (targetIssue.milestone_index == null) {
+      console.log('[Webhook] Missing milestone index for active issue');
+      return;
+    }
+
+    const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
+    const maintainerGithubId = repo.installer_github_id ?? repo.owner_github_id;
+    const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_id', maintainerGithubId).single();
+
+    if (!maintainer?.stellar_wallet) {
+      await postComment(repository.full_name, issue.number, `⚠️ The maintainer must connect a Stellar wallet to process this command.`);
+      return;
+    }
+
+    if (isWorkCompletion) {
+      const percentage = parseInt(isWorkCompletion[1]!, 10);
+      if (percentage < 1 || percentage > 99) {
+        await postComment(repository.full_name, issue.number, `⚠️ Percentage must be between 1 and 99.`);
+        return;
+      }
+
+      if (!assignment.contributors.stellar_wallet) {
+        await postComment(repository.full_name, issue.number, `⚠️ Contributor must connect their wallet before partial payment can be processed.`);
+        return;
+      }
+
+      // Dispute
+      try {
+        const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
+          method: 'POST',
+          body: JSON.stringify({ signer: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(targetIssue.milestone_index) })
+        }) as { unsignedTransaction: string };
+        const { signAndSendTransaction } = await import('../stellar/signer.js');
+        await signAndSendTransaction(disputeRes.unsignedTransaction);
+      } catch (e: any) {
+        if (!e.message.includes('already in dispute')) throw e;
+      }
+
+      const contributorAmount = parseFloat((targetIssue.reward_amount * (percentage / 100)).toFixed(7));
+      const maintainerAmount = parseFloat((targetIssue.reward_amount - contributorAmount).toFixed(7));
+
+      // Resolve
+      try {
+        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
+          method: 'POST',
+          body: JSON.stringify({
+            disputeResolver: platformKey,
+            contractId: repo.escrow_contract_id,
+            milestoneIndex: String(targetIssue.milestone_index),
+            distributions: [
+              { destination: assignment.contributors.stellar_wallet, amount: String(contributorAmount) },
+              { destination: maintainer.stellar_wallet, amount: String(maintainerAmount) }
+            ]
+          })
+        }) as { unsignedTransaction: string };
+        const { signAndSendTransaction } = await import('../stellar/signer.js');
+        await signAndSendTransaction(resolveRes.unsignedTransaction);
+      } catch (e: any) {
+        if (!e.message.includes('already resolved') && !e.message.includes('already released')) throw e;
+      }
+
+      await supabase.from('assignments').update({ payout_status: 'released', pr_number: isPR ? issue.number : null, pr_merged_at: isPR ? new Date().toISOString() : null }).eq('id', assignment.id);
+      await supabase.from('issues').update({ status: 'completed' }).eq('id', targetIssue.id);
+
+      await postComment(
+        repository.full_name,
+        targetIssueNumber,
+        `✅ **Partial Payment Released!**\n\n` +
+        `- **${contributorAmount} USDC** sent to @${assignment.contributors.github_username}\n` +
+        `- **${maintainerAmount} USDC** returned to maintainer\n\n` +
+        `[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
+      );
+
+      return;
+    } else if (isRejected) {
+      // Dispute
+      try {
+        const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
+          method: 'POST',
+          body: JSON.stringify({ signer: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(targetIssue.milestone_index) })
+        }) as { unsignedTransaction: string };
+        const { signAndSendTransaction } = await import('../stellar/signer.js');
+        await signAndSendTransaction(disputeRes.unsignedTransaction);
+      } catch (e: any) {
+        if (!e.message.includes('already in dispute')) throw e;
+      }
+
+      // Resolve 100% to maintainer
+      try {
+        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
+          method: 'POST',
+          body: JSON.stringify({
+            disputeResolver: platformKey,
+            contractId: repo.escrow_contract_id,
+            milestoneIndex: String(targetIssue.milestone_index),
+            distributions: [
+              { destination: maintainer.stellar_wallet, amount: String(targetIssue.reward_amount) }
+            ]
+          })
+        }) as { unsignedTransaction: string };
+        const { signAndSendTransaction } = await import('../stellar/signer.js');
+        await signAndSendTransaction(resolveRes.unsignedTransaction);
+      } catch (e: any) {
+        if (!e.message.includes('already resolved') && !e.message.includes('already released')) throw e;
+      }
+
+      await supabase.from('issues').update({ status: 'cancelled' }).eq('id', targetIssue.id);
+      await supabase.from('assignments').update({ payout_status: 'failed' }).eq('id', assignment.id);
+      await supabase.from('repos').update({ escrow_balance: repo.escrow_balance + targetIssue.reward_amount }).eq('id', repo.id);
+
+      await postComment(
+        repository.full_name,
+        targetIssueNumber,
+        `🚫 **Bounty Rejected.**\n\nThe maintainer rejected the work. **${targetIssue.reward_amount} USDC** was returned to the maintainer's wallet.\n\n[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
+      );
+
+      return;
+    }
   }
 
   // Check for contributor address change via connect link
@@ -668,6 +828,7 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
     number: number;
     body: string | null;
     labels: { name: string }[];
+    user: { id: number; login: string };
   };
 
   // If PR has "rejected" label, skip payout entirely
@@ -706,6 +867,15 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
     .single<Assignment>();
 
   if (!assignment || assignment.payout_status === 'released') return;
+
+  if (assignment.contributors?.github_user_id !== pr.user.id) {
+    await postComment(
+      repository.full_name,
+      issueNumber,
+      `⚠️ The author of this PR does not match the assigned contributor for issue #${issueNumber}. Payout aborted.`
+    );
+    return;
+  }
 
   // If issue is still pending, push milestone first (needs a wallet)
   if (issueRecord.status === 'pending') {

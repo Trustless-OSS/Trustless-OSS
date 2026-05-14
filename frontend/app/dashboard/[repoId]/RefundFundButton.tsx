@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { getWalletKit } from '../../lib/walletKit';
 import { handleError, notifySuccess } from '@/lib/notifications';
+import { useRouter } from 'next/navigation';
 
 export default function RefundFundButton({ repoId, token, currentBalance }: { repoId: string, token: string, currentBalance: number }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
 
   const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -19,62 +20,32 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
     
     setLoading(true);
     setError('');
-    setShowModal(false);
     
     try {
-      const kit = getWalletKit();
-      const { address } = await kit.authModal();
-      if (!address) throw new Error('No public key returned');
-
-      // 1. Get unsigned transaction for full sweep
-      const res1 = await fetch(`${BACKEND}/api/escrow/withdraw-unsigned`, {
+      const res = await fetch(`${BACKEND}/api/escrow/refund`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ repoId, maintainerWallet: address })
+        body: JSON.stringify({ repoId })
       });
 
-      if (!res1.ok) {
-        const errData = await res1.json();
-        const msg = errData.error || JSON.stringify(errData);
-        const match = msg.match(/→ \d+: ({.*})/);
-        if (match) {
-          const inner = JSON.parse(match[1]);
-          throw new Error(inner.message || inner.error || 'Blockchain operation failed');
-        }
-        throw new Error(msg);
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Refund failed');
       }
       
-      const { unsignedTransaction } = await res1.json();
+      const { refundedAmount, cancelledIssues } = await res.json();
 
-      // 2. Sign transaction
-      const { signedTxXdr } = await kit.signTransaction(unsignedTransaction);
-
-      // 3. Submit signed transaction
-      const res2 = await fetch(`${BACKEND}/api/escrow/submit-withdraw`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ repoId, signedXdr: signedTxXdr })
-      });
-
-      if (!res2.ok) {
-        const errData = await res2.json();
-        throw new Error(errData.error || 'Transaction submission failed');
-      }
-
-      notifySuccess('Refund Successful', 'Funds have been swept back to your wallet.');
-      window.location.reload(); 
+      notifySuccess('Refund Successful', `${refundedAmount} USDC refunded. ${cancelledIssues} active issues cancelled.`);
+      setShowModal(false);
+      router.refresh(); // Refresh page to update balance
     } catch (err: any) {
       handleError(err, 'Refund Funds');
       let friendlyMsg = err.message;
       if (friendlyMsg.includes('Failed to fetch')) friendlyMsg = 'NETWORK_ERROR: CANNOT_REACH_SERVER';
       setError(friendlyMsg.toUpperCase());
-      setShowModal(true); // Ensure modal stays open to show the error
     } finally {
       setLoading(false);
     }
@@ -85,16 +56,10 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
       <button 
         onClick={() => { setShowModal(true); setError(''); }} 
         disabled={loading || currentBalance <= 0}
-        className="brutal-button-outline px-5 py-3 text-sm flex items-center gap-2 w-full sm:w-auto disabled:opacity-50 disabled:grayscale"
+        className="brutal-button-outline px-5 py-3 text-sm flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-50 disabled:grayscale"
       >
         {loading ? 'PROCESSING...' : 'REFUND_FUNDS'}
       </button>
-
-      {error && (
-        <div className="absolute right-0 top-full z-10 text-red-600 font-bold font-mono text-[10px] mt-2 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444] uppercase">
-          {error}
-        </div>
-      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -119,21 +84,23 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
               
               <div className="space-y-6">
                 <div className="p-4 bg-red-50 border-2 border-red-600 text-red-600 text-[10px] font-bold uppercase leading-relaxed">
-                  Warning: This will pull all available USDC from the escrow contract back to your wallet. Funds locked in active milestones will remain in the contract.
+                  Warning: This will pull all available USDC from the escrow contract back to your wallet. All active issues will be permanently cancelled. This action is fully automated and irreversible.
                 </div>
 
                 <div className="flex gap-4 mt-8 pt-8 border-t-4 border-slate-950 border-dashed">
                   <button 
                     onClick={() => setShowModal(false)}
-                    className="brutal-button-outline py-4 px-6 flex-1 text-sm"
+                    disabled={loading}
+                    className="brutal-button-outline py-4 px-6 flex-1 text-sm disabled:opacity-50"
                   >
                     ABORT
                   </button>
                   <button 
                     onClick={handleRefund}
-                    className="bg-red-600 text-white px-6 py-4 flex-[1.5] text-sm font-bold border-4 border-slate-950 shadow-[4px_4px_0_0_#020617] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all uppercase"
+                    disabled={loading}
+                    className="bg-red-600 text-white px-6 py-4 flex-[1.5] text-sm font-bold border-4 border-slate-950 shadow-[4px_4px_0_0_#020617] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all uppercase disabled:opacity-50"
                   >
-                    SIGN_SWEEP_TX
+                    {loading ? 'PROCESSING...' : 'CONFIRM_REFUND'}
                   </button>
                 </div>
               </div>

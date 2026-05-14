@@ -5,6 +5,7 @@ import { createRepoEscrow, fundEscrow } from '../lib/trustless-work/escrow.js';
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
 import type { Repo, Issue, Contributor, Assignment } from '../types/index.js';
 import { isMaintainer, isAssignedContributor, isAssignedContributorById } from '../lib/auth.js';
+import { postComment } from '../lib/github/comments.js';
 
 
 /* ------------------------------------------------------------------ */
@@ -258,172 +259,143 @@ export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerR
 }
 
 /* ------------------------------------------------------------------ */
-/* POST /api/escrow/withdraw-unsigned                                  */
-/* Body: { repoId, amount, maintainerWallet }                          */
+/* POST /api/escrow/refund                                              */
+/* Body: { repoId }                                                     */
 /* ------------------------------------------------------------------ */
-export async function withdrawEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function refundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; maintainerWallet: string };
-
-  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
-  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
-
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
 
+  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string };
+  const { repoId } = body;
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
-  if (!(await isMaintainer(githubId, repo.id))) {
-    json(res, { error: 'Forbidden: Only maintainers can withdraw funds' }, 403);
+
+  if (!(await isMaintainer(githubId, repoId))) {
+    json(res, { error: 'Forbidden: Only maintainers can refund funds' }, 403);
     return;
   }
 
+  // Fetch maintainer's stellar wallet
+  const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_id', githubId).single();
+  if (!maintainer?.stellar_wallet) {
+    json(res, { error: 'You must link your Stellar wallet before refunding' }, 400);
+    return;
+  }
+
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', repoId).single<Repo>();
+  if (!repo || !repo.escrow_contract_id) {
+    json(res, { error: 'Repo or escrow not found' }, 404);
+    return;
+  }
+
+  const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
+  let totalRefunded = 0;
+  let cancelledCount = 0;
+
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
-    const { Transaction, Keypair, Networks } = await import('stellar-sdk');
+    const { signAndSendTransaction } = await import('../lib/stellar/signer.js');
 
-    const networkPassphrase = process.env.STELLAR_NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
-    const platformSecret = process.env.PLATFORM_STELLAR_SECRET_KEY!;
-    const platformPair = Keypair.fromSecret(platformSecret);
+    // Fetch live escrow
+    const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as Array<any>;
+    const escrowData = escrowArray[0];
+    if (!escrowData) throw new Error('Escrow not found on Trustless Work');
 
-    // 1. Try to release the setup milestone (milestone 0) just in case it's blocking
-    try {
-      console.log('[Withdraw] Attempting to clear setup milestone (0)...');
-      
-      // Approve milestone 0
+    const milestones = escrowData.milestones ?? [];
+
+    for (let i = 0; i < milestones.length; i++) {
+      const m = milestones[i];
+      if (m.flags?.released || m.flags?.resolved) continue;
+
+      // Dispute
       try {
-        const appPayload = {
-          contractId: repo.escrow_contract_id,
-          approver: platformPair.publicKey(),
-          milestoneIndex: "0",
-        };
-        console.log('[Withdraw] Approval Payload:', JSON.stringify(appPayload));
-
-        const appRes = await twFetch('/escrow/multi-release/approve-milestone', {
+        console.log(`[Refund] Disputing milestone ${i} for repo ${repo.full_name}`);
+        const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
           method: 'POST',
-          body: JSON.stringify(appPayload),
+          body: JSON.stringify({
+            signer: platformKey,
+            contractId: repo.escrow_contract_id,
+            milestoneIndex: String(i)
+          })
         }) as { unsignedTransaction: string };
-
-        if (appRes.unsignedTransaction) {
-          const tx = new Transaction(appRes.unsignedTransaction, networkPassphrase);
-          tx.sign(platformPair);
-          await twFetch('/helper/send-transaction', {
-            method: 'POST',
-            body: JSON.stringify({ signedXdr: tx.toXDR() }),
-          });
-        }
-      } catch (e: any) {
-        console.log('[Withdraw] Approval skip:', e.message);
+        await signAndSendTransaction(disputeRes.unsignedTransaction);
+      } catch (err: any) {
+        if (!err.message.includes('already in dispute')) throw err;
       }
 
-      // Release milestone 0
+      // Resolve
       try {
-        const relPayload = {
-          contractId: repo.escrow_contract_id,
-          releaseSigner: platformPair.publicKey(),
-          milestoneIndex: "0",
-        };
-        console.log('[Withdraw] Release Payload:', JSON.stringify(relPayload));
-
-        const relRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
+        console.log(`[Refund] Resolving milestone ${i} for repo ${repo.full_name}`);
+        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
           method: 'POST',
-          body: JSON.stringify(relPayload),
+          body: JSON.stringify({
+            disputeResolver: platformKey,
+            contractId: repo.escrow_contract_id,
+            milestoneIndex: String(i),
+            distributions: [{ destination: maintainer.stellar_wallet, amount: String(m.amount) }]
+          })
         }) as { unsignedTransaction: string };
-
-        if (relRes.unsignedTransaction) {
-          const tx = new Transaction(relRes.unsignedTransaction, networkPassphrase);
-          tx.sign(platformPair);
-          await twFetch('/helper/send-transaction', {
-            method: 'POST',
-            body: JSON.stringify({ signedXdr: tx.toXDR() }),
-          });
-        }
-      } catch (e: any) {
-        console.log('[Withdraw] Release skip:', e.message);
+        await signAndSendTransaction(resolveRes.unsignedTransaction);
+        totalRefunded += Number(m.amount);
+      } catch (err: any) {
+        if (!err.message.includes('already resolved') && !err.message.includes('already released')) throw err;
       }
-      
-      console.log('[Withdraw] Setup milestone cleared. Waiting for settlement...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    } catch (err: any) {
-      console.log('[Withdraw] Setup milestone cleanup skipped/failed:', err.message);
     }
 
-    // 2. Fetch the REAL on-chain balance to ensure distribution matches perfectly
-    try {
-      // The API requires GET with addresses[] query param for balance
-      const balanceInfo = await twFetch(`/helper/get-multiple-escrow-balance?addresses[]=${repo.escrow_contract_id}`, {
-        method: 'GET'
-      }) as Array<{ address: string, balance: number }>;
-      
-      console.log('[Withdraw] On-chain Balance Info:', JSON.stringify(balanceInfo, null, 2));
-      
-      const onChainBalance = balanceInfo[0]?.balance ?? repo.escrow_balance;
-      console.log('[Withdraw] Final On-chain Balance:', onChainBalance);
+    // Withdraw remaining
+    const balRes = await twFetch(`/helper/get-multiple-escrow-balance?addresses[]=${repo.escrow_contract_id}`, { method: 'GET' }) as Array<{ address: string, balance: number }>;
+    const currentBalance = Number(balRes[0]?.balance ?? 0);
 
-      // 3. Now generate the sweep transaction
-      const requestBody = {
-        contractId: repo.escrow_contract_id,
-        disputeResolver: body.maintainerWallet,
-        distributions: [
-          {
-            address: body.maintainerWallet,
-            amount: onChainBalance
-          }
-        ]
-      };
-      
-      const response = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
+    if (currentBalance > 0) {
+      console.log(`[Refund] Withdrawing remaining balance ${currentBalance} for repo ${repo.full_name}`);
+      const wRes = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
         method: 'POST',
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          contractId: repo.escrow_contract_id,
+          disputeResolver: platformKey,
+          distributions: [{ address: maintainer.stellar_wallet, amount: currentBalance }]
+        })
       }) as { unsignedTransaction: string };
-
-      json(res, { unsignedTransaction: response.unsignedTransaction });
-    } catch (err: any) {
-      console.error('[Withdraw] Balance fetch or Sweep failed:', err.message);
-      json(res, { error: `On-chain Sync Failed: ${err.message}` }, 500);
+      await signAndSendTransaction(wRes.unsignedTransaction);
+      totalRefunded += currentBalance;
     }
-  } catch (err: any) {
-    console.error('[Withdraw] Error from TrustlessWork:', err.message);
-    json(res, { error: err.message }, 500);
-  }
-}
 
-/* ------------------------------------------------------------------ */
-/* POST /api/escrow/submit-withdraw                                     */
-/* Body: { repoId, amount, signedXdr }                                  */
-/* ------------------------------------------------------------------ */
-export async function submitWithdrawHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+    // DB cleanup
+    const { data: issuesToCancel } = await supabase.from('issues').select('id, github_issue_number').eq('repo_id', repoId).in('status', ['pending', 'active']);
+    
+    if (issuesToCancel && issuesToCancel.length > 0) {
+      const issueIds = issuesToCancel.map((iss: any) => iss.id);
+      
+      const { data: assignments } = await supabase.from('assignments').select('issue_id, contributors(github_username)').in('issue_id', issueIds);
+      const assignmentMap = new Map();
+      if (assignments) {
+        for (const a of assignments) {
+          assignmentMap.set(a.issue_id, (a.contributors as any)?.github_username);
+        }
+      }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; signedXdr: string };
+      await supabase.from('assignments').update({ payout_status: 'failed' }).in('issue_id', issueIds);
+      await supabase.from('issues').update({ status: 'cancelled' }).in('id', issueIds);
 
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
-
-  if (!(await isMaintainer(githubId, body.repoId))) {
-    json(res, { error: 'Forbidden: Only maintainers can perform this action' }, 403);
-    return;
-  }
-
-  try {
-    const { twFetch } = await import('../lib/trustless-work/client.js');
-    await twFetch('/helper/send-transaction', {
-      method: 'POST',
-      body: JSON.stringify({ signedXdr: body.signedXdr }),
-    });
-
-    const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
-    if (repo) {
-      // After a full sweep, the available unassigned balance is 0
-      await supabase.from('repos').update({ escrow_balance: 0 }).eq('id', repo.id);
-      json(res, { ok: true, newBalance: 0 });
-    } else {
-      json(res, { ok: true });
+      for (const iss of issuesToCancel) {
+        const username = assignmentMap.get(iss.id);
+        const mention = username ? `@${username} ` : '';
+        await postComment(
+          repo.full_name,
+          iss.github_issue_number,
+          `🚫 **Bounty Cancelled.**\n\n${mention}The maintainer has withdrawn funds from the escrow. This bounty is now cancelled.\n\n[View Escrow Contract](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
+        );
+        cancelledCount++;
+      }
     }
+
+    await supabase.from('repos').update({ escrow_balance: 0 }).eq('id', repoId);
+
+    json(res, { refundedAmount: totalRefunded, cancelledIssues: cancelledCount });
   } catch (err: any) {
+    console.error('[Refund] Failed:', err);
     json(res, { error: err.message }, 500);
   }
 }
