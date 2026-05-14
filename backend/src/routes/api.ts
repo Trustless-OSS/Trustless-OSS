@@ -144,10 +144,10 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
           serviceProvider: platformKey,
           platformAddress: platformKey,
           releaseSigner: platformKey, // platform auto-releases
-          disputeResolver: platformKey, // platform resolves disputes for automated flows
+          disputeResolver: 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX', // Hardcoded Resolver Wallet
         },
         platformFee: 0,
-        milestones: [{ description: `Escrow Initialized`, amount: 0.000001, receiver: platformKey }],
+        milestones: [{ description: `Escrow Initialized`, amount: 0.01, receiver: platformKey }],
         trustline: { address: TESTNET_USDC, symbol: 'USDC' },
       }),
     }) as { unsignedTransaction: string };
