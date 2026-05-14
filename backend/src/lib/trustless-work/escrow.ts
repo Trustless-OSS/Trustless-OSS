@@ -9,7 +9,7 @@ export async function createRepoEscrow(params: {
   repoName: string;
 }): Promise<{ contractId: string }> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
-  const resolverKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY || platformKey;
+  const resolverKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY;
 
   const response = await twFetch('/deployer/multi-release', {
     method: 'POST',
@@ -29,7 +29,7 @@ export async function createRepoEscrow(params: {
       milestones: [
         {
           description: `Initial Escrow Setup`,
-          amount: 0.01, // Minimum amount required to satisfy contract checks
+          amount: 0.001, // Minimum amount required to satisfy contract checks
           receiver: platformKey, // Placeholder receiver
         }
       ],
