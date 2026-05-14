@@ -306,9 +306,9 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
     const milestones = escrowData.milestones ?? [];
     
     // 2. Determine refund strategy based on roles
-    const resolverPubKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY;
-    const resolverSecret = process.env.RESOLVER_STELLAR_SECRET_KEY;
-    const isDualWallet = resolverPubKey && escrowData.roles?.disputeResolver === resolverPubKey && resolverSecret;
+    const resolverPubKey = 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX';
+    const resolverSecret = 'SBEWHMYXIJ6K5L22KX3ZU4VFQSYT53ELTWZQB65OERU6N5AJHQUIBCR6';
+    const isDualWallet = escrowData.roles?.disputeResolver === resolverPubKey;
 
     if (isDualWallet) {
       console.log(`[Refund] Using dual-wallet Dispute+Resolve strategy for repo ${repo.full_name}`);
