@@ -9,7 +9,9 @@ export async function createRepoEscrow(params: {
   repoName: string;
 }): Promise<{ contractId: string }> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
-  const resolverKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY;
+  const resolverKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY || platformKey;
+  
+  console.log(`[Escrow] Deploying with Resolver Key: ${resolverKey}`);
 
   const response = await twFetch('/deployer/multi-release', {
     method: 'POST',
