@@ -304,30 +304,51 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
     if (!escrowData) throw new Error('Escrow not found on Trustless Work');
 
     const milestones = escrowData.milestones ?? [];
+    
+    // 2. Determine refund strategy based on roles
+    const resolverPubKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY;
+    const resolverSecret = process.env.RESOLVER_STELLAR_SECRET_KEY;
+    const isDualWallet = resolverPubKey && escrowData.roles?.disputeResolver === resolverPubKey && resolverSecret;
 
-    // 2. Consolidate and redirect all unreleased funds
-    const totalToRefund = milestones.reduce((acc: number, m: any) => {
-      if (!m.flags?.released && !m.flags?.resolved) return acc + Number(m.amount);
-      return acc;
-    }, 0);
+    if (isDualWallet) {
+      console.log(`[Refund] Using dual-wallet Dispute+Resolve strategy for repo ${repo.full_name}`);
+      for (let i = 0; i < milestones.length; i++) {
+        const m = milestones[i];
+        if (m.flags?.released || m.flags?.resolved) continue;
 
-    if (totalToRefund > 0) {
-      console.log(`[Refund] Redirecting ${totalToRefund} USDC to maintainer for repo ${repo.full_name}`);
-      
-      const newMilestones = milestones.map((m: any) => {
-        // If already released/resolved, keep as is but clean up properties
-        if (m.flags?.released || m.flags?.resolved) {
-          return {
-            description: m.description,
-            amount: Number(m.amount),
-            receiver: m.receiver,
-            status: m.status,
-            evidence: m.evidence ?? '',
-            flags: m.flags
-          };
+        // Dispute as Platform-Main (Approver)
+        try {
+          const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
+            method: 'POST',
+            body: JSON.stringify({
+              signer: platformKey,
+              contractId: repo.escrow_contract_id,
+              milestoneIndex: String(i)
+            })
+          }) as { unsignedTransaction: string };
+          await signAndSendTransaction(disputeRes.unsignedTransaction);
+        } catch (err: any) {
+          if (!err.message.includes('already in dispute')) throw err;
         }
-        
-        // Redirect unreleased milestones to maintainer
+
+        // Resolve as Platform-Resolver
+        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
+          method: 'POST',
+          body: JSON.stringify({
+            disputeResolver: resolverPubKey,
+            contractId: repo.escrow_contract_id,
+            milestoneIndex: String(i),
+            distributions: [{ address: maintainer.stellar_wallet, amount: Number(m.amount) }]
+          })
+        }) as { unsignedTransaction: string };
+        await signAndSendTransaction(resolveRes.unsignedTransaction, resolverSecret);
+        totalRefunded += Number(m.amount);
+      }
+    } else {
+      // Legacy Strategy: Update + Release
+      console.log(`[Refund] Using legacy Update+Release strategy for repo ${repo.full_name}`);
+      const newMilestones = milestones.map((m: any) => {
+        if (m.flags?.released || m.flags?.resolved) return { ...m, amount: Number(m.amount), evidence: m.evidence ?? '' };
         return {
           description: `Refund: ${m.description}`,
           amount: Number(m.amount),
@@ -338,112 +359,79 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
         };
       });
 
-      // Explicitly construct the escrow payload with only required/allowed fields
-      const escrowPayload = {
-        engagementId: escrowData.engagementId,
-        title: escrowData.title,
-        description: escrowData.description,
-        roles: escrowData.roles,
-        platformFee: Number(escrowData.platformFee ?? 0),
-        trustline: escrowData.trustline,
-        milestones: newMilestones,
-        isActive: true
-      };
-
-      // Update escrow to change receivers
-      console.log(`[Refund] Updating escrow to redirect funds...`);
       const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
         method: 'PUT',
         body: JSON.stringify({
           signer: platformKey,
           contractId: repo.escrow_contract_id,
-          escrow: escrowPayload,
+          escrow: {
+            engagementId: escrowData.engagementId,
+            title: escrowData.title,
+            description: escrowData.description,
+            roles: escrowData.roles,
+            platformFee: Number(escrowData.platformFee ?? 0),
+            trustline: escrowData.trustline,
+            milestones: newMilestones,
+            isActive: true
+          },
         }),
       }) as { unsignedTransaction: string };
       await signAndSendTransaction(updateRes.unsignedTransaction);
 
-      // Release each redirected milestone
       for (let i = 0; i < newMilestones.length; i++) {
         const m = newMilestones[i];
         if (m.description.startsWith('Refund:')) {
-          console.log(`[Refund] Approving and releasing milestone at index ${i}`);
-          
-          // 1. Approve
           const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
-            method: 'POST',
-            body: JSON.stringify({
-              approver: platformKey,
-              contractId: repo.escrow_contract_id,
-              milestoneIndex: String(i),
-            }),
+            method: 'POST', body: JSON.stringify({ approver: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(i) })
           }) as { unsignedTransaction: string };
           await signAndSendTransaction(approveRes.unsignedTransaction);
 
-          // 2. Release
           const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
-            method: 'POST',
-            body: JSON.stringify({
-              releaseSigner: platformKey,
-              contractId: repo.escrow_contract_id,
-              milestoneIndex: String(i),
-            }),
+            method: 'POST', body: JSON.stringify({ releaseSigner: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(i) })
           }) as { unsignedTransaction: string };
           await signAndSendTransaction(releaseRes.unsignedTransaction);
-          
           totalRefunded += m.amount;
         }
       }
     }
 
-    // Withdraw remaining
+    // 3. Final Balance Sweep
     const balRes = await twFetch(`/helper/get-multiple-escrow-balance?addresses[]=${repo.escrow_contract_id}`, { method: 'GET' }) as Array<{ address: string, balance: number }>;
     const currentBalance = Number(balRes[0]?.balance ?? 0);
 
     if (currentBalance > 0) {
-      console.log(`[Refund] Withdrawing remaining balance ${currentBalance} for repo ${repo.full_name}`);
+      console.log(`[Refund] Withdrawing extra remaining balance ${currentBalance} for repo ${repo.full_name}`);
       const wRes = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
         method: 'POST',
         body: JSON.stringify({
           contractId: repo.escrow_contract_id,
-          disputeResolver: platformKey,
+          disputeResolver: isDualWallet ? resolverPubKey : platformKey,
           distributions: [{ address: maintainer.stellar_wallet, amount: currentBalance }]
         })
       }) as { unsignedTransaction: string };
-      await signAndSendTransaction(wRes.unsignedTransaction);
+      await signAndSendTransaction(wRes.unsignedTransaction, isDualWallet ? resolverSecret : undefined);
       totalRefunded += currentBalance;
     }
 
-    // DB cleanup
+    // 4. DB cleanup
     const { data: issuesToCancel } = await supabase.from('issues').select('id, github_issue_number').eq('repo_id', repoId).in('status', ['pending', 'active']);
     
     if (issuesToCancel && issuesToCancel.length > 0) {
       const issueIds = issuesToCancel.map((iss: any) => iss.id);
-      
-      const { data: assignments } = await supabase.from('assignments').select('issue_id, contributors(github_username)').in('issue_id', issueIds);
-      const assignmentMap = new Map();
-      if (assignments) {
-        for (const a of assignments) {
-          assignmentMap.set(a.issue_id, (a.contributors as any)?.github_username);
-        }
-      }
-
       await supabase.from('assignments').update({ payout_status: 'failed' }).in('issue_id', issueIds);
       await supabase.from('issues').update({ status: 'cancelled' }).in('id', issueIds);
 
       for (const iss of issuesToCancel) {
-        const username = assignmentMap.get(iss.id);
-        const mention = username ? `@${username} ` : '';
         await postComment(
           repo.full_name,
           iss.github_issue_number,
-          `🚫 **Bounty Cancelled.**\n\n${mention}The maintainer has withdrawn funds from the escrow. This bounty is now cancelled.\n\n[View Escrow Contract](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
+          `🚫 **Bounty Cancelled.**\n\nThe maintainer has withdrawn funds from the escrow. This bounty is now cancelled.\n\n[View Escrow Contract](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
         );
         cancelledCount++;
       }
     }
 
     await supabase.from('repos').update({ escrow_balance: 0 }).eq('id', repoId);
-
     json(res, { refundedAmount: totalRefunded, cancelledIssues: cancelledCount });
   } catch (err: any) {
     console.error('[Refund] Failed:', err);

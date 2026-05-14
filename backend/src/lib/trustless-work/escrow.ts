@@ -9,6 +9,7 @@ export async function createRepoEscrow(params: {
   repoName: string;
 }): Promise<{ contractId: string }> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
+  const resolverKey = process.env.RESOLVER_STELLAR_PUBLIC_KEY || platformKey;
 
   const response = await twFetch('/deployer/multi-release', {
     method: 'POST',
@@ -22,7 +23,7 @@ export async function createRepoEscrow(params: {
         serviceProvider: platformKey,
         platformAddress: platformKey,
         releaseSigner: platformKey,
-        disputeResolver: platformKey, // platform resolves disputes for automated flows
+        disputeResolver: resolverKey, // Use dedicated resolver wallet if available
       },
       platformFee: 0,
       milestones: [
