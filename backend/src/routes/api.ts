@@ -305,42 +305,93 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
 
     const milestones = escrowData.milestones ?? [];
 
-    for (let i = 0; i < milestones.length; i++) {
-      const m = milestones[i];
-      if (m.flags?.released || m.flags?.resolved) continue;
+    // 2. Consolidate and redirect all unreleased funds
+    const totalToRefund = milestones.reduce((acc: number, m: any) => {
+      if (!m.flags?.released && !m.flags?.resolved) return acc + Number(m.amount);
+      return acc;
+    }, 0);
 
-      // Dispute
-      try {
-        console.log(`[Refund] Disputing milestone ${i} for repo ${repo.full_name}`);
-        const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
-          method: 'POST',
-          body: JSON.stringify({
-            signer: platformKey,
-            contractId: repo.escrow_contract_id,
-            milestoneIndex: String(i)
-          })
-        }) as { unsignedTransaction: string };
-        await signAndSendTransaction(disputeRes.unsignedTransaction);
-      } catch (err: any) {
-        if (!err.message.includes('already in dispute')) throw err;
-      }
+    if (totalToRefund > 0) {
+      console.log(`[Refund] Redirecting ${totalToRefund} USDC to maintainer for repo ${repo.full_name}`);
+      
+      const newMilestones = milestones.map((m: any) => {
+        // If already released/resolved, keep as is but clean up properties
+        if (m.flags?.released || m.flags?.resolved) {
+          return {
+            description: m.description,
+            amount: Number(m.amount),
+            receiver: m.receiver,
+            status: m.status,
+            evidence: m.evidence ?? '',
+            flags: m.flags
+          };
+        }
+        
+        // Redirect unreleased milestones to maintainer
+        return {
+          description: `Refund: ${m.description}`,
+          amount: Number(m.amount),
+          receiver: maintainer.stellar_wallet,
+          status: 'pending',
+          evidence: m.evidence ?? '',
+          flags: { approved: false, released: false, disputed: false, resolved: false }
+        };
+      });
 
-      // Resolve
-      try {
-        console.log(`[Refund] Resolving milestone ${i} for repo ${repo.full_name}`);
-        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
-          method: 'POST',
-          body: JSON.stringify({
-            disputeResolver: platformKey,
-            contractId: repo.escrow_contract_id,
-            milestoneIndex: String(i),
-            distributions: [{ address: maintainer.stellar_wallet, amount: Number(m.amount) }]
-          })
-        }) as { unsignedTransaction: string };
-        await signAndSendTransaction(resolveRes.unsignedTransaction);
-        totalRefunded += Number(m.amount);
-      } catch (err: any) {
-        if (!err.message.includes('already resolved') && !err.message.includes('already released')) throw err;
+      // Explicitly construct the escrow payload with only required/allowed fields
+      const escrowPayload = {
+        engagementId: escrowData.engagementId,
+        title: escrowData.title,
+        description: escrowData.description,
+        roles: escrowData.roles,
+        platformFee: Number(escrowData.platformFee ?? 0),
+        trustline: escrowData.trustline,
+        milestones: newMilestones,
+        isActive: true
+      };
+
+      // Update escrow to change receivers
+      console.log(`[Refund] Updating escrow to redirect funds...`);
+      const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
+        method: 'PUT',
+        body: JSON.stringify({
+          signer: platformKey,
+          contractId: repo.escrow_contract_id,
+          escrow: escrowPayload,
+        }),
+      }) as { unsignedTransaction: string };
+      await signAndSendTransaction(updateRes.unsignedTransaction);
+
+      // Release each redirected milestone
+      for (let i = 0; i < newMilestones.length; i++) {
+        const m = newMilestones[i];
+        if (m.description.startsWith('Refund:')) {
+          console.log(`[Refund] Approving and releasing milestone at index ${i}`);
+          
+          // 1. Approve
+          const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
+            method: 'POST',
+            body: JSON.stringify({
+              approver: platformKey,
+              contractId: repo.escrow_contract_id,
+              milestoneIndex: String(i),
+            }),
+          }) as { unsignedTransaction: string };
+          await signAndSendTransaction(approveRes.unsignedTransaction);
+
+          // 2. Release
+          const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
+            method: 'POST',
+            body: JSON.stringify({
+              releaseSigner: platformKey,
+              contractId: repo.escrow_contract_id,
+              milestoneIndex: String(i),
+            }),
+          }) as { unsignedTransaction: string };
+          await signAndSendTransaction(releaseRes.unsignedTransaction);
+          
+          totalRefunded += m.amount;
+        }
       }
     }
 
