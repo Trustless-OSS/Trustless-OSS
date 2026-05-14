@@ -320,10 +320,18 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
 
       // Resolve 100% to maintainer
       try {
+        const resolverPubKey = 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX';
+        const resolverSecret = 'SBEWHMYXIJ6K5L22KX3ZU4VFQSYT53ELTWZQB65OERU6N5AJHQUIBCR6';
+
+        // Fetch live escrow to check resolver
+        const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as any[];
+        const escrowData = escrowArray[0];
+        const isDualWallet = escrowData?.roles?.disputeResolver === resolverPubKey;
+
         const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
           method: 'POST',
           body: JSON.stringify({
-            disputeResolver: platformKey,
+            disputeResolver: isDualWallet ? resolverPubKey : platformKey,
             contractId: repo.escrow_contract_id,
             milestoneIndex: String(targetIssue.milestone_index),
             distributions: [
@@ -332,7 +340,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
           })
         }) as { unsignedTransaction: string };
         const { signAndSendTransaction } = await import('../stellar/signer.js');
-        await signAndSendTransaction(resolveRes.unsignedTransaction);
+        await signAndSendTransaction(resolveRes.unsignedTransaction, isDualWallet ? resolverSecret : undefined);
       } catch (e: any) {
         if (!e.message.includes('already resolved') && !e.message.includes('already released')) throw e;
       }
@@ -863,17 +871,25 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
         distributions.push({ address: maintainer.stellar_wallet, amount: maintainerAmount });
       }
 
+      const resolverPubKey = 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX';
+      const resolverSecret = 'SBEWHMYXIJ6K5L22KX3ZU4VFQSYT53ELTWZQB65OERU6N5AJHQUIBCR6';
+
+      // Fetch live escrow to check resolver
+      const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as any[];
+      const escrowData = escrowArray[0];
+      const isDualWallet = escrowData?.roles?.disputeResolver === resolverPubKey;
+
       const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
         method: 'POST',
         body: JSON.stringify({
-          disputeResolver: platformKey,
+          disputeResolver: isDualWallet ? resolverPubKey : platformKey,
           contractId: repo.escrow_contract_id,
           milestoneIndex: String(issueRecord.milestone_index),
           distributions
         })
       }) as { unsignedTransaction: string };
       const { signAndSendTransaction } = await import('../stellar/signer.js');
-      await signAndSendTransaction(resolveRes.unsignedTransaction);
+      await signAndSendTransaction(resolveRes.unsignedTransaction, isDualWallet ? resolverSecret : undefined);
 
       await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
       await supabase.from('issues').update({ status: 'completed' }).eq('id', issueRecord.id);
