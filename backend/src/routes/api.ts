@@ -200,12 +200,20 @@ export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: Serve
   if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
 
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; funderWallet: string };
+  console.log(`[Fund] Request for repo ${body.repoId}, amount: ${body.amount}, funder: ${body.funderWallet}`);
+
+  if (!body.amount || body.amount <= 0 || !body.funderWallet) {
+    json(res, { error: 'Invalid amount or funder wallet' }, 400);
+    return;
+  }
 
   const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
-  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed for this repository' }, 400); return; }
 
   const { data: { user } } = await supabase.auth.getUser(token);
-  const githubId = Number(user?.user_metadata?.provider_id ?? user?.user_metadata?.sub);
+  if (!user) { json(res, { error: 'User not found' }, 401); return; }
+
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
   if (!(await isMaintainer(githubId, repo.id))) {
     json(res, { error: 'Forbidden: Only maintainers can fund the escrow' }, 403);
     return;
