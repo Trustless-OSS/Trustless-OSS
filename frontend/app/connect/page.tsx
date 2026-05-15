@@ -22,6 +22,8 @@ function ConnectForm() {
   const [isAssigned, setIsAssigned] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [countdown, setCountdown] = useState(3);
+  const [redirectUrl, setRedirectUrl] = useState('');
 
   useEffect(() => {
     async function checkAccess() {
@@ -34,7 +36,6 @@ function ConnectForm() {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // Not logged in — redirect to login immediately, preserving the return URL
           window.location.href = `/login?next=/connect?issue=${issueId}&repo=${repoId}`;
           return;
         }
@@ -45,7 +46,6 @@ function ConnectForm() {
 
         if (res.ok) {
           const { contributor } = await res.json();
-          // Check if any of the user's assignments match this issue
           const match = contributor?.assignments?.some((a: any) => 
             String(a.issues?.github_issue_id) === String(issueId)
           );
@@ -59,6 +59,15 @@ function ConnectForm() {
     }
     checkAccess();
   }, [issueId, repoId]);
+
+  useEffect(() => {
+    if (done && redirectUrl && countdown > 0) {
+      const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (done && redirectUrl && countdown === 0) {
+      window.location.href = redirectUrl;
+    }
+  }, [done, redirectUrl, countdown]);
 
   async function handleConnect() {
     setLoading(true);
@@ -96,6 +105,9 @@ function ConnectForm() {
         throw new Error(data.error ?? 'Failed to connect wallet');
       }
 
+      const { repoFullName, issueNumber } = await res.json();
+      setRedirectUrl(`https://github.com/${repoFullName}/issues/${issueNumber}`);
+      
       notifySuccess('Wallet Connected', 'Your payout address has been successfully linked to this issue.');
       setDone(true);
     } catch (e: any) {
@@ -112,12 +124,26 @@ function ConnectForm() {
         <div className="label-brutal bg-blue-600 text-white mb-6 w-fit mx-auto border-2 border-slate-950 px-3 py-1">
           SYS_STATUS // SUCCESS
         </div>
-        <div className="text-6xl mb-6">✅</div>
+        <div className="text-6xl mb-6 animate-bounce">✅</div>
         <h2 className="title-brutal text-3xl text-slate-950 mb-4">WALLET_LINKED</h2>
-        <div className="terminal-block text-left text-sm">
+        
+        <div className="terminal-block text-left text-sm mb-8">
           <span className="text-blue-400">log:</span> Payout wallet mapped to issue registry.<br />
-          <span className="text-blue-400">log:</span> You may close this window and merge PR.
+          <span className="text-blue-400">log:</span> You may close this window or wait.<br />
+          <div className="mt-4 pt-4 border-t border-blue-900/30 flex items-center justify-between">
+            <span className="text-blue-400">status:</span>
+            <span className="bg-blue-600 text-white px-2 py-0.5 font-bold animate-pulse">
+              REDIRECTING_IN_{countdown}s...
+            </span>
+          </div>
         </div>
+
+        <a 
+          href={redirectUrl}
+          className="text-xs font-mono font-bold text-slate-400 hover:text-blue-600 transition-colors uppercase underline underline-offset-4"
+        >
+          Click here if not redirected automatically
+        </a>
       </div>
     );
   }
@@ -188,7 +214,6 @@ export default function ConnectPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white brutal-border p-8 md:p-12 brutal-shadow relative">
-        {/* Interactive Close Element */}
         <button 
           onClick={() => router.back()}
           className="absolute top-0 right-0 w-8 h-8 bg-blue-600 border-b-4 border-l-4 border-slate-950 flex items-center justify-center text-white hover:bg-slate-950 transition-colors cursor-pointer group z-20"

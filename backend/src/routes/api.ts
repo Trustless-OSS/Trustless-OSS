@@ -659,7 +659,11 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
     console.error('[API] Failed to post comment after wallet connect:', e);
   }
 
-  json(res, { ok: true });
+  json(res, { 
+    ok: true, 
+    repoFullName: repo.full_name, 
+    issueNumber: issue.github_issue_number 
+  });
 }
 
 /* ------------------------------------------------------------------ */
