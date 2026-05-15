@@ -12,14 +12,14 @@ export default async function HomePage() {
 
       <main className="flex-1 flex flex-col w-full px-6 md:px-12 pt-20 pb-32">
         {/* Hero Section */}
-        <section className="flex flex-col max-w-6xl mt-12 mb-32 border-l-8 border-slate-950 pl-8 md:pl-16 relative">
+        <section className="flex flex-col max-w-6xl mt-4 mb-32 border-l-8 border-slate-950 pl-8 md:pl-16 relative">
           <div className="absolute -left-[5px] top-0 w-2 h-20 bg-blue-600"></div>
 
-          <div className="label-brutal mb-8 bg-slate-950 text-white inline-flex px-3 py-1 w-fit brutal-shadow animate-pulse-brutal">
+          <div className="label-brutal mb-6 bg-slate-950 text-white inline-flex px-3 py-1 w-fit brutal-shadow animate-pulse-brutal">
             SYS.STATUS // <span className="text-blue-400">OPERATIONAL</span>
           </div>
 
-          <h1 className="text-5xl md:text-8xl lg:text-[7rem] font-black leading-[0.85] tracking-tighter mb-8 text-slate-950 uppercase italic">
+          <h1 className="text-4xl md:text-7xl lg:text-8xl font-black leading-[0.85] tracking-tighter mb-8 text-slate-950 uppercase italic">
             Automated<br />
             <span className="text-blue-600">Bounties</span><br />
             For OSS.
@@ -36,14 +36,14 @@ export default async function HomePage() {
           <div className="flex flex-col sm:flex-row gap-6 max-w-xl">
             <Link
               href={user ? "/dashboard" : "/login"}
-              className="brutal-button px-8 py-5 text-lg w-full sm:w-auto"
+              className="brutal-button px-8 py-5 text-base w-full sm:w-auto"
             >
               {user ? "ACCESS_DASHBOARD" : "INIT_PROTOCOL"}
             </Link>
             
             <Link
               href="/docs"
-              className="brutal-button-outline px-8 py-5 text-lg w-full sm:w-auto text-center"
+              className="brutal-button-outline px-8 py-5 text-base w-full sm:w-auto text-center"
             >
               READ_DOCS
             </Link>
@@ -86,11 +86,11 @@ export default async function HomePage() {
                 <div className="absolute top-0 right-0 bg-blue-600 text-white font-mono font-bold px-3 py-1 border-b-4 border-l-4 border-slate-950">
                   {item.step}
                 </div>
-                <div className="text-6xl font-black text-slate-200 mb-6 font-mono tracking-tighter">
+                <div className="text-5xl font-black text-slate-200 mb-6 font-mono tracking-tighter">
                   {item.metric}
                 </div>
                 <h3 className="title-brutal text-2xl text-slate-950 mb-4">{item.title}</h3>
-                <p className="text-slate-700 font-medium font-mono text-sm">{item.desc}</p>
+                <p className="text-slate-700 font-medium font-mono text-xs">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -117,9 +117,9 @@ export default async function HomePage() {
                 </thead>
                 <tbody className="bg-white border-4 border-t-0 border-slate-950">
                   {[
-                    { label: 'low', amount: '0.01 USDC', note: 'Small fixes, typos', cls: 'diff-low' },
-                    { label: 'medium', amount: '0.02 USDC', note: 'Feature additions', cls: 'diff-medium' },
-                    { label: 'high', amount: '0.03 USDC', note: 'Complex features', cls: 'diff-high' },
+                    { label: 'low', amount: '1.00 USDC', note: 'Small fixes, typos', cls: 'diff-low' },
+                    { label: 'medium', amount: '2.00 USDC', note: 'Feature additions', cls: 'diff-medium' },
+                    { label: 'high', amount: '3.00 USDC', note: 'Complex features', cls: 'diff-high' },
                     { label: 'custom', amount: 'custom amount set by maintainer', note: 'Variable addition', cls: 'status-active' },
                   ].map((row, i) => (
                     <tr key={row.label} className={i !== 3 ? "border-b-[4px] border-slate-950" : ""}>
