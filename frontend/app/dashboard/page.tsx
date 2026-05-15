@@ -53,17 +53,6 @@ export default async function DashboardPage(props: DashboardProps) {
     <div className="w-full">
       <InstallationSuccessHandler />
 
-      {isSyncing && (
-        <div className="mb-8 p-4 bg-white brutal-border brutal-shadow-blue flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-slate-950 animate-pulse" />
-            <p className="font-mono font-bold text-sm text-slate-950">
-              SYS_SYNC // AWAITING GITHUB_WEBHOOK_EVENT
-            </p>
-          </div>
-          <Link href="/dashboard" className="text-xs font-bold uppercase underline">Dismiss</Link>
-        </div>
-      )}
 
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 border-b-[4px] border-slate-950 pb-4">
         <div>

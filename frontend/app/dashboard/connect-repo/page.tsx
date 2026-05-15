@@ -12,7 +12,7 @@ export default function ConnectRepoPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data === 'github-installation-success') {
-        router.push('/dashboard?syncing=true');
+        router.push('/dashboard');
       }
     };
 
