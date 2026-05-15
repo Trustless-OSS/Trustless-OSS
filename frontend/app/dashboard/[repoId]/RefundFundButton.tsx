@@ -63,7 +63,7 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-white border-[6px] border-slate-950 w-full max-w-md shadow-[16px_16px_0px_0px_#ef4444]">
+          <div className="bg-white border-4 border-slate-950 w-full max-w-md shadow-[12px_12px_0px_0px_#ef4444] animate-in zoom-in-95 duration-200">
             <div className="h-4 bg-red-600 border-b-4 border-slate-950 w-full" />
             
             <div className="p-8">
@@ -86,19 +86,19 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
                 <div className="p-4 bg-red-50 border-2 border-red-600 text-red-600 text-[10px] font-bold uppercase leading-relaxed">
                   Warning: This will pull all available USDC from the escrow contract back to your wallet. All active issues will be permanently cancelled. This action is fully automated and irreversible.
                 </div>
-
+ 
                 <div className="flex gap-4 mt-8 pt-8 border-t-4 border-slate-950 border-dashed">
                   <button 
                     onClick={() => setShowModal(false)}
                     disabled={loading}
-                    className="brutal-button-outline py-4 px-6 flex-1 text-sm disabled:opacity-50"
+                    className="flex-1 py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-white text-slate-950 shadow-[4px_4px_0_0_#ef4444] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50"
                   >
                     ABORT
                   </button>
                   <button 
                     onClick={handleRefund}
                     disabled={loading}
-                    className="bg-red-600 text-white px-6 py-4 flex-[1.5] text-sm font-bold border-4 border-slate-950 shadow-[4px_4px_0_0_#020617] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all uppercase disabled:opacity-50"
+                    className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-red-600 text-white shadow-[4px_4px_0_0_#ef4444] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50"
                   >
                     {loading ? 'PROCESSING...' : 'CONFIRM_REFUND'}
                   </button>
