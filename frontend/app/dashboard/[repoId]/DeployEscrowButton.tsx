@@ -56,7 +56,7 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
   }
 
   return (
-    <div className="mt-2 flex flex-col items-end">
+    <div className="mt-2 flex flex-col items-start">
       <button 
         onClick={handleDeploy} 
         disabled={loading}
@@ -64,7 +64,7 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
       >
         {loading ? 'Deploying...' : 'Deploy Escrow Contract'}
       </button>
-      {error && <div className="text-red-400 text-xs mt-2 max-w-[200px] text-right">{error}</div>}
+      {error && <div className="text-red-400 text-xs mt-2 max-w-[200px] text-left">{error}</div>}
     </div>
   );
 }
