@@ -9,7 +9,7 @@ interface NavbarProps {
 export default function Navbar({ user, breadcrumbs }: NavbarProps) {
   return (
     <nav className="sticky top-0 z-50 w-full bg-slate-50 brutal-border-b">
-      <div className="px-6 h-16 flex items-center justify-between">
+      <div className="px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-slate-950 flex items-center justify-center text-white font-black text-xl brutal-shadow-blue">
