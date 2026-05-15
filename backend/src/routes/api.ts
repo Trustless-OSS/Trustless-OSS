@@ -958,21 +958,43 @@ export async function deleteRepoHandler(
         }
 
         const app = new App({ appId: Number(appId), privateKey: finalKey });
+        const installationId = Number(repo.github_installation_id);
 
-        // Remove app access from this single repository
-        const [owner, repoName] = repo.full_name.split('/');
-        await app.octokit.request(
-          'DELETE /installations/{installation_id}/repositories/{repository_id}',
-          {
-            installation_id: repo.github_installation_id,
-            repository_id: repo.github_repo_id,
+        // Check if this is the last repository for this installation in our DB
+        const { count } = await supabase
+          .from('repos')
+          .select('id', { count: 'exact', head: true })
+          .eq('github_installation_id', repo.github_installation_id)
+          .neq('id', repoId);
+
+        const otherReposCount = count ?? 0;
+
+        if (otherReposCount === 0) {
+          // Last repo in our DB — uninstall the app entirely from the account
+          await app.octokit.request('DELETE /app/installations/{installation_id}', {
+            installation_id: installationId,
+          });
+          console.log(`[API] ✅ Uninstalled GitHub App for installation ${installationId} (last repo: ${repo.full_name})`);
+        } else {
+          // Other repos still exist in our DB — try to remove just this one
+          try {
+            await app.octokit.request(
+              'DELETE /installations/{installation_id}/repositories/{repository_id}',
+              {
+                installation_id: installationId,
+                repository_id: Number(repo.github_repo_id),
+              }
+            );
+            console.log(`[API] ✅ Removed repository ${repo.full_name} from installation ${installationId}`);
+          } catch (removeErr: any) {
+            // If removing one repo fails (e.g. "All repositories" selection), it's often a 403 or 422.
+            console.warn(`[API] ⚠️ Could not remove repo from installation (might be 'All repositories' selection): ${removeErr.message}`);
           }
-        );
-        console.log(`[API] ✅ Removed GitHub App from repo: ${repo.full_name}`);
+        }
       }
     } catch (ghErr: any) {
       // Log but don't fail — still proceed with DB cleanup
-      console.error(`[API] ⚠️ GitHub App removal failed (continuing): ${ghErr.message}`);
+      console.error(`[API] ⚠️ GitHub App management failed (continuing): ${ghErr.message}`);
     }
   }
 

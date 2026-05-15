@@ -1003,8 +1003,14 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
       }
     }
   } else if (action === 'deleted') {
-    // Optionally disable or delete repos when the app is uninstalled
-    console.log(`[Webhook] 🗑️ Uninstalled app from account: ${installation.account.login}`);
+    // Cleanup all repos associated with this installation
+    console.log(`[Webhook] 🗑️ Uninstalled app from account: ${installation.account.login} (Installation ID: ${installation.id})`);
+    const { error } = await supabase.from('repos').delete().eq('github_installation_id', installation.id);
+    if (error) {
+      console.error(`[Webhook] ❌ Failed to cleanup repos for uninstalled installation ${installation.id}:`, error.message);
+    } else {
+      console.log(`[Webhook] ✅ Successfully cleared all repos for installation ${installation.id} from DB.`);
+    }
   }
 }
 
@@ -1063,7 +1069,13 @@ export async function handleInstallationRepositories(payload: Record<string, unk
     }
   } else if (action === 'removed') {
     for (const repo of repositoriesRemoved) {
-      console.log(`[Webhook] ➖ Removed repo from installation: ${repo.full_name}`);
+      console.log(`[Webhook] ➖ Removed repo from installation: ${repo.full_name} (ID: ${repo.id})`);
+      const { error } = await supabase.from('repos').delete().eq('github_repo_id', repo.id);
+      if (error) {
+        console.error(`[Webhook] ❌ Failed to remove repo ${repo.full_name} from DB:`, error.message);
+      } else {
+        console.log(`[Webhook] ✅ Successfully removed repo ${repo.full_name} from DB.`);
+      }
     }
   }
 }
