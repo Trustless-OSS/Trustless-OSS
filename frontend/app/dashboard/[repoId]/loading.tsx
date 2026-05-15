@@ -2,8 +2,8 @@ import LoadingLogo from '../../components/LoadingLogo';
 
 export default function RepoDetailLoading() {
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col items-center justify-center p-4">
-      <div className="flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[200] bg-slate-50 overflow-hidden">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-10">
         <LoadingLogo message="FETCHING_REPO_METADATA..." size="lg" />
       </div>
       
