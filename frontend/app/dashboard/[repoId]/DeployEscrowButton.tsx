@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getWalletKit } from '../../lib/walletKit';
+import LoadingLogo from '../../components/LoadingLogo';
 
 export default function DeployEscrowButton({ repoId, token }: { repoId: string, token: string }) {
   const [loading, setLoading] = useState(false);
@@ -60,9 +61,16 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
       <button 
         onClick={handleDeploy} 
         disabled={loading}
-        className="brutal-button px-4 py-2 text-sm"
+        className="brutal-button px-6 py-3 text-sm flex items-center gap-3"
       >
-        {loading ? 'Deploying...' : 'Deploy Escrow Contract'}
+        {loading ? (
+          <>
+            <LoadingLogo size="tiny" />
+            <span>DEPLOYING...</span>
+          </>
+        ) : (
+          'DEPLOY ESCROW CONTRACT'
+        )}
       </button>
       {error && <div className="text-red-400 text-xs mt-2 max-w-[200px] text-left">{error}</div>}
     </div>

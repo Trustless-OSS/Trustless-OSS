@@ -2,7 +2,7 @@ import LoadingLogo from '../../components/LoadingLogo';
 
 export default function RepoDetailLoading() {
   return (
-    <div className="w-full min-h-[70vh] flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center">
       <LoadingLogo message="FETCHING_REPO_METADATA..." size="lg" />
       
       {/* Ghost layout for structural hint */}

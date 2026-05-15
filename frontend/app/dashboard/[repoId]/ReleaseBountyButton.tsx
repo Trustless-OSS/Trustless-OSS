@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { notifySuccess, handleError } from '@/lib/notifications';
+import LoadingLogo from '../../components/LoadingLogo';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -59,10 +60,13 @@ export default function RetryProcessButton({
     <button
       onClick={handleRetry}
       disabled={loading}
-      className="brutal-button px-3 py-1 text-[10px]"
+      className="brutal-button px-3 py-1 text-[10px] flex items-center gap-2"
     >
       {loading ? (
-        'RETRYING...'
+        <>
+          <LoadingLogo size="tiny" />
+          <span>RETRYING...</span>
+        </>
       ) : (
         'EXEC_RETRY'
       )}

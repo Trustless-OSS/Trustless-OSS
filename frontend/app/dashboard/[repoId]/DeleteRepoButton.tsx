@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { handleError, notifySuccess } from '@/lib/notifications';
 import Portal from '../../components/Portal';
+import LoadingLogo from '../../components/LoadingLogo';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -91,9 +92,16 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
                   <button
                     onClick={handleDelete}
                     disabled={loading}
-                    className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-red-600 text-white shadow-[4px_4px_0_0_#dc2626] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50"
+                    className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-red-600 text-white shadow-[4px_4px_0_0_#dc2626] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {loading ? 'DELETING...' : 'CONFIRM_DELETE'}
+                    {loading ? (
+                      <>
+                        <LoadingLogo size="tiny" />
+                        <span>DELETING...</span>
+                      </>
+                    ) : (
+                      'CONFIRM_DELETE'
+                    )}
                   </button>
                 </div>
               </div>

@@ -191,9 +191,16 @@ function ConnectForm() {
         id="connect-wallet-btn"
         onClick={handleConnect}
         disabled={loading}
-        className="brutal-button w-full py-4 text-lg"
+        className="brutal-button w-full py-4 text-lg flex items-center justify-center gap-3"
       >
-        {loading ? 'CONNECTING...' : 'CONNECT_WALLET'}
+        {loading ? (
+          <>
+            <LoadingLogo size="tiny" />
+            <span>CONNECTING...</span>
+          </>
+        ) : (
+          'CONNECT_WALLET'
+        )}
       </button>
 
       <div className="mt-8 pt-6 border-t-[4px] border-slate-950 border-dashed text-center">

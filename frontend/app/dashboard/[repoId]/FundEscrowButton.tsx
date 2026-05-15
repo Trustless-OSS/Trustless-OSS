@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { getWalletKit } from '../../lib/walletKit';
 import Portal from '../../components/Portal';
+import LoadingLogo from '../../components/LoadingLogo';
 
 export default function FundEscrowButton({ repoId, token }: { repoId: string, token: string }) {
   const [loading, setLoading] = useState(false);
@@ -147,10 +148,17 @@ export default function FundEscrowButton({ repoId, token }: { repoId: string, to
                     </button>
                     <button 
                       onClick={handleFund}
-                      disabled={Number(amount) <= 0}
-                      className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-slate-950 text-white shadow-[4px_4px_0_0_#2563eb] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                      disabled={Number(amount) <= 0 || loading}
+                      className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-slate-950 text-white shadow-[4px_4px_0_0_#2563eb] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      SIGN_TX
+                      {loading ? (
+                        <>
+                          <LoadingLogo size="tiny" />
+                          <span>SIGNING...</span>
+                        </>
+                      ) : (
+                        'SIGN_TX'
+                      )}
                     </button>
                   </div>
                 </div>
