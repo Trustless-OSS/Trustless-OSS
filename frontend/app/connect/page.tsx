@@ -195,7 +195,7 @@ function ConnectForm() {
       >
         {loading ? (
           <>
-            <LoadingLogo size="tiny" />
+            <LoadingLogo size="tiny" variant="circle" />
             <span>CONNECTING...</span>
           </>
         ) : (

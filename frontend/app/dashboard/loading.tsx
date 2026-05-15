@@ -2,8 +2,10 @@ import LoadingLogo from '../components/LoadingLogo';
 
 export default function DashboardLoading() {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col items-center justify-center">
-      <LoadingLogo message="SYNCING_DASHBOARD..." size="lg" />
+    <div className="fixed inset-0 z-[200] bg-slate-50 flex flex-col items-center justify-center p-4">
+      <div className="flex flex-col items-center justify-center">
+        <LoadingLogo message="SYNCING_DASHBOARD..." size="lg" />
+      </div>
       
       {/* Background Skeletons for depth */}
       <div className="w-full grid sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-16 opacity-10 pointer-events-none">

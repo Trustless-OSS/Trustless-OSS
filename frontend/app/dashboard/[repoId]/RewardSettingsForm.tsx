@@ -88,7 +88,7 @@ export default function RewardSettingsForm({
           <button
             onClick={editing ? handleSave : () => setEditing(true)}
             disabled={saving}
-            className={`px-6 py-2 font-mono font-black text-sm transition-all duration-200 border-l-4 border-b-4 border-slate-950 z-30 shadow-[4px_4px_0_0_#000] flex items-center gap-2 ${
+            className={`px-6 py-2 font-mono font-black text-sm transition-all duration-200 border-l-4 border-b-4 border-slate-950 z-30 shadow-[4px_4px_0_0_#000] flex items-center justify-center gap-3 ${
               editing 
                 ? 'bg-blue-600 text-white hover:bg-blue-700' 
                 : 'bg-slate-950 text-white hover:bg-slate-800'
@@ -97,11 +97,18 @@ export default function RewardSettingsForm({
             {editing ? (
               saving ? (
                 <>
-                  <LoadingLogo size="tiny" />
+                  <LoadingLogo size="tiny" variant="circle" />
                   <span>WRITING...</span>
                 </>
               ) : 'SAVE'
-            ) : 'CONFIG'}
+            ) : (
+              saving ? (
+                <>
+                  <LoadingLogo size="tiny" variant="circle" />
+                  <span>WAIT...</span>
+                </>
+              ) : 'CONFIG'
+            )}
           </button>
         </div>,
         actionsPortal

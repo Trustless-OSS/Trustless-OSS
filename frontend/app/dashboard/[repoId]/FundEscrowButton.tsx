@@ -97,9 +97,16 @@ export default function FundEscrowButton({ repoId, token }: { repoId: string, to
       <button 
         onClick={() => { setShowModal(true); setError(''); }} 
         disabled={loading}
-        className="brutal-button px-5 py-3 text-sm flex items-center gap-2 w-full sm:w-auto"
+        className="brutal-button px-5 py-3 text-sm flex items-center justify-center gap-3 w-full sm:w-auto min-w-[140px]"
       >
-        {loading ? 'PROCESSING...' : 'FUND_ESCROW'}
+        {loading ? (
+          <>
+            <LoadingLogo size="tiny" variant="circle" />
+            <span>PROCESSING...</span>
+          </>
+        ) : (
+          'FUND_ESCROW'
+        )}
       </button>
       {error && (
         <div className="absolute right-0 top-full z-10 text-red-600 font-bold font-mono text-xs mt-2 max-w-[280px] text-right bg-white p-2 border-2 border-slate-950 shadow-[4px_4px_0_0_#ef4444]">
@@ -149,11 +156,11 @@ export default function FundEscrowButton({ repoId, token }: { repoId: string, to
                     <button 
                       onClick={handleFund}
                       disabled={Number(amount) <= 0 || loading}
-                      className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-slate-950 text-white shadow-[4px_4px_0_0_#2563eb] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-slate-950 text-white shadow-[4px_4px_0_0_#2563eb] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3"
                     >
                       {loading ? (
                         <>
-                          <LoadingLogo size="tiny" />
+                          <LoadingLogo size="tiny" variant="circle" />
                           <span>SIGNING...</span>
                         </>
                       ) : (

@@ -58,9 +58,16 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
       <button 
         onClick={() => { setShowModal(true); setError(''); }} 
         disabled={loading || currentBalance <= 0}
-        className="brutal-button-outline px-5 py-3 text-sm flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-50 disabled:grayscale"
+        className="brutal-button-outline px-5 py-3 text-sm flex items-center justify-center gap-3 w-full sm:w-auto disabled:opacity-50 disabled:grayscale min-w-[140px]"
       >
-        {loading ? 'PROCESSING...' : 'REFUND_FUNDS'}
+        {loading ? (
+          <>
+            <LoadingLogo size="tiny" variant="circle" />
+            <span>PROCESSING...</span>
+          </>
+        ) : (
+          'REFUND_FUNDS'
+        )}
       </button>
 
       {showModal && (
@@ -99,11 +106,11 @@ export default function RefundFundButton({ repoId, token, currentBalance }: { re
                     <button 
                       onClick={handleRefund}
                       disabled={loading}
-                      className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-red-600 text-white shadow-[4px_4px_0_0_#ef4444] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="flex-[1.5] py-4 px-6 text-sm font-bold uppercase border-4 border-slate-950 bg-red-600 text-white shadow-[4px_4px_0_0_#ef4444] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all active:translate-x-[4px] active:translate-y-[4px] disabled:opacity-50 flex items-center justify-center gap-3"
                     >
                       {loading ? (
                         <>
-                          <LoadingLogo size="tiny" />
+                          <LoadingLogo size="tiny" variant="circle" />
                           <span>PROCESSING...</span>
                         </>
                       ) : (

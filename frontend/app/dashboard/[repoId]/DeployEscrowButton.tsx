@@ -61,11 +61,11 @@ export default function DeployEscrowButton({ repoId, token }: { repoId: string, 
       <button 
         onClick={handleDeploy} 
         disabled={loading}
-        className="brutal-button px-6 py-3 text-sm flex items-center gap-3"
+        className="brutal-button px-6 py-3 text-sm flex items-center justify-center gap-3 min-w-[180px]"
       >
         {loading ? (
           <>
-            <LoadingLogo size="tiny" />
+            <LoadingLogo size="tiny" variant="circle" />
             <span>DEPLOYING...</span>
           </>
         ) : (

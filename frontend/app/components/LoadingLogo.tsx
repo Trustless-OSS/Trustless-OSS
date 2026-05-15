@@ -1,6 +1,14 @@
 'use client';
 
-export default function LoadingLogo({ size = 'md', message = 'LOADING_SYSTEM...' }: { size?: 'tiny' | 'sm' | 'md' | 'lg', message?: string }) {
+export default function LoadingLogo({ 
+  size = 'md', 
+  message = 'LOADING_SYSTEM...', 
+  variant = 'square' 
+}: { 
+  size?: 'tiny' | 'sm' | 'md' | 'lg', 
+  message?: string,
+  variant?: 'square' | 'circle'
+}) {
   const sizeClasses = {
     tiny: 'w-4 h-4 text-[10px] border-2',
     sm: 'w-8 h-8 text-xl',
@@ -8,11 +16,19 @@ export default function LoadingLogo({ size = 'md', message = 'LOADING_SYSTEM...'
     lg: 'w-24 h-24 text-5xl',
   };
 
+  const isTiny = size === 'tiny';
+
+  if (variant === 'circle') {
+    return (
+      <div className={`relative ${sizeClasses[size]} rounded-full border-slate-950 border-t-blue-600 animate-spin`} />
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
       <div className="relative">
         {/* Animated Shadow Layer */}
-        {size !== 'tiny' && (
+        {!isTiny && (
           <div 
             className={`absolute inset-0 bg-blue-600 border-4 border-slate-950 animate-pulse-brutal`}
             style={{ transform: 'translate(8px, 8px)' }}
@@ -20,12 +36,12 @@ export default function LoadingLogo({ size = 'md', message = 'LOADING_SYSTEM...'
         )}
         
         {/* Main Logo Box */}
-        <div className={`${sizeClasses[size]} bg-slate-950 text-white font-black flex items-center justify-center ${size === 'tiny' ? 'border-2' : 'border-4'} border-slate-950 relative z-10 animate-bounce-slow`}>
+        <div className={`${sizeClasses[size]} bg-slate-950 text-white font-black flex items-center justify-center ${isTiny ? 'border-2' : 'border-4'} border-slate-950 relative z-10 animate-bounce-slow`}>
           T
         </div>
 
         {/* Orbiting Elements */}
-        {size !== 'tiny' && (
+        {!isTiny && (
           <>
             <div className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-slate-950 animate-spin duration-1000" />
             <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-600 border-2 border-slate-950 animate-ping" />
@@ -33,7 +49,7 @@ export default function LoadingLogo({ size = 'md', message = 'LOADING_SYSTEM...'
         )}
       </div>
 
-      {size !== 'tiny' && (
+      {!isTiny && (
         <div className="flex flex-col items-center gap-2">
           <span className="font-mono text-xs font-bold uppercase tracking-[0.3em] text-slate-950 animate-pulse">
             {message}

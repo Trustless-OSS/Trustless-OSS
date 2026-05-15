@@ -60,11 +60,11 @@ export default function RetryProcessButton({
     <button
       onClick={handleRetry}
       disabled={loading}
-      className="brutal-button px-3 py-1 text-[10px] flex items-center gap-2"
+      className="brutal-button px-3 py-1 text-[10px] flex items-center justify-center gap-2 min-w-[100px]"
     >
       {loading ? (
         <>
-          <LoadingLogo size="tiny" />
+          <LoadingLogo size="tiny" variant="circle" />
           <span>RETRYING...</span>
         </>
       ) : (
