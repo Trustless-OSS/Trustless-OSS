@@ -10,7 +10,7 @@ export default async function HomePage() {
     <div className="relative min-h-[calc(100vh-24px)] flex flex-col selection:bg-blue-600 selection:text-white">
       <Navbar user={user} />
 
-      <main className="flex-1 flex flex-col w-full px-6 md:px-12 pt-20 pb-32">
+      <main className="flex-1 flex flex-col w-full px-6 md:px-12 pt-4 pb-32">
         {/* Hero Section */}
         <section className="flex flex-col max-w-6xl mt-1 mb-32 border-l-8 border-slate-950 pl-8 md:pl-16 relative">
           <div className="absolute -left-[5px] top-0 w-2 h-20 bg-blue-600"></div>
