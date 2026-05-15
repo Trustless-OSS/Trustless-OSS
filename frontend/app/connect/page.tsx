@@ -10,6 +10,8 @@ import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { handleError, notifySuccess } from '@/lib/notifications';
 
+import LoadingLogo from '../components/LoadingLogo';
+
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
 function ConnectForm() {
@@ -156,8 +158,7 @@ function ConnectForm() {
 
       {checking ? (
         <div className="text-center py-8">
-          <div className="w-12 h-12 border-4 border-slate-950 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="font-mono text-xs uppercase font-bold text-slate-500">Verifying Identity...</p>
+          <LoadingLogo message="VERIFYING_ACTOR..." size="md" />
         </div>
       ) : !isAssigned ? (
         <div className="text-center">
