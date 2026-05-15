@@ -12,7 +12,7 @@ export default async function HomePage() {
 
       <main className="flex-1 flex flex-col w-full px-6 md:px-12 pt-20 pb-32">
         {/* Hero Section */}
-        <section className="flex flex-col max-w-6xl mt-4 mb-32 border-l-8 border-slate-950 pl-8 md:pl-16 relative">
+        <section className="flex flex-col max-w-6xl mt-1 mb-32 border-l-8 border-slate-950 pl-8 md:pl-16 relative">
           <div className="absolute -left-[5px] top-0 w-2 h-20 bg-blue-600"></div>
 
           <div className="label-brutal mb-6 bg-slate-950 text-white inline-flex px-3 py-1 w-fit brutal-shadow animate-pulse-brutal">
