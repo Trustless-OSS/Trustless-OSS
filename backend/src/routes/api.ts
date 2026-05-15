@@ -93,9 +93,9 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
         full_name: body.fullName,
         owner_github_id: body.ownerGithubId,
         owner_username: body.ownerUsername,
-        reward_low: 0.01,
-        reward_medium: 0.02,
-        reward_high: 0.03,
+        reward_low: 1,
+        reward_medium: 2,
+        reward_high: 3,
       },
       { onConflict: 'github_repo_id' }
     )
