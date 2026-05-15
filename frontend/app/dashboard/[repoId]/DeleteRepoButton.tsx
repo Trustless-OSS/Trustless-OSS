@@ -49,10 +49,8 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-white border-4 border-slate-950 w-full max-w-md shadow-[12px_12px_0px_0px_#dc2626] animate-in zoom-in-95 duration-200">
-            <div className="h-4 bg-red-600 border-b-4 border-slate-950 w-full" />
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm">
+          <div className="bg-white border-4 border-slate-950 w-full max-w-md shadow-[12px_12px_0px_0px_#020617] animate-in zoom-in-95 duration-200">
             <div className="p-8">
               <div className="mb-8">
                 <div className="label-brutal bg-red-600 text-white px-3 py-1 w-fit mb-4 border-2 border-slate-950">
