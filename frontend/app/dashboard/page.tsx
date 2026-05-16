@@ -87,12 +87,6 @@ export default async function DashboardPage(props: DashboardProps) {
             Connect a GitHub repo to initialize.
           </p>
           <div className="flex flex-col items-center gap-4">
-            <Link
-              href="/dashboard/connect-repo"
-              className="brutal-button px-8 py-4"
-            >
-              INITIALIZE_CONNECTION
-            </Link>
             {isSyncing && (
               <p className="text-xs font-mono font-bold uppercase tracking-widest text-blue-600 animate-pulse mt-4">
                 &gt; Polling for updates...
