@@ -7,22 +7,13 @@ to get your code accepted and your bounty paid.
 
 ## Table of Contents
 
-- [Contributing to Trustless OSS](#contributing-to-trustless-oss)
-  - [Table of Contents](#table-of-contents)
-  - [Getting Started](#getting-started)
-  - [Branching Strategy](#branching-strategy)
-  - [Commit Messages](#commit-messages)
-  - [Pull Request Process](#pull-request-process)
-    - [What will get your PR rejected](#what-will-get-your-pr-rejected)
-  - [Code Quality Gates](#code-quality-gates)
-    - [Backend](#backend)
-    - [Frontend](#frontend)
-    - [All at once (from root)](#all-at-once-from-root)
-  - [Local Development Setup](#local-development-setup)
-    - [Prerequisites](#prerequisites)
-    - [Starting the servers](#starting-the-servers)
-    - [Running the database migration](#running-the-database-migration)
-  - [Running Tests](#running-tests)
+- [Getting Started](#getting-started)
+- [Branching Strategy](#branching-strategy)
+- [Commit Messages](#commit-messages)
+- [Pull Request Process](#pull-request-process)
+- [Code Quality Gates](#code-quality-gates)
+- [Local Development Setup](#local-development-setup)
+- [Running Tests](#running-tests)
 
 ---
 
@@ -238,4 +229,9 @@ New code should include tests. Priority areas:
 - Milestone push/release flows
 - API auth/authorization checks
 
+---
 
+## Questions?
+
+Open a GitHub Discussion or comment on the relevant issue.
+Do not DM maintainers directly for support questions.

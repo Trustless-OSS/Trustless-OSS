@@ -21,7 +21,7 @@ export async function githubWebhookHandler(
 
   const event = (req.headers['x-github-event'] as string) ?? '';
   const sig = (req.headers['x-hub-signature-256'] as string) ?? '';
-  
+
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
     console.error('[Webhook] ❌ GITHUB_WEBHOOK_SECRET is not set in environment variables');
@@ -53,7 +53,9 @@ export async function githubWebhookHandler(
   const action = payload.action as string | undefined;
   const repository = payload.repository as { id: number; full_name: string } | undefined;
 
-  console.log(`[Webhook] ✅ Authorized: ${event}.${action ?? ''} for repo: ${repository?.full_name} (ID: ${repository?.id})`);
+  console.log(
+    `[Webhook] ✅ Authorized: ${event}.${action ?? ''} for repo: ${repository?.full_name} (ID: ${repository?.id})`
+  );
 
   try {
     if (event === 'issues') {

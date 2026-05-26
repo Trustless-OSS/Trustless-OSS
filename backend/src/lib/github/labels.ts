@@ -8,12 +8,12 @@ export function parseLabels(labels: { name: string }[]): ParsedLabels {
   const difficulty: ParsedLabels['difficulty'] = names.includes('custom')
     ? 'custom'
     : names.includes('high')
-    ? 'high'
-    : names.includes('medium')
-    ? 'medium'
-    : names.includes('low')
-    ? 'low'
-    : null;
+      ? 'high'
+      : names.includes('medium')
+        ? 'medium'
+        : names.includes('low')
+          ? 'low'
+          : null;
 
   return { isRewarded, difficulty };
 }
@@ -30,8 +30,8 @@ export function getRewardAmount(
   return difficulty === 'high'
     ? repoDefaults.reward_high
     : difficulty === 'medium'
-    ? repoDefaults.reward_medium
-    : difficulty === 'low'
-    ? repoDefaults.reward_low
-    : 0;
+      ? repoDefaults.reward_medium
+      : difficulty === 'low'
+        ? repoDefaults.reward_low
+        : 0;
 }

@@ -10,14 +10,16 @@ const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
   console.error('❌ Missing DATABASE_URL in .env');
   console.error('Please add your direct Postgres connection string to .env.');
-  console.error('You can find it in your Supabase Dashboard: Project Settings -> Database -> Connection string -> URI');
+  console.error(
+    'You can find it in your Supabase Dashboard: Project Settings -> Database -> Connection string -> URI'
+  );
   process.exit(1);
 }
 
 async function migrate() {
   const client = new Client({
     connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false } // Required for Supabase
+    ssl: { rejectUnauthorized: false }, // Required for Supabase
   });
 
   try {
@@ -29,7 +31,7 @@ async function migrate() {
 
     console.log('Running schema.sql...');
     await client.query(schemaSql);
-    
+
     console.log('🎉 Migration successful!');
   } catch (error) {
     console.error('❌ Migration failed:', error);

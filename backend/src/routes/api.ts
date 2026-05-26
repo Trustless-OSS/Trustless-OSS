@@ -7,16 +7,23 @@ import type { Repo, Issue, Contributor, Assignment } from '../types/index.js';
 import { isMaintainer, isAssignedContributor, isAssignedContributorById } from '../lib/auth.js';
 import { postComment } from '../lib/github/comments.js';
 
-
 /* ------------------------------------------------------------------ */
 /* POST /api/repos/connect                                              */
 /* Body: { githubRepoId, fullName, ownerGithubId, ownerUsername }      */
 /* ------------------------------------------------------------------ */
 export async function connectRepoHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const body = JSON.parse((await readBody(req)).toString()) as {
     githubRepoId: number;
@@ -47,8 +54,8 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
 
     let alreadyExists = false;
     if (existingHooks.ok) {
-      const hooks = await existingHooks.json() as Array<{ config: { url: string } }>;
-      alreadyExists = hooks.some(h => h.config?.url === webhookUrl);
+      const hooks = (await existingHooks.json()) as Array<{ config: { url: string } }>;
+      alreadyExists = hooks.some((h) => h.config?.url === webhookUrl);
     }
 
     if (!alreadyExists) {
@@ -76,7 +83,9 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
         console.log(`[GitHub] ✅ Webhook installed on ${body.fullName} → ${webhookUrl}`);
       } else {
         const errText = await createRes.text();
-        console.error(`[GitHub] ❌ Failed to install webhook on ${body.fullName}: ${createRes.status} ${errText}`);
+        console.error(
+          `[GitHub] ❌ Failed to install webhook on ${body.fullName}: ${createRes.status} ${errText}`
+        );
       }
     } else {
       console.log(`[GitHub] Webhook already exists on ${body.fullName}, skipping.`);
@@ -102,7 +111,10 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
     .select()
     .single<Repo>();
 
-  if (error) { json(res, { error: error.message }, 400); return; }
+  if (error) {
+    json(res, { error: error.message }, 400);
+    return;
+  }
   json(res, { repo: data });
 }
 
@@ -110,16 +122,37 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
 /* POST /api/escrow/create-unsigned                                     */
 /* Body: { repoId, maintainerWallet }                                  */
 /* ------------------------------------------------------------------ */
-export async function createEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function createEscrowUnsignedHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; maintainerWallet: string };
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    repoId: string;
+    maintainerWallet: string;
+  };
 
-  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
-  if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
+  const { data: repo } = await supabase
+    .from('repos')
+    .select('*')
+    .eq('id', body.repoId)
+    .single<Repo>();
+  if (!repo) {
+    json(res, { error: 'Repo not found' }, 404);
+    return;
+  }
 
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
   if (!(await isMaintainer(githubId, repo.id))) {
@@ -132,7 +165,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
-    const response = await twFetch('/deployer/multi-release', {
+    const response = (await twFetch('/deployer/multi-release', {
       method: 'POST',
       body: JSON.stringify({
         signer: body.maintainerWallet,
@@ -140,7 +173,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
         title: `OSS Bounty: ${repo.full_name}`,
         description: `Escrow for OSS bounty rewards in ${repo.full_name}`,
         roles: {
-          approver: platformKey,      // platform auto-approves on PR merge
+          approver: platformKey, // platform auto-approves on PR merge
           serviceProvider: platformKey,
           platformAddress: platformKey,
           releaseSigner: platformKey, // platform auto-releases
@@ -150,7 +183,7 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
         milestones: [{ description: `Escrow Initialized`, amount: 0.01, receiver: platformKey }],
         trustline: { address: TESTNET_USDC, symbol: 'USDC' },
       }),
-    }) as { unsignedTransaction: string };
+    })) as { unsignedTransaction: string };
 
     json(res, { unsignedTransaction: response.unsignedTransaction });
   } catch (err: any) {
@@ -162,14 +195,28 @@ export async function createEscrowUnsignedHandler(req: IncomingMessage, res: Ser
 /* POST /api/escrow/submit-deploy                                       */
 /* Body: { repoId, signedXdr }                                         */
 /* ------------------------------------------------------------------ */
-export async function submitDeployEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function submitDeployEscrowHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    repoId: string;
+    signedXdr: string;
+  };
 
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
 
   if (!(await isMaintainer(githubId, body.repoId))) {
@@ -179,12 +226,15 @@ export async function submitDeployEscrowHandler(req: IncomingMessage, res: Serve
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
-    const result = await twFetch('/helper/send-transaction', {
+    const result = (await twFetch('/helper/send-transaction', {
       method: 'POST',
       body: JSON.stringify({ signedXdr: body.signedXdr }),
-    }) as { contractId: string };
+    })) as { contractId: string };
 
-    await supabase.from('repos').update({ escrow_contract_id: result.contractId }).eq('id', body.repoId);
+    await supabase
+      .from('repos')
+      .update({ escrow_contract_id: result.contractId })
+      .eq('id', body.repoId);
     json(res, { contractId: result.contractId });
   } catch (err: any) {
     json(res, { error: err.message }, 500);
@@ -195,23 +245,47 @@ export async function submitDeployEscrowHandler(req: IncomingMessage, res: Serve
 /* POST /api/escrow/fund-unsigned                                       */
 /* Body: { repoId, amount, funderWallet }                               */
 /* ------------------------------------------------------------------ */
-export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function fundEscrowUnsignedHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; funderWallet: string };
-  console.log(`[Fund] Request for repo ${body.repoId}, amount: ${body.amount}, funder: ${body.funderWallet}`);
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    repoId: string;
+    amount: number;
+    funderWallet: string;
+  };
+  console.log(
+    `[Fund] Request for repo ${body.repoId}, amount: ${body.amount}, funder: ${body.funderWallet}`
+  );
 
   if (!body.amount || body.amount <= 0 || !body.funderWallet) {
     json(res, { error: 'Invalid amount or funder wallet' }, 400);
     return;
   }
 
-  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
-  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed for this repository' }, 400); return; }
+  const { data: repo } = await supabase
+    .from('repos')
+    .select('*')
+    .eq('id', body.repoId)
+    .single<Repo>();
+  if (!repo?.escrow_contract_id) {
+    json(res, { error: 'No escrow deployed for this repository' }, 400);
+    return;
+  }
 
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'User not found' }, 401); return; }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'User not found' }, 401);
+    return;
+  }
 
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
   if (!(await isMaintainer(githubId, repo.id))) {
@@ -221,14 +295,14 @@ export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: Serve
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
-    const response = await twFetch('/escrow/multi-release/fund-escrow', {
+    const response = (await twFetch('/escrow/multi-release/fund-escrow', {
       method: 'POST',
       body: JSON.stringify({
         contractId: repo.escrow_contract_id,
         signer: body.funderWallet,
         amount: Number(body.amount),
       }),
-    }) as { unsignedTransaction: string };
+    })) as { unsignedTransaction: string };
 
     json(res, { unsignedTransaction: response.unsignedTransaction });
   } catch (err: any) {
@@ -241,11 +315,21 @@ export async function fundEscrowUnsignedHandler(req: IncomingMessage, res: Serve
 /* POST /api/escrow/submit-fund                                         */
 /* Body: { repoId, amount, signedXdr }                                  */
 /* ------------------------------------------------------------------ */
-export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function submitFundEscrowHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; amount: number; signedXdr: string };
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    repoId: string;
+    amount: number;
+    signedXdr: string;
+  };
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
@@ -254,7 +338,11 @@ export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerR
       body: JSON.stringify({ signedXdr: body.signedXdr }),
     });
 
-    const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
+    const { data: repo } = await supabase
+      .from('repos')
+      .select('*')
+      .eq('id', body.repoId)
+      .single<Repo>();
     if (repo) {
       const newBalance = repo.escrow_balance + body.amount;
       await supabase.from('repos').update({ escrow_balance: newBalance }).eq('id', repo.id);
@@ -271,11 +359,22 @@ export async function submitFundEscrowHandler(req: IncomingMessage, res: ServerR
 /* POST /api/escrow/refund                                              */
 /* Body: { repoId }                                                     */
 /* ------------------------------------------------------------------ */
-export async function refundEscrowHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function refundEscrowHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const body = JSON.parse((await readBody(req)).toString()) as { repoId: string };
   const { repoId } = body;
@@ -287,7 +386,11 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
   }
 
   // Fetch maintainer's stellar wallet
-  const { data: maintainer } = await supabase.from('contributors').select('stellar_wallet').eq('github_user_id', githubId).single();
+  const { data: maintainer } = await supabase
+    .from('contributors')
+    .select('stellar_wallet')
+    .eq('github_user_id', githubId)
+    .single();
   if (!maintainer?.stellar_wallet) {
     json(res, { error: 'You must link your Stellar wallet before refunding' }, 400);
     return;
@@ -308,12 +411,14 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
     const { signAndSendTransaction } = await import('../lib/stellar/signer.js');
 
     // Fetch live escrow
-    const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as Array<any>;
+    const escrowArray = (await twFetch(
+      `/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`
+    )) as Array<any>;
     const escrowData = escrowArray[0];
     if (!escrowData) throw new Error('Escrow not found on Trustless Work');
 
     const milestones = escrowData.milestones ?? [];
-    
+
     // 2. Determine refund strategy based on roles
     const resolverPubKey = 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX';
     const resolverSecret = 'SBEWHMYXIJ6K5L22KX3ZU4VFQSYT53ELTWZQB65OERU6N5AJHQUIBCR6';
@@ -327,29 +432,29 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
 
         // Dispute as Platform-Main (Approver)
         try {
-          const disputeRes = await twFetch('/escrow/multi-release/dispute-milestone', {
+          const disputeRes = (await twFetch('/escrow/multi-release/dispute-milestone', {
             method: 'POST',
             body: JSON.stringify({
               signer: platformKey,
               contractId: repo.escrow_contract_id,
-              milestoneIndex: String(i)
-            })
-          }) as { unsignedTransaction: string };
+              milestoneIndex: String(i),
+            }),
+          })) as { unsignedTransaction: string };
           await signAndSendTransaction(disputeRes.unsignedTransaction);
         } catch (err: any) {
           if (!err.message.includes('already in dispute')) throw err;
         }
 
         // Resolve as Platform-Resolver
-        const resolveRes = await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
+        const resolveRes = (await twFetch('/escrow/multi-release/resolve-milestone-dispute', {
           method: 'POST',
           body: JSON.stringify({
             disputeResolver: resolverPubKey,
             contractId: repo.escrow_contract_id,
             milestoneIndex: String(i),
-            distributions: [{ address: maintainer.stellar_wallet, amount: Number(m.amount) }]
-          })
-        }) as { unsignedTransaction: string };
+            distributions: [{ address: maintainer.stellar_wallet, amount: Number(m.amount) }],
+          }),
+        })) as { unsignedTransaction: string };
         await signAndSendTransaction(resolveRes.unsignedTransaction, resolverSecret);
         totalRefunded += Number(m.amount);
       }
@@ -357,18 +462,19 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
       // Legacy Strategy: Update + Release
       console.log(`[Refund] Using legacy Update+Release strategy for repo ${repo.full_name}`);
       const newMilestones = milestones.map((m: any) => {
-        if (m.flags?.released || m.flags?.resolved) return { ...m, amount: Number(m.amount), evidence: m.evidence ?? '' };
+        if (m.flags?.released || m.flags?.resolved)
+          return { ...m, amount: Number(m.amount), evidence: m.evidence ?? '' };
         return {
           description: `Refund: ${m.description}`,
           amount: Number(m.amount),
           receiver: maintainer.stellar_wallet,
           status: 'pending',
           evidence: m.evidence ?? '',
-          flags: { approved: false, released: false, disputed: false, resolved: false }
+          flags: { approved: false, released: false, disputed: false, resolved: false },
         };
       });
 
-      const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
+      const updateRes = (await twFetch('/escrow/multi-release/update-escrow', {
         method: 'PUT',
         body: JSON.stringify({
           signer: platformKey,
@@ -381,23 +487,33 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
             platformFee: Number(escrowData.platformFee ?? 0),
             trustline: escrowData.trustline,
             milestones: newMilestones,
-            isActive: true
+            isActive: true,
           },
         }),
-      }) as { unsignedTransaction: string };
+      })) as { unsignedTransaction: string };
       await signAndSendTransaction(updateRes.unsignedTransaction);
 
       for (let i = 0; i < newMilestones.length; i++) {
         const m = newMilestones[i];
         if (m.description.startsWith('Refund:')) {
-          const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
-            method: 'POST', body: JSON.stringify({ approver: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(i) })
-          }) as { unsignedTransaction: string };
+          const approveRes = (await twFetch('/escrow/multi-release/approve-milestone', {
+            method: 'POST',
+            body: JSON.stringify({
+              approver: platformKey,
+              contractId: repo.escrow_contract_id,
+              milestoneIndex: String(i),
+            }),
+          })) as { unsignedTransaction: string };
           await signAndSendTransaction(approveRes.unsignedTransaction);
 
-          const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
-            method: 'POST', body: JSON.stringify({ releaseSigner: platformKey, contractId: repo.escrow_contract_id, milestoneIndex: String(i) })
-          }) as { unsignedTransaction: string };
+          const releaseRes = (await twFetch('/escrow/multi-release/release-milestone-funds', {
+            method: 'POST',
+            body: JSON.stringify({
+              releaseSigner: platformKey,
+              contractId: repo.escrow_contract_id,
+              milestoneIndex: String(i),
+            }),
+          })) as { unsignedTransaction: string };
           await signAndSendTransaction(releaseRes.unsignedTransaction);
           totalRefunded += m.amount;
         }
@@ -405,29 +521,44 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
     }
 
     // 3. Final Balance Sweep
-    const balRes = await twFetch(`/helper/get-multiple-escrow-balance?addresses[]=${repo.escrow_contract_id}`, { method: 'GET' }) as Array<{ address: string, balance: number }>;
+    const balRes = (await twFetch(
+      `/helper/get-multiple-escrow-balance?addresses[]=${repo.escrow_contract_id}`,
+      { method: 'GET' }
+    )) as Array<{ address: string; balance: number }>;
     const currentBalance = Number(balRes[0]?.balance ?? 0);
 
     if (currentBalance > 0) {
-      console.log(`[Refund] Withdrawing extra remaining balance ${currentBalance} for repo ${repo.full_name}`);
-      const wRes = await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
+      console.log(
+        `[Refund] Withdrawing extra remaining balance ${currentBalance} for repo ${repo.full_name}`
+      );
+      const wRes = (await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
         method: 'POST',
         body: JSON.stringify({
           contractId: repo.escrow_contract_id,
           disputeResolver: isDualWallet ? resolverPubKey : platformKey,
-          distributions: [{ address: maintainer.stellar_wallet, amount: currentBalance }]
-        })
-      }) as { unsignedTransaction: string };
-      await signAndSendTransaction(wRes.unsignedTransaction, isDualWallet ? resolverSecret : undefined);
+          distributions: [{ address: maintainer.stellar_wallet, amount: currentBalance }],
+        }),
+      })) as { unsignedTransaction: string };
+      await signAndSendTransaction(
+        wRes.unsignedTransaction,
+        isDualWallet ? resolverSecret : undefined
+      );
       totalRefunded += currentBalance;
     }
 
     // 4. DB cleanup
-    const { data: issuesToCancel } = await supabase.from('issues').select('id, github_issue_number').eq('repo_id', repoId).in('status', ['pending', 'active']);
-    
+    const { data: issuesToCancel } = await supabase
+      .from('issues')
+      .select('id, github_issue_number')
+      .eq('repo_id', repoId)
+      .in('status', ['pending', 'active']);
+
     if (issuesToCancel && issuesToCancel.length > 0) {
       const issueIds = issuesToCancel.map((iss: any) => iss.id);
-      await supabase.from('assignments').update({ payout_status: 'failed' }).in('issue_id', issueIds);
+      await supabase
+        .from('assignments')
+        .update({ payout_status: 'failed' })
+        .in('issue_id', issueIds);
       await supabase.from('issues').update({ status: 'cancelled' }).in('id', issueIds);
 
       for (const iss of issuesToCancel) {
@@ -452,17 +583,38 @@ export async function refundEscrowHandler(req: IncomingMessage, res: ServerRespo
 /* POST /api/escrow/close-unsigned                                     */
 /* Body: { repoId, maintainerWallet }                                  */
 /* ------------------------------------------------------------------ */
-export async function closeEscrowUnsignedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function closeEscrowUnsignedHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; maintainerWallet: string };
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    repoId: string;
+    maintainerWallet: string;
+  };
 
-  const { data: repo } = await supabase.from('repos').select('*').eq('id', body.repoId).single<Repo>();
-  if (!repo?.escrow_contract_id) { json(res, { error: 'No escrow deployed' }, 400); return; }
+  const { data: repo } = await supabase
+    .from('repos')
+    .select('*')
+    .eq('id', body.repoId)
+    .single<Repo>();
+  if (!repo?.escrow_contract_id) {
+    json(res, { error: 'No escrow deployed' }, 400);
+    return;
+  }
 
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
   if (!(await isMaintainer(githubId, repo.id))) {
@@ -472,13 +624,13 @@ export async function closeEscrowUnsignedHandler(req: IncomingMessage, res: Serv
 
   try {
     const { twFetch } = await import('../lib/trustless-work/client.js');
-    const response = await twFetch('/escrow/multi-release/close-escrow', {
+    const response = (await twFetch('/escrow/multi-release/close-escrow', {
       method: 'POST',
       body: JSON.stringify({
         contractId: repo.escrow_contract_id,
         signer: body.maintainerWallet,
       }),
-    }) as { unsignedTransaction: string };
+    })) as { unsignedTransaction: string };
 
     json(res, { unsignedTransaction: response.unsignedTransaction });
   } catch (err: any) {
@@ -492,12 +644,23 @@ export async function closeEscrowUnsignedHandler(req: IncomingMessage, res: Serv
 /* ------------------------------------------------------------------ */
 export async function submitCloseHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { repoId: string; signedXdr: string };
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    repoId: string;
+    signedXdr: string;
+  };
 
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
 
   if (!(await isMaintainer(githubId, body.repoId))) {
@@ -512,7 +675,10 @@ export async function submitCloseHandler(req: IncomingMessage, res: ServerRespon
       body: JSON.stringify({ signedXdr: body.signedXdr }),
     });
 
-    await supabase.from('repos').update({ escrow_contract_id: null, escrow_balance: 0 }).eq('id', body.repoId);
+    await supabase
+      .from('repos')
+      .update({ escrow_contract_id: null, escrow_balance: 0 })
+      .eq('id', body.repoId);
     json(res, { ok: true });
   } catch (err: any) {
     json(res, { error: err.message }, 500);
@@ -525,18 +691,30 @@ export async function submitCloseHandler(req: IncomingMessage, res: ServerRespon
 /* ------------------------------------------------------------------ */
 export async function listReposHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   // GitHub user ID — present on GitHub OAuth logins
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
-  const githubUsername = user.user_metadata?.user_name ?? user.user_metadata?.preferred_username ?? '';
+  const githubUsername =
+    user.user_metadata?.user_name ?? user.user_metadata?.preferred_username ?? '';
 
   console.log(`[API] listRepos: user=${user.id}, githubId=${githubId}, username=${githubUsername}`);
 
   if (!githubId || isNaN(githubId)) {
-    console.error(`[API] listRepos: could not resolve GitHub ID from user metadata:`, JSON.stringify(user.user_metadata));
+    console.error(
+      `[API] listRepos: could not resolve GitHub ID from user metadata:`,
+      JSON.stringify(user.user_metadata)
+    );
     // Fall back to username-based lookup
     if (githubUsername) {
       const { data, error } = await supabase
@@ -544,7 +722,10 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
         .select('*')
         .eq('owner_username', githubUsername)
         .order('created_at', { ascending: false });
-      if (error) { json(res, { error: error.message }, 400); return; }
+      if (error) {
+        json(res, { error: error.message }, 400);
+        return;
+      }
       return json(res, { repos: data ?? [] });
     }
     json(res, { error: 'Could not determine GitHub identity from session' }, 400);
@@ -562,9 +743,14 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
     .eq('owner_type', 'User')
     .order('created_at', { ascending: false });
 
-  console.log(`[API] listRepos: found ${data?.length ?? 0} filtered repos for githubId=${githubId}`);
+  console.log(
+    `[API] listRepos: found ${data?.length ?? 0} filtered repos for githubId=${githubId}`
+  );
 
-  if (error) { json(res, { error: error.message }, 400); return; }
+  if (error) {
+    json(res, { error: error.message }, 400);
+    return;
+  }
   json(res, { repos: data ?? [] });
 }
 
@@ -579,10 +765,13 @@ export async function listIssuesHandler(
   const { data, error } = await supabase
     .from('issues')
     .select('*, assignments(*, contributors(*))')
-    .eq('repo_id', params.repoId!)
+    .eq('repo_id', params.repoId)
     .order('created_at', { ascending: false });
 
-  if (error) { json(res, { error: error.message }, 400); return; }
+  if (error) {
+    json(res, { error: error.message }, 400);
+    return;
+  }
   json(res, { issues: data });
 }
 
@@ -591,11 +780,22 @@ export async function listIssuesHandler(
 /* Body: { githubIssueId, githubRepoId, wallet }                       */
 /* Called after contributor connects their wallet                       */
 /* ------------------------------------------------------------------ */
-export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function pushMilestoneHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const body = JSON.parse((await readBody(req)).toString()) as {
     githubIssueId: number;
@@ -612,12 +812,19 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
     .eq('github_repo_id', body.githubRepoId)
     .single<Repo>();
 
-  if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
+  if (!repo) {
+    json(res, { error: 'Repo not found' }, 404);
+    return;
+  }
 
   // 2. CHECK: Is this user assigned to this issue?
   const isAssigned = await isAssignedContributor(githubUserId, repo.id, body.githubIssueId);
   if (!isAssigned) {
-    json(res, { error: 'Forbidden: Only the assigned contributor can connect their wallet for this issue' }, 403);
+    json(
+      res,
+      { error: 'Forbidden: Only the assigned contributor can connect their wallet for this issue' },
+      403
+    );
     return;
   }
 
@@ -659,10 +866,10 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
     console.error('[API] Failed to post comment after wallet connect:', e);
   }
 
-  json(res, { 
-    ok: true, 
-    repoFullName: repo.full_name, 
-    issueNumber: issue.github_issue_number 
+  json(res, {
+    ok: true,
+    repoFullName: repo.full_name,
+    issueNumber: issue.github_issue_number,
   });
 }
 
@@ -672,9 +879,17 @@ export async function pushMilestoneHandler(req: IncomingMessage, res: ServerResp
 /* ------------------------------------------------------------------ */
 export async function saveWalletHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const body = JSON.parse((await readBody(req)).toString()) as { wallet: string };
 
@@ -689,18 +904,32 @@ export async function saveWalletHandler(req: IncomingMessage, res: ServerRespons
     { onConflict: 'github_user_id' }
   );
 
-  if (error) { json(res, { error: error.message }, 400); return; }
+  if (error) {
+    json(res, { error: error.message }, 400);
+    return;
+  }
   json(res, { ok: true });
 }
 
 /* ------------------------------------------------------------------ */
 /* GET /api/contributor/me                                              */
 /* ------------------------------------------------------------------ */
-export async function getContributorHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+export async function getContributorHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const githubUserId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
 
@@ -723,12 +952,20 @@ export async function updateRepoRewardsHandler(
   params: Record<string, string>
 ): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
-  if (!(await isMaintainer(githubId, params.repoId!))) {
+  if (!(await isMaintainer(githubId, params.repoId))) {
     json(res, { error: 'Forbidden: Only maintainers can update reward levels' }, 403);
     return;
   }
@@ -752,11 +989,14 @@ export async function updateRepoRewardsHandler(
       reward_medium: body.reward_medium,
       reward_high: body.reward_high,
     })
-    .eq('id', params.repoId!)
+    .eq('id', params.repoId)
     .select()
     .single<Repo>();
 
-  if (error) { json(res, { error: error.message }, 400); return; }
+  if (error) {
+    json(res, { error: error.message }, 400);
+    return;
+  }
   json(res, { repo: data });
 }
 
@@ -769,17 +1009,28 @@ export async function retryIssueHandler(
   params: Record<string, string>
 ): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const { data: issue } = await supabase
     .from('issues')
     .select('*, repos(*)')
-    .eq('id', params.issueId!)
+    .eq('id', params.issueId)
     .single<Issue & { repos: Repo }>();
 
-  if (!issue) { json(res, { error: 'Issue not found' }, 404); return; }
+  if (!issue) {
+    json(res, { error: 'Issue not found' }, 404);
+    return;
+  }
 
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
   if (!(await isMaintainer(githubId, issue.repos.id))) {
@@ -793,11 +1044,15 @@ export async function retryIssueHandler(
     .eq('issue_id', issue.id)
     .single<Assignment>();
 
-  if (!assignment) { json(res, { error: 'No assignment found' }, 400); return; }
+  if (!assignment) {
+    json(res, { error: 'No assignment found' }, 400);
+    return;
+  }
 
-  const { pushMilestoneOnChain, releaseEscrowMilestone } = await import('../lib/trustless-work/milestone.js');
+  const { pushMilestoneOnChain, releaseEscrowMilestone } =
+    await import('../lib/trustless-work/milestone.js');
 
-  let currentIssue = { ...issue };
+  const currentIssue = { ...issue };
 
   // Step 1: If pending, try to push milestone
   if (currentIssue.status === 'pending') {
@@ -814,17 +1069,24 @@ export async function retryIssueHandler(
   if (currentIssue.status === 'active') {
     // Verify GitHub status before releasing
     try {
-      const ghRes = await fetch(`https://api.github.com/repos/${issue.repos.full_name}/issues/${issue.github_issue_number}`, {
-        headers: {
-          'Authorization': `token ${process.env.GITHUB_BOT_TOKEN}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Trustless-OSS-Bot'
+      const ghRes = await fetch(
+        `https://api.github.com/repos/${issue.repos.full_name}/issues/${issue.github_issue_number}`,
+        {
+          headers: {
+            Authorization: `token ${process.env.GITHUB_BOT_TOKEN}`,
+            Accept: 'application/vnd.github.v3+json',
+            'User-Agent': 'Trustless-OSS-Bot',
+          },
         }
-      });
-      const ghIssue = await ghRes.json() as any;
+      );
+      const ghIssue = (await ghRes.json()) as any;
 
       if (ghIssue.state !== 'closed') {
-        json(res, { error: 'This issue is still open on GitHub. Please close it or merge the PR first.' }, 400);
+        json(
+          res,
+          { error: 'This issue is still open on GitHub. Please close it or merge the PR first.' },
+          400
+        );
         return;
       }
     } catch (e) {
@@ -835,7 +1097,10 @@ export async function retryIssueHandler(
 
     try {
       const txHash = await releaseEscrowMilestone(issue.repos, currentIssue);
-      await supabase.from('assignments').update({ payout_status: 'released' }).eq('id', assignment.id);
+      await supabase
+        .from('assignments')
+        .update({ payout_status: 'released' })
+        .eq('id', assignment.id);
       await supabase.from('issues').update({ status: 'completed' }).eq('id', currentIssue.id);
       json(res, { ok: true, step: 'released', txHash });
     } catch (releaseErr: any) {
@@ -858,17 +1123,20 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || 'development',
     version: '1.0.0',
-    checks: {}
+    checks: {},
   };
 
   try {
     // 1. Database Check
     const startDb = Date.now();
-    const { error: dbError } = await supabase.from('repos').select('id', { count: 'exact', head: true }).limit(1);
+    const { error: dbError } = await supabase
+      .from('repos')
+      .select('id', { count: 'exact', head: true })
+      .limit(1);
     health.checks.database = {
       status: dbError ? 'error' : 'ok',
       latency: `${Date.now() - startDb}ms`,
-      message: dbError?.message
+      message: dbError?.message,
     };
 
     // 2. Trustless Work API Check
@@ -878,12 +1146,12 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
       await twFetch('/helper/health', { method: 'GET' });
       health.checks.trustless_work = {
         status: 'ok',
-        latency: `${Date.now() - startTw}ms`
+        latency: `${Date.now() - startTw}ms`,
       };
     } catch (e: any) {
       health.checks.trustless_work = {
         status: 'degraded',
-        error: e.message
+        error: e.message,
       };
     }
 
@@ -893,16 +1161,17 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
       'SUPABASE_SERVICE_ROLE_KEY',
       'PLATFORM_STELLAR_PUBLIC_KEY',
       'GITHUB_BOT_TOKEN',
-      'GITHUB_WEBHOOK_SECRET'
+      'GITHUB_WEBHOOK_SECRET',
     ];
-    const missing = requiredVars.filter(v => !process.env[v]);
+    const missing = requiredVars.filter((v) => !process.env[v]);
     health.checks.environment = {
       status: missing.length === 0 ? 'ok' : 'error',
-      missing_variables: missing.length > 0 ? missing : undefined
+      missing_variables: missing.length > 0 ? missing : undefined,
     };
 
     // If any critical check fails, return 503
-    const isHealthy = health.checks.database.status === 'ok' && health.checks.environment.status === 'ok';
+    const isHealthy =
+      health.checks.database.status === 'ok' && health.checks.environment.status === 'ok';
     if (!isHealthy) health.status = 'unhealthy';
 
     json(res, health, isHealthy ? 200 : 503);
@@ -922,9 +1191,17 @@ export async function deleteRepoHandler(
   params: Record<string, string>
 ): Promise<void> {
   const token = getToken(req);
-  if (!token) { json(res, { error: 'Unauthorized' }, 401); return; }
-  const { data: { user } } = await supabase.auth.getUser(token);
-  if (!user) { json(res, { error: 'Unauthorized' }, 401); return; }
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
 
   const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
   const { repoId } = params;
@@ -935,7 +1212,10 @@ export async function deleteRepoHandler(
   }
 
   const { data: repo } = await supabase.from('repos').select('*').eq('id', repoId).single<Repo>();
-  if (!repo) { json(res, { error: 'Repo not found' }, 404); return; }
+  if (!repo) {
+    json(res, { error: 'Repo not found' }, 404);
+    return;
+  }
 
   // Safety guard — cannot delete while funds remain in escrow
   if (repo.escrow_balance > 0) {
@@ -978,7 +1258,9 @@ export async function deleteRepoHandler(
           await app.octokit.request('DELETE /app/installations/{installation_id}', {
             installation_id: installationId,
           });
-          console.log(`[API] ✅ Uninstalled GitHub App for installation ${installationId} (last repo: ${repo.full_name})`);
+          console.log(
+            `[API] ✅ Uninstalled GitHub App for installation ${installationId} (last repo: ${repo.full_name})`
+          );
         } else {
           // Other repos still exist in our DB — try to remove just this one
           try {
@@ -989,10 +1271,14 @@ export async function deleteRepoHandler(
                 repository_id: Number(repo.github_repo_id),
               }
             );
-            console.log(`[API] ✅ Removed repository ${repo.full_name} from installation ${installationId}`);
+            console.log(
+              `[API] ✅ Removed repository ${repo.full_name} from installation ${installationId}`
+            );
           } catch (removeErr: any) {
             // If removing one repo fails (e.g. "All repositories" selection), it's often a 403 or 422.
-            console.warn(`[API] ⚠️ Could not remove repo from installation (might be 'All repositories' selection): ${removeErr.message}`);
+            console.warn(
+              `[API] ⚠️ Could not remove repo from installation (might be 'All repositories' selection): ${removeErr.message}`
+            );
           }
         }
       }

@@ -17,7 +17,7 @@ export async function postComment(
     console.log(`[GitHub] Skipping duplicate comment on ${fullName}#${issueNumber}`);
     return;
   }
-  
+
   commentCache.set(cacheKey, now);
 
   try {
@@ -29,33 +29,44 @@ export async function postComment(
       .single();
 
     if (!repo) {
-      console.error(`[GitHub] ❌ Cannot post comment. Repository ${fullName} not found in database.`);
+      console.error(
+        `[GitHub] ❌ Cannot post comment. Repository ${fullName} not found in database.`
+      );
       return;
     }
 
     // 2. Get a fresh Installation Token
     const repoId = repo.github_repo_id;
-    console.error(`[GitHub] 🔑 Requesting installation token for ${fullName} (DB ID: ${repoId}, Type: ${typeof repoId})`);
+    console.error(
+      `[GitHub] 🔑 Requesting installation token for ${fullName} (DB ID: ${repoId}, Type: ${typeof repoId})`
+    );
     const token = await getInstallationToken(Number(repoId));
     if (!token) {
-      console.error(`[GitHub] ❌ Cannot post comment. Failed to generate auth token for ${fullName}`);
+      console.error(
+        `[GitHub] ❌ Cannot post comment. Failed to generate auth token for ${fullName}`
+      );
       return;
     }
 
     // 3. Post the comment
-    const res = await fetch(`https://api.github.com/repos/${fullName}/issues/${issueNumber}/comments`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ body }),
-    });
+    const res = await fetch(
+      `https://api.github.com/repos/${fullName}/issues/${issueNumber}/comments`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ body }),
+      }
+    );
 
     if (!res.ok) {
       const err = await res.text();
-      console.error(`[GitHub] Failed to post comment on ${fullName}#${issueNumber}: ${res.status} ${err}`);
+      console.error(
+        `[GitHub] Failed to post comment on ${fullName}#${issueNumber}: ${res.status} ${err}`
+      );
       return;
     }
 

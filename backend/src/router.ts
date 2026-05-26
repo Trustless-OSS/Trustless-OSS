@@ -70,9 +70,7 @@ export function json(res: ServerResponse, data: unknown, status = 200): void {
   res.end(JSON.stringify(data));
 }
 
-export function requireAuth(
-  handler: Handler
-): Handler {
+export function requireAuth(handler: Handler): Handler {
   return async (req, res, params) => {
     const auth = req.headers.authorization;
     // Supabase JWT validation — extract user from Bearer token

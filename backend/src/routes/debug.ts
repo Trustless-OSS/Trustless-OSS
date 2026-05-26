@@ -12,10 +12,7 @@ import { json } from '../router.js';
  *
  * REMOVE this endpoint before going to production with sensitive repos.
  */
-export async function debugAuthHandler(
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<void> {
+export async function debugAuthHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
   const repoIdParam = url.searchParams.get('repoId');
 
@@ -32,7 +29,9 @@ export async function debugAuthHandler(
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
 
   steps.push(`GITHUB_APP_ID = ${appId ? `"${appId}"` : 'MISSING'}`);
-  steps.push(`GITHUB_APP_PRIVATE_KEY = ${privateKey ? `present (${privateKey.length} chars)` : 'MISSING'}`);
+  steps.push(
+    `GITHUB_APP_PRIVATE_KEY = ${privateKey ? `present (${privateKey.length} chars)` : 'MISSING'}`
+  );
 
   if (!appId || !privateKey) {
     result.error = 'Missing env vars';
@@ -94,7 +93,9 @@ export async function debugAuthHandler(
     result.error = `DB lookup failed: ${dbErr?.message ?? 'no row'}`;
     return json(res, result, 500);
   }
-  steps.push(`DB repo: full_name="${repo.full_name}", installation_id=${repo.github_installation_id ?? 'NULL'}`);
+  steps.push(
+    `DB repo: full_name="${repo.full_name}", installation_id=${repo.github_installation_id ?? 'NULL'}`
+  );
 
   // ── Step 5: resolve installation ID ───────────────────────────────
   let installationId = repo.github_installation_id ? Number(repo.github_installation_id) : null;
@@ -103,10 +104,10 @@ export async function debugAuthHandler(
     steps.push('installation_id is NULL — trying auto-repair via GitHub API...');
     const [owner, name] = repo.full_name.split('/');
     try {
-      const { data: inst } = await app.octokit.request(
-        'GET /repos/{owner}/{repo}/installation',
-        { owner: owner!, repo: name! }
-      );
+      const { data: inst } = await app.octokit.request('GET /repos/{owner}/{repo}/installation', {
+        owner: owner!,
+        repo: name!,
+      });
       installationId = inst.id;
       steps.push(`Auto-repair succeeded: installation_id = ${installationId}`);
     } catch (e: any) {
@@ -123,7 +124,7 @@ export async function debugAuthHandler(
   try {
     const auth = await app.octokit.request(
       'POST /app/installations/{installation_id}/access_tokens',
-      { installation_id: installationId! }
+      { installation_id: installationId }
     );
     steps.push(`Token generated! Expires: ${auth.data.expires_at}`);
     result.success = true;

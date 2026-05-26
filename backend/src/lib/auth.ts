@@ -22,7 +22,11 @@ export async function isMaintainer(githubUserId: number, repoId: string): Promis
 /**
  * Checks if a GitHub user ID is the assigned contributor for a specific issue.
  */
-export async function isAssignedContributor(githubUserId: number, repoId: string, githubIssueId: number): Promise<boolean> {
+export async function isAssignedContributor(
+  githubUserId: number,
+  repoId: string,
+  githubIssueId: number
+): Promise<boolean> {
   // 1. Get the issue internal ID
   const { data: issue, error: issueError } = await supabase
     .from('issues')
@@ -48,7 +52,10 @@ export async function isAssignedContributor(githubUserId: number, repoId: string
 /**
  * Checks if a GitHub user ID is the assigned contributor by internal issue ID.
  */
-export async function isAssignedContributorById(githubUserId: number, issueId: string): Promise<boolean> {
+export async function isAssignedContributorById(
+  githubUserId: number,
+  issueId: string
+): Promise<boolean> {
   const { data: assignment, error } = await supabase
     .from('assignments')
     .select('contributor_id, contributors(github_user_id)')

@@ -11,19 +11,21 @@ export async function pushMilestoneOnChain(
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
   // Fetch current escrow state to determine the next milestone index
-  const escrowArray = await twFetch(`/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`) as Array<{
+  const escrowArray = (await twFetch(
+    `/helper/get-escrow-by-contract-ids?contractIds[]=${repo.escrow_contract_id}`
+  )) as Array<{
     milestones: unknown[];
     [key: string]: unknown;
   }>;
   const escrowData = escrowArray[0];
-  
+
   if (!escrowData) {
     throw new Error(`Escrow not found: ${repo.escrow_contract_id}`);
   }
 
   const currentMilestones = (escrowData.milestones ?? []) as any[];
   let milestoneIndex = issue.milestone_index;
-  let newMilestones = [...currentMilestones];
+  const newMilestones = [...currentMilestones];
 
   const milestoneData = {
     description: `Issue #${issue.github_issue_number}: ${issue.title}`,
@@ -41,12 +43,19 @@ export async function pushMilestoneOnChain(
     newMilestones.push(milestoneData);
   }
 
-  const { 
-    type, createdAt, updatedAt, balance, inconsistencies, 
-    contractBaseId, isActive, receiverMemo, ...escrowPayload 
+  const {
+    type,
+    createdAt,
+    updatedAt,
+    balance,
+    inconsistencies,
+    contractBaseId,
+    isActive,
+    receiverMemo,
+    ...escrowPayload
   } = escrowData as any;
 
-  const updateRes = await twFetch('/escrow/multi-release/update-escrow', {
+  const updateRes = (await twFetch('/escrow/multi-release/update-escrow', {
     method: 'PUT',
     body: JSON.stringify({
       signer: platformKey,
@@ -56,7 +65,7 @@ export async function pushMilestoneOnChain(
         milestones: newMilestones,
       },
     }),
-  }) as { unsignedTransaction: string };
+  })) as { unsignedTransaction: string };
 
   await signAndSendTransaction(updateRes.unsignedTransaction);
 
@@ -66,33 +75,39 @@ export async function pushMilestoneOnChain(
     .update({ milestone_index: milestoneIndex, status: 'active' })
     .eq('id', issue.id);
 
-  console.log(`[Milestone] Issue #${issue.github_issue_number} pushed on-chain at index ${milestoneIndex}`);
+  console.log(
+    `[Milestone] Issue #${issue.github_issue_number} pushed on-chain at index ${milestoneIndex}`
+  );
 }
 
 export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<string> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
   if (issue.milestone_index == null) {
-    throw new Error(`milestone_index is null for issue #${issue.github_issue_number} — was pushMilestoneOnChain called?`);
+    throw new Error(
+      `milestone_index is null for issue #${issue.github_issue_number} — was pushMilestoneOnChain called?`
+    );
   }
 
   // Step 1: Approve milestone (platformKey must be the escrow approver role)
   try {
-    const approveRes = await twFetch('/escrow/multi-release/approve-milestone', {
+    const approveRes = (await twFetch('/escrow/multi-release/approve-milestone', {
       method: 'POST',
       body: JSON.stringify({
         approver: platformKey,
         contractId: repo.escrow_contract_id,
         milestoneIndex: String(issue.milestone_index),
       }),
-    }) as { unsignedTransaction: string };
+    })) as { unsignedTransaction: string };
 
     await signAndSendTransaction(approveRes.unsignedTransaction);
   } catch (err: any) {
     // If it's already approved, we can safely proceed to release
     const isAlreadyApproved = err.message.includes('already been approved previously');
     if (isAlreadyApproved) {
-      console.log(`[Milestone] Milestone ${issue.milestone_index} already approved, skipping approval step.`);
+      console.log(
+        `[Milestone] Milestone ${issue.milestone_index} already approved, skipping approval step.`
+      );
     } else {
       throw err;
     }
@@ -100,33 +115,46 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
 
   // Step 2: Release milestone funds
   try {
-    const releaseRes = await twFetch('/escrow/multi-release/release-milestone-funds', {
+    const releaseRes = (await twFetch('/escrow/multi-release/release-milestone-funds', {
       method: 'POST',
       body: JSON.stringify({
         releaseSigner: platformKey,
         contractId: repo.escrow_contract_id,
         milestoneIndex: String(issue.milestone_index),
       }),
-    }) as { unsignedTransaction: string };
+    })) as { unsignedTransaction: string };
 
-    const result = await signAndSendTransaction(releaseRes.unsignedTransaction) as { hash?: string; transactionHash?: string };
+    const result = (await signAndSendTransaction(releaseRes.unsignedTransaction)) as {
+      hash?: string;
+      transactionHash?: string;
+    };
     const hash = result.hash || result.transactionHash;
 
-    console.log(`[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`);
+    console.log(
+      `[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`
+    );
     return hash ?? 'success';
   } catch (err: any) {
     // If it's already released, we are done
-    const isAlreadyReleased = err.message.includes('already been released previously') || err.message.includes('already been paid');
+    const isAlreadyReleased =
+      err.message.includes('already been released previously') ||
+      err.message.includes('already been paid');
     if (isAlreadyReleased) {
-      console.log(`[Milestone] Milestone ${issue.milestone_index} already released, returning success.`);
+      console.log(
+        `[Milestone] Milestone ${issue.milestone_index} already released, returning success.`
+      );
       return 'success';
     }
 
     // Special case: 0-amount milestones sometimes fail with dispute errors or other contract restrictions
     // Since there's no actual value to transfer, we can safely treat it as a database-only completion
-    const isDisputeError = err.message.includes('Only the dispute resolver can execute this function');
+    const isDisputeError = err.message.includes(
+      'Only the dispute resolver can execute this function'
+    );
     if (isDisputeError && Number(issue.reward_amount) === 0) {
-      console.log(`[Milestone] Milestone ${issue.milestone_index} (0.00 USDC) encountered a contract restriction. Marking as success locally.`);
+      console.log(
+        `[Milestone] Milestone ${issue.milestone_index} (0.00 USDC) encountered a contract restriction. Marking as success locally.`
+      );
       return 'success';
     }
 

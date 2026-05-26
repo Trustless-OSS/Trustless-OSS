@@ -10,10 +10,10 @@ export async function createRepoEscrow(params: {
 }): Promise<{ contractId: string }> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
   const resolverKey = 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX';
-  
+
   console.log(`[Escrow] Hardcoded Resolver Key Active: ${resolverKey}`);
 
-  const response = await twFetch('/deployer/multi-release', {
+  const response = (await twFetch('/deployer/multi-release', {
     method: 'POST',
     body: JSON.stringify({
       signer: params.maintainerWallet,
@@ -33,16 +33,18 @@ export async function createRepoEscrow(params: {
           description: `Initial Escrow Setup`,
           amount: 0.001, // Minimum amount required to satisfy contract checks
           receiver: platformKey, // Placeholder receiver
-        }
+        },
       ],
       trustline: {
         address: TESTNET_USDC,
         symbol: 'USDC',
       },
     }),
-  }) as { unsignedTransaction: string };
+  })) as { unsignedTransaction: string };
 
-  const result = await signAndSendTransaction(response.unsignedTransaction) as { contractId: string };
+  const result = (await signAndSendTransaction(response.unsignedTransaction)) as {
+    contractId: string;
+  };
   return { contractId: result.contractId };
 }
 
@@ -55,14 +57,14 @@ export async function fundEscrow(params: {
   amount: number;
   funderWallet: string;
 }): Promise<void> {
-  const response = await twFetch('/escrow/multi-release/fund-escrow', {
+  const response = (await twFetch('/escrow/multi-release/fund-escrow', {
     method: 'POST',
     body: JSON.stringify({
       contractId: params.contractId,
       signer: params.funderWallet,
       amount: params.amount,
     }),
-  }) as { unsignedTransaction: string };
+  })) as { unsignedTransaction: string };
 
   await signAndSendTransaction(response.unsignedTransaction);
 }

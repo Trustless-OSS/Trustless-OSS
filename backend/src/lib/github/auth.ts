@@ -13,7 +13,9 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
 
   if (!appId || !privateKey) {
-    console.error(`[GitHub Auth] ❌ Missing env: GITHUB_APP_ID=${appId ? 'present' : 'MISSING'}, GITHUB_APP_PRIVATE_KEY=${privateKey ? 'present' : 'MISSING'}`);
+    console.error(
+      `[GitHub Auth] ❌ Missing env: GITHUB_APP_ID=${appId ? 'present' : 'MISSING'}, GITHUB_APP_PRIVATE_KEY=${privateKey ? 'present' : 'MISSING'}`
+    );
     return null;
   }
 
@@ -41,7 +43,9 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
     return null;
   }
 
-  console.error(`[GitHub Auth] ℹ️  DB row: full_name=${repo.full_name}, installation_id=${repo.github_installation_id ?? 'NULL'}`);
+  console.error(
+    `[GitHub Auth] ℹ️  DB row: full_name=${repo.full_name}, installation_id=${repo.github_installation_id ?? 'NULL'}`
+  );
 
   // 2. Parse private key — handle all common Vercel storage formats:
   //    a) PEM with literal \n  (most common in Vercel env vars)
@@ -69,7 +73,9 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
 
   // Log key diagnostics (safe: only header/footer, no key body)
   const keyLines = finalKey.split('\n');
-  console.error(`[GitHub Auth] 🔑 Key header: "${keyLines[0]}", footer: "${keyLines[keyLines.length - 1]}", total chars: ${finalKey.length}`);
+  console.error(
+    `[GitHub Auth] 🔑 Key header: "${keyLines[0]}", footer: "${keyLines[keyLines.length - 1]}", total chars: ${finalKey.length}`
+  );
 
   // 3. Initialise the Octokit App (signs JWTs with the private key)
   let app: App;
@@ -85,7 +91,9 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
   let installationId = repo.github_installation_id ? Number(repo.github_installation_id) : null;
 
   if (!installationId) {
-    console.error(`[GitHub Auth] 🛠️  installation_id is NULL — attempting auto-repair via GitHub API...`);
+    console.error(
+      `[GitHub Auth] 🛠️  installation_id is NULL — attempting auto-repair via GitHub API...`
+    );
 
     if (!repo.full_name?.includes('/')) {
       console.error(`[GitHub Auth] ❌ Invalid full_name in DB: "${repo.full_name}"`);
@@ -121,14 +129,16 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
   try {
     const auth = await app.octokit.request(
       'POST /app/installations/{installation_id}/access_tokens',
-      { installation_id: installationId! }
+      { installation_id: installationId }
     );
     console.error(`[GitHub Auth] ✅ Token generated for ${repo.full_name}`);
     return auth.data.token;
   } catch (tokenErr: any) {
     const status = tokenErr.status ?? tokenErr.response?.status ?? 'unknown';
     const ghMsg = tokenErr.response?.data?.message ?? tokenErr.message;
-    console.error(`[GitHub Auth] ❌ Token exchange failed (HTTP ${status}) for ${repo.full_name}: ${ghMsg}`);
+    console.error(
+      `[GitHub Auth] ❌ Token exchange failed (HTTP ${status}) for ${repo.full_name}: ${ghMsg}`
+    );
     return null;
   }
 }

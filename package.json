@@ -1,7 +1,7 @@
 {
   "name": "trustless-oss-backend",
   "version": "1.0.0",
-  "description": "OSS Bounty backend — pure Node.js + TypeScript, no frameworks",
+  "description": "Trustless-OSS Bounty backend — pure Node.js + TypeScript, no frameworks",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

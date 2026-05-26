@@ -68,7 +68,10 @@ addRoute('GET', '/api/contributor/me', getContributorHandler);
 
 const ALLOWED_ORIGIN = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 
-export default async function appHandler(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+export default async function appHandler(
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+): Promise<void> {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
