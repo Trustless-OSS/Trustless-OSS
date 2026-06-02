@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Trustless OSS</h1>
-  <p><strong>Live demo:</strong> <a href="https://trustless-oss-web.vercel.app/">https://trustless-oss-web.vercel.app/</a></p>
+  <p><strong>Live demo:</strong> <a href="https://trustless-oss.vercel.app/">https://trustless-oss-web.vercel.app/</a></p>
 </div>
 
 ## What this project is
