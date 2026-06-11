@@ -1,5 +1,5 @@
 {
-  "name": "trustless-oss-backend",
+  "name": "trustless-oss",
   "version": "1.0.0",
   "description": "Trustless-OSS Bounty backend — pure Node.js + TypeScript, no frameworks",
   "main": "dist/server.js",
