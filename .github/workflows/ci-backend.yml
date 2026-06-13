@@ -3,18 +3,8 @@ name: Backend CI
 on:
   push:
     branches: [main, develop]
-    paths:
-      - "apps/backend/**"
-      - ".github/workflows/ci-backend.yml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
   pull_request:
     branches: [main, develop]
-    paths:
-      - "apps/backend/**"
-      - ".github/workflows/ci-backend.yml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
 
 jobs:
   lint-and-typecheck:

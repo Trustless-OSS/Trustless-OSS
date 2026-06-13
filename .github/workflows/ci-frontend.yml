@@ -3,18 +3,8 @@ name: Frontend CI
 on:
   push:
     branches: [main, develop]
-    paths:
-      - "apps/frontend/**"
-      - ".github/workflows/ci-frontend.yml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
   pull_request:
     branches: [main, develop]
-    paths:
-      - "apps/frontend/**"
-      - ".github/workflows/ci-frontend.yml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
 
 jobs:
   lint-and-typecheck:
