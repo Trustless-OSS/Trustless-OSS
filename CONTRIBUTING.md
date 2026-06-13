@@ -20,11 +20,10 @@ to get your code accepted and your bounty paid.
 ## Getting Started
 
 1. **Fork** the repository and clone your fork
-2. Install dependencies: `npm install` (from the root)
-3. Copy environment files:
+2. Install dependencies: `pnpm install` (from the root)
+3. Copy environment file:
    ```bash
-   cp backend/.env.example backend/.env
-   cp frontend/.env.example frontend/.env.local
+   cp .env.example .env
    ```
 4. Fill in environment variables (see README for details)
 5. Create a branch for your work (see [Branching Strategy](#branching-strategy))
@@ -35,10 +34,10 @@ to get your code accepted and your bounty paid.
 
 We use a simple two-branch model:
 
-| Branch | Purpose |
-|---|---|
-| `main` | Production-ready code. **Direct pushes are blocked.** |
-| `develop` | Integration branch. All PRs target here first. |
+| Branch    | Purpose                                               |
+| --------- | ----------------------------------------------------- |
+| `main`    | Production-ready code. **Direct pushes are blocked.** |
+| `develop` | Integration branch. All PRs target here first.        |
 
 **Your working branches** should follow this naming convention:
 
@@ -51,6 +50,7 @@ chore/short-description       # Maintenance tasks
 ```
 
 **Examples:**
+
 ```
 feat/contributor-wallet-connect
 fix/webhook-signature-null-body
@@ -74,21 +74,22 @@ Optional footer: Closes #42
 
 **Valid types:**
 
-| Type | When to use |
-|---|---|
-| `feat` | A new feature |
-| `fix` | A bug fix |
-| `docs` | Documentation changes only |
-| `style` | Formatting, no logic change |
+| Type       | When to use                             |
+| ---------- | --------------------------------------- |
+| `feat`     | A new feature                           |
+| `fix`      | A bug fix                               |
+| `docs`     | Documentation changes only              |
+| `style`    | Formatting, no logic change             |
 | `refactor` | Code restructure, no new feature or fix |
-| `perf` | Performance improvement |
-| `test` | Adding or fixing tests |
-| `build` | Build system or dependency changes |
-| `ci` | CI/CD config changes |
-| `chore` | Misc maintenance |
-| `revert` | Reverting a commit |
+| `perf`     | Performance improvement                 |
+| `test`     | Adding or fixing tests                  |
+| `build`    | Build system or dependency changes      |
+| `ci`       | CI/CD config changes                    |
+| `chore`    | Misc maintenance                        |
+| `revert`   | Reverting a commit                      |
 
 **Examples:**
+
 ```bash
 git commit -m "feat: add @Trustless-OSS /change-address command"
 git commit -m "fix(webhook): handle null PR body in extractIssueNumber"
@@ -131,43 +132,27 @@ These run automatically on every PR and push. You can also run them locally.
 ### Backend
 
 ```bash
-cd backend
-
-# Type check only
-npm run typecheck
-
-# Lint only
-npm run lint
-
-# Format check only
-npm run format:check
-
-# Run all tests
-npm test
-
-# Run everything (same as CI)
-npm run validate
+pnpm --filter @trustless-oss/backend typecheck    # Type check only
+pnpm --filter @trustless-oss/backend lint          # Lint only
+pnpm --filter @trustless-oss/backend format:check  # Format check only
 ```
 
 ### Frontend
 
 ```bash
-cd frontend
-
-# Type check
-npm run typecheck
-
-# Lint
-npm run lint
-
-# Build check
-npm run build
+pnpm --filter @trustless-oss/frontend typecheck    # Type check
+pnpm --filter @trustless-oss/frontend lint          # Lint
+pnpm --filter @trustless-oss/frontend build         # Build check
 ```
 
 ### All at once (from root)
 
 ```bash
-npm run validate
+pnpm validate       # Run typecheck + lint + format check across all apps
+pnpm lint           # Lint all apps
+pnpm typecheck      # Type check all apps
+pnpm build          # Build all apps
+pnpm format         # Auto-format all code
 ```
 
 ---
@@ -185,19 +170,19 @@ npm run validate
 
 ```bash
 # Terminal 1 — backend
-npm run dev:backend
+pnpm dev:backend
 
 # Terminal 2 — frontend
-npm run dev:frontend
+pnpm dev:frontend
 
 # Terminal 3 — webhook proxy (forwards GitHub → localhost)
-cd backend && npm run proxy
+pnpm --filter @trustless-oss/backend proxy
 ```
 
 ### Running the database migration
 
 ```bash
-cd backend && npm run migrate
+pnpm --filter @trustless-oss/backend migrate
 ```
 
 ---
@@ -219,11 +204,13 @@ The coverage report is generated in `backend/coverage/`. Open
 `backend/coverage/index.html` in a browser to explore it.
 
 **Coverage requirements** (enforced in CI):
+
 - Lines: 70%
 - Functions: 70%
 - Branches: 60%
 
 New code should include tests. Priority areas:
+
 - Webhook event handlers
 - Label parsing logic
 - Milestone push/release flows

@@ -1,0 +1,40 @@
+{
+  "name": "@trustless-oss/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint 'app/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' --max-warnings=-1",
+    "lint:fix": "eslint 'app/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write '**/*.{ts,tsx}'",
+    "format:check": "prettier --check '**/*.{ts,tsx}'",
+    "clean": "rm -rf .next out"
+  },
+  "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.2.0",
+    "@stellar/freighter-api": "^6.0.1",
+    "@stellar/stellar-sdk": "^13.3.0",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4",
+    "lucide-react": "^1.14.0",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "15.3.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

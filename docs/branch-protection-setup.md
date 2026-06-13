@@ -14,30 +14,30 @@ Go to: **Settings → Branches → Add branch protection rule**
 
 Enable **"Require status checks to pass before merging"** and add:
 
-| Check name | From workflow |
-|---|---|
-| `Lint & Type Check` | ci-backend.yml |
-| `Build` | ci-backend.yml |
-| `Tests` | ci-backend.yml |
+| Check name          | From workflow   |
+| ------------------- | --------------- |
+| `Lint & Type Check` | ci-backend.yml  |
+| `Build`             | ci-backend.yml  |
+| `Tests`             | ci-backend.yml  |
 | `Lint & Type Check` | ci-frontend.yml |
-| `Build` | ci-frontend.yml |
-| `All Checks Passed` | pr-checks.yml |
+| `Build`             | ci-frontend.yml |
+| `All Checks Passed` | pr-checks.yml   |
 
 Also enable **"Require branches to be up to date before merging"**.
 
 ### Other settings to enable
 
-| Setting | Value | Reason |
-|---|---|---|
-| Require a pull request before merging | ✅ ON | No direct pushes |
-| Required approvals | **1** (or 2 for sensitive branches) | Human review |
-| Dismiss stale reviews when new commits pushed | ✅ ON | Re-review on changes |
-| Require review from Code Owners | ✅ ON (if CODEOWNERS exists) | Expert review |
-| Restrict who can push | ✅ ON — only maintainers | Lock down |
-| Allow force pushes | ❌ OFF | Protect history |
-| Allow deletions | ❌ OFF | Can't delete main |
-| Require signed commits | ✅ ON (recommended) | Verify identity |
-| Require linear history | ✅ ON (recommended) | Clean git log |
+| Setting                                       | Value                               | Reason               |
+| --------------------------------------------- | ----------------------------------- | -------------------- |
+| Require a pull request before merging         | ✅ ON                               | No direct pushes     |
+| Required approvals                            | **1** (or 2 for sensitive branches) | Human review         |
+| Dismiss stale reviews when new commits pushed | ✅ ON                               | Re-review on changes |
+| Require review from Code Owners               | ✅ ON (if CODEOWNERS exists)        | Expert review        |
+| Restrict who can push                         | ✅ ON — only maintainers            | Lock down            |
+| Allow force pushes                            | ❌ OFF                              | Protect history      |
+| Allow deletions                               | ❌ OFF                              | Can't delete main    |
+| Require signed commits                        | ✅ ON (recommended)                 | Verify identity      |
+| Require linear history                        | ✅ ON (recommended)                 | Clean git log        |
 
 ---
 
@@ -46,6 +46,7 @@ Also enable **"Require branches to be up to date before merging"**.
 **Branch name pattern:** `develop`
 
 Same as `main` but:
+
 - Required approvals: **1**
 - Require linear history: Optional
 

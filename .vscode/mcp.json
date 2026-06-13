@@ -1,9 +1,9 @@
 {
-	"servers": {
-		"Trustless Work": {
-			"url": "https://docs.trustlesswork.com/trustless-work/~gitbook/mcp",
-			"type": "http"
-		}
-	},
-	"inputs": []
+  "servers": {
+    "Trustless Work": {
+      "url": "https://docs.trustlesswork.com/trustless-work/~gitbook/mcp",
+      "type": "http"
+    }
+  },
+  "inputs": []
 }

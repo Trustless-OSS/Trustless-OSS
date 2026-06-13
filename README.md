@@ -54,6 +54,7 @@ flowchart LR
 ### Custom bounty flow
 
 If `custom` is applied, the maintainer must comment:
+
 - `@Trustless-OSS 150`
 
 If the amount is missing, the bot will ask for it.
@@ -62,30 +63,30 @@ If the amount is missing, the bot will ask for it.
 
 #### Maintainer commands
 
-| Command | Purpose |
-|---|---|
-| `@Trustless-OSS /pay <percentage>` | Save a partial payout split before merge |
-| `@Trustless-OSS /split <percentage>` | Alias for `/pay`, set contributor share |
-| `@Trustless-OSS /work <percentage>` | Alias for `/pay`, set contribution share |
+| Command                                        | Purpose                                             |
+| ---------------------------------------------- | --------------------------------------------------- |
+| `@Trustless-OSS /pay <percentage>`             | Save a partial payout split before merge            |
+| `@Trustless-OSS /split <percentage>`           | Alias for `/pay`, set contributor share             |
+| `@Trustless-OSS /work <percentage>`            | Alias for `/pay`, set contribution share            |
 | `@Trustless-OSS /work-completion <percentage>` | Save a work-completion percentage for split payouts |
-| `@Trustless-OSS /reject` | Reject the work and refund the escrow |
-| `@Trustless-OSS /rejected` | Same as `/reject` |
-| `@Trustless-OSS /no` | Same as `/reject`, dispute and refund the bounty |
-| `@Trustless-OSS /retry` | Retry a failed payout or release transaction |
+| `@Trustless-OSS /reject`                       | Reject the work and refund the escrow               |
+| `@Trustless-OSS /rejected`                     | Same as `/reject`                                   |
+| `@Trustless-OSS /no`                           | Same as `/reject`, dispute and refund the bounty    |
+| `@Trustless-OSS /retry`                        | Retry a failed payout or release transaction        |
 
 #### Contributor commands
 
-| Command | Purpose |
-|---|---|
-| `@Trustless-OSS /wallet` | Request the wallet connect link |
-| `@Trustless-OSS /address` | Request the wallet connect link |
-| `@Trustless-OSS /connect` | Request the wallet connect link |
+| Command                          | Purpose                           |
+| -------------------------------- | --------------------------------- |
+| `@Trustless-OSS /wallet`         | Request the wallet connect link   |
+| `@Trustless-OSS /address`        | Request the wallet connect link   |
+| `@Trustless-OSS /connect`        | Request the wallet connect link   |
 | `@Trustless-OSS /change-address` | Request a new wallet connect link |
 
 #### General command
 
-| Command | Purpose |
-|---|---|
+| Command                | Purpose                               |
+| ---------------------- | ------------------------------------- |
 | `@Trustless-OSS /help` | Show available bot commands and usage |
 
 > Note: The project does not use `bonus:50` label in code. The active custom flow is `custom` + `@Trustless-OSS <amount>`.
@@ -93,6 +94,7 @@ If the amount is missing, the bot will ask for it.
 ## Issue linking requirement
 
 For automatic payout, a merged PR must reference the issue in its body using keywords like:
+
 - `closes #123`
 - `fixes #123`
 - `resolves #123`
@@ -127,64 +129,108 @@ If the maintainer wallet is not connected, the app asks to connect it before ref
 
 ## Project setup (full docs)
 
+### Prerequisites
+
+- Node.js ≥ 20
+- pnpm ≥ 10 — [install here](https://pnpm.io/installation)
+
+### Root installation
+
+```bash
+# Install all dependencies for both backend and frontend
+pnpm install
+
+# Copy environment template
+cp .env.example .env
+
+# Fill in your environment variables in .env
+```
+
 ### Backend setup
 
 ```bash
-cd backend
-cp .env.example .env
-npm install
-npm run dev
+cd apps/backend
+pnpm dev
 ```
 
 Available backend scripts:
-- `npm run dev` — development server
-- `npm run build` — compile TypeScript
-- `npm start` — start compiled server
-- `npm run migrate` — run migration script
-- `npm run proxy` — webhook proxy helper
+
+- `pnpm dev` — development server with hot reload
+- `pnpm build` — compile TypeScript
+- `pnpm start` — start compiled server
+- `pnpm migrate` — run database migration script
+- `pnpm proxy` — webhook proxy helper (for local testing)
+- `pnpm lint` — run ESLint
+- `pnpm typecheck` — TypeScript type check
 
 ### Frontend setup
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd apps/frontend
+pnpm dev
 ```
 
 Available frontend scripts:
-- `npm run dev` — start Next.js local app
-- `npm run build` — build production app
-- `npm start` — run production server
 
-### Backend environment variables
+- `pnpm dev` — start Next.js development server
+- `pnpm build` — build production app
+- `pnpm start` — run production server
+- `pnpm lint` — run ESLint
+- `pnpm typecheck` — TypeScript type check
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `GITHUB_APP_ID`
-- `GITHUB_APP_PRIVATE_KEY`
-- `GITHUB_WEBHOOK_SECRET`
-- `TRUSTLESS_WORK_API_KEY`
-- `TRUSTLESS_WORK_BASE_URL`
-- `PLATFORM_STELLAR_SECRET_KEY`
-- `PLATFORM_STELLAR_PUBLIC_KEY`
-- `STELLAR_NETWORK`
-- `APP_URL`
-- `WEBHOOK_URL` (optional override)
+### Running from root
 
-### Frontend environment variables
+```bash
+# Run all dev servers in parallel
+pnpm dev
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_BACKEND_URL`
+# Run individual apps
+pnpm dev:backend
+pnpm dev:frontend
+
+# Build all apps
+pnpm build
+
+# Lint all apps
+pnpm lint
+
+# Type check all apps
+pnpm typecheck
+
+# Format all code
+pnpm format
+
+# Run full validation (typecheck + lint + format check)
+pnpm validate
+```
+
+### Environment variables
+
+Create a `.env` file at the root by copying the template:
+
+```bash
+cp .env.example .env
+```
+
+Fill in all required variables. See the `.env.example` file for descriptions of each variable. Key variables include:
+
+- `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — database and auth
+- `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` / `GITHUB_WEBHOOK_SECRET` — GitHub integration
+- `TRUSTLESS_WORK_API_KEY` / `TRUSTLESS_WORK_BASE_URL` — blockchain escrow
+- `PLATFORM_STELLAR_SECRET_KEY` / `PLATFORM_STELLAR_PUBLIC_KEY` — Stellar platform wallet
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — frontend auth
+- `NEXT_PUBLIC_BACKEND_URL` — frontend API endpoint
 
 ### GitHub App requirements
 
 Required events:
+
 - `issues`
 - `issue_comment`
 - `pull_request`
 
 Permissions:
+
 - Issues: Read & Write
 - Pull requests: Read
 - Metadata: Read

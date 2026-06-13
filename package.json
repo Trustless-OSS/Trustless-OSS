@@ -1,40 +1,45 @@
 {
   "name": "trustless-oss",
   "version": "1.0.0",
-  "description": "Trustless-OSS Bounty backend — pure Node.js + TypeScript, no frameworks",
-  "main": "dist/server.js",
-  "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "migrate": "tsx src/migrate.ts",
-    "proxy": "tsx src/webhook-proxy.ts",
-
-    "lint": "eslint 'src/**/*.ts' --max-warnings=0",
-    "lint:fix": "eslint 'src/**/*.ts' --fix",
-    "format": "prettier --write 'src/**/*.ts'",
-    "format:check": "prettier --check 'src/**/*.ts'",
-    "typecheck": "tsc --noEmit",
-
-    "validate": "npm run typecheck && npm run lint && npm run format:check"
+  "private": true,
+  "packageManager": "pnpm@10.28.1",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
   },
-  "dependencies": {
-    "@octokit/app": "^14.0.0",
-    "@stellar/stellar-sdk": "^12.0.0",
-    "@supabase/supabase-js": "^2.0.0",
-    "dotenv": "^17.4.2",
-    "pg": "^8.20.0",
-    "smee-client": "^5.0.0",
-    "stellar-sdk": "^13.3.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:backend": "turbo dev --filter=@trustless-oss/backend",
+    "dev:frontend": "turbo dev --filter=@trustless-oss/frontend",
+    "build": "turbo build",
+    "build:backend": "turbo build --filter=@trustless-oss/backend",
+    "build:frontend": "turbo build --filter=@trustless-oss/frontend",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "typecheck": "turbo typecheck",
+    "fmt": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "fmt:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "validate": "turbo typecheck lint && pnpm format:check",
+    "clean": "turbo clean && rm -rf .turbo",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/pg": "^8.20.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
-    "eslint": "^8.0.0",
-    "prettier": "^3.0.0"
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0"
+  },
+  "lint-staged": {
+    "apps/backend/src/**/*.ts": [
+      "prettier --write",
+      "pnpm --filter @trustless-oss/backend lint:fix"
+    ],
+    "apps/frontend/**/*.{ts,tsx}": [
+      "prettier --write",
+      "pnpm --filter @trustless-oss/frontend lint:fix"
+    ],
+    "**/*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }

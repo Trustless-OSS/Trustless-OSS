@@ -2,8 +2,6 @@
 
 <!-- Describe WHAT this PR does and WHY. Minimum 20 characters or it will be rejected. -->
 
-
-
 ## Type of Change
 
 <!-- Check all that apply -->
@@ -26,9 +24,9 @@ Closes #
 
 <!-- Step-by-step instructions for a reviewer to verify your changes work. -->
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Checklist
 
