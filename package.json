@@ -19,7 +19,7 @@
     "typecheck": "turbo typecheck",
     "fmt": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
     "fmt:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
-    "validate": "turbo typecheck lint && pnpm format:check",
+    "validate": "turbo typecheck lint && pnpm fmt:check",
     "clean": "turbo clean && rm -rf .turbo",
     "prepare": "husky"
   },
