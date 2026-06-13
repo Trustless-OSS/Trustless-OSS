@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm build",
+  "installCommand": "corepack enable pnpm && pnpm install",
+  "env": {
+    "PNPM_VERSION": "10.28.1"
+  }
+}
