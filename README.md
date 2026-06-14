@@ -137,89 +137,48 @@ If the maintainer wallet is not connected, the app asks to connect it before ref
 ### Root installation
 
 ```bash
-# Install all dependencies for both backend and frontend
 pnpm install
-
-# Copy environment template
-cp .env.example .env
-
-# Fill in your environment variables in .env
 ```
 
 ### Backend setup
 
 ```bash
 cd apps/backend
+cp .env.example .env
 pnpm dev
 ```
-
-Available backend scripts:
-
-- `pnpm dev` — development server with hot reload
-- `pnpm build` — compile TypeScript
-- `pnpm start` — start compiled server
-- `pnpm migrate` — run database migration script
-- `pnpm proxy` — webhook proxy helper (for local testing)
-- `pnpm lint` — run ESLint
-- `pnpm typecheck` — TypeScript type check
 
 ### Frontend setup
 
 ```bash
 cd apps/frontend
+cp .env.example .env
 pnpm dev
 ```
-
-Available frontend scripts:
-
-- `pnpm dev` — start Next.js development server
-- `pnpm build` — build production app
-- `pnpm start` — run production server
-- `pnpm lint` — run ESLint
-- `pnpm typecheck` — TypeScript type check
 
 ### Running from root
 
 ```bash
-# Run all dev servers in parallel
-pnpm dev
-
-# Run individual apps
-pnpm dev:backend
-pnpm dev:frontend
-
-# Build all apps
-pnpm build
-
-# Lint all apps
-pnpm lint
-
-# Type check all apps
-pnpm typecheck
-
-# Format all code
-pnpm format
-
-# Run full validation (typecheck + lint + format check)
-pnpm validate
+pnpm dev          # all servers
+pnpm build        # all apps
+pnpm lint         # all apps
+pnpm typecheck    # all apps
+pnpm validate     # typecheck + lint + format
 ```
 
 ### Environment variables
 
-Create a `.env` file at the root by copying the template:
+Each app has its own `.env.example`:
 
-```bash
-cp .env.example .env
-```
+- Backend: `apps/backend/.env.example` — server credentials
+- Frontend: `apps/frontend/.env.example` — client-side only
 
-Fill in all required variables. See the `.env.example` file for descriptions of each variable. Key variables include:
+### Documentation
 
-- `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` — database and auth
-- `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` / `GITHUB_WEBHOOK_SECRET` — GitHub integration
-- `TRUSTLESS_WORK_API_KEY` / `TRUSTLESS_WORK_BASE_URL` — blockchain escrow
-- `PLATFORM_STELLAR_SECRET_KEY` / `PLATFORM_STELLAR_PUBLIC_KEY` — Stellar platform wallet
-- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — frontend auth
-- `NEXT_PUBLIC_BACKEND_URL` — frontend API endpoint
+- Backend: `apps/backend/README.md`
+- Frontend: `apps/frontend/README.md`
+- Database: `apps/backend/migrations/README.md`
+- General: `docs/README.md`
 
 ### GitHub App requirements
 

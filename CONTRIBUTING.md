@@ -20,13 +20,12 @@ to get your code accepted and your bounty paid.
 ## Getting Started
 
 1. **Fork** the repository and clone your fork
-2. Install dependencies: `pnpm install` (from the root)
-3. Copy environment file:
-   ```bash
-   cp .env.example .env
-   ```
-4. Fill in environment variables (see README for details)
-5. Create a branch for your work (see [Branching Strategy](#branching-strategy))
+2. `pnpm install` (from the root)
+3. Set up environments:
+   - Backend: `cd apps/backend && cp .env.example .env`
+   - Frontend: `cd apps/frontend && cp .env.example .env`
+4. Fill in environment variables
+5. Create a branch for your work
 
 ---
 
