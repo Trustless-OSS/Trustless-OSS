@@ -24,7 +24,7 @@ function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
   return { pattern: new RegExp(`^${regexStr}$`), paramNames };
 }
 
-export function addRoute(method: string, path: string, handler: Handler): void {
+export function routers(method: string, path: string, handler: Handler): void {
   const { pattern, paramNames } = pathToRegex(path);
   routes.push({ method: method.toUpperCase(), pattern, paramNames, handler });
 }
