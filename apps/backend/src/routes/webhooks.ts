@@ -1,16 +1,7 @@
 import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
-import {
-  handleIssueLabeled,
-  handleIssueAssigned,
-  handleIssueUnassigned,
-  handleIssueClosed,
-  handleIssueCommentCreated,
-  handlePRMerged,
-  handleInstallation,
-  handleInstallationRepositories,
-} from '../lib/github/webhook.js';
+import { webhooksQueue } from '../lib/queue.js';
 
 export async function githubWebhookHandler(
   req: IncomingMessage,
@@ -58,35 +49,14 @@ export async function githubWebhookHandler(
   );
 
   try {
-    if (event === 'issues') {
-      if (action === 'opened' || action === 'labeled') await handleIssueLabeled(payload);
-      else if (action === 'assigned') await handleIssueAssigned(payload);
-      else if (action === 'unassigned') await handleIssueUnassigned(payload);
-      else if (action === 'closed') await handleIssueClosed(payload);
-    }
+    const deliveryId = req.headers['x-github-delivery'] as string | undefined;
 
-    if (event === 'issue_comment' && action === 'created') {
-      await handleIssueCommentCreated(payload);
-    }
-
-    if (event === 'pull_request' && action === 'closed') {
-      const pr = payload.pull_request as { merged: boolean } | undefined;
-      if (pr?.merged) {
-        await handlePRMerged(payload);
-      }
-    }
-
-    if (event === 'installation') {
-      await handleInstallation(payload);
-    }
-
-    if (event === 'installation_repositories') {
-      await handleInstallationRepositories(payload);
-    }
+    // Queue the webhook event instead of processing inline
+    await webhooksQueue.add('github-webhook', { event, action, payload }, { jobId: deliveryId });
 
     json(res, { ok: true });
   } catch (err) {
-    console.error('[Webhook] Handler error:', err);
+    console.error('[Webhook] Queue error:', err);
     json(res, { error: 'Internal server error' }, 500);
   }
 }
