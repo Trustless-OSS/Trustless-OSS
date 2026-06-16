@@ -684,11 +684,28 @@ export async function submitCloseHandler(req: IncomingMessage, res: ServerRespon
   }
 }
 
+function parsePagination(req: IncomingMessage) {
+  let limit = 100;
+  let offset = 0;
+  try {
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const l = parseInt(url.searchParams.get('limit') || '', 10);
+    const o = parseInt(url.searchParams.get('offset') || '', 10);
+    if (!isNaN(l) && l > 0) limit = Math.min(l, 200);
+    if (!isNaN(o) && o >= 0) offset = o;
+  } catch (e) {
+    // ignore
+  }
+  return { limit, offset };
+}
+
 /* ------------------------------------------------------------------ */
 /* GET /api/repos                                                       */
 /* Returns all repos for the authenticated user                        */
+/* Query Params: limit (max 200, default 100), offset (default 0)       */
 /* ------------------------------------------------------------------ */
 export async function listReposHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const { limit, offset } = parsePagination(req);
   const token = getToken(req);
   if (!token) {
     json(res, { error: 'Unauthorized' }, 401);
@@ -716,16 +733,17 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
     );
     // Fall back to username-based lookup
     if (githubUsername) {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('repos')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('owner_username', githubUsername)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
       if (error) {
         json(res, { error: error.message }, 400);
         return;
       }
-      return json(res, { repos: data ?? [] });
+      return json(res, { data: data ?? [], total_count: count ?? 0, limit, offset });
     }
     json(res, { error: 'Could not determine GitHub identity from session' }, 400);
     return;
@@ -733,14 +751,15 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
 
   // Match repos where user is the owner OR the installer
   // AND filter by non-fork, public, and user-owned (personal) repos
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('repos')
-    .select('*')
+    .select('*', { count: 'exact' })
     .or(`owner_github_id.eq.${githubId},installer_github_id.eq.${githubId}`)
     .eq('is_fork', false)
     .eq('is_private', false)
     .eq('owner_type', 'User')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   console.log(
     `[API] listRepos: found ${data?.length ?? 0} filtered repos for githubId=${githubId}`
@@ -750,28 +769,31 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
     json(res, { error: error.message }, 400);
     return;
   }
-  json(res, { repos: data ?? [] });
+  json(res, { data: data ?? [], total_count: count ?? 0, limit, offset });
 }
 
 /* ------------------------------------------------------------------ */
 /* GET /api/repos/:repoId/issues                                        */
+/* Query Params: limit (max 200, default 100), offset (default 0)       */
 /* ------------------------------------------------------------------ */
 export async function listIssuesHandler(
   req: IncomingMessage,
   res: ServerResponse,
   params: Record<string, string>
 ): Promise<void> {
-  const { data, error } = await supabase
+  const { limit, offset } = parsePagination(req);
+  const { data, error, count } = await supabase
     .from('issues')
-    .select('*, assignments(*, contributors(*))')
+    .select('*, assignments(*, contributors(*))', { count: 'exact' })
     .eq('repo_id', params.repoId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     json(res, { error: error.message }, 400);
     return;
   }
-  json(res, { issues: data });
+  json(res, { data: data ?? [], total_count: count ?? 0, limit, offset });
 }
 
 /* ------------------------------------------------------------------ */
