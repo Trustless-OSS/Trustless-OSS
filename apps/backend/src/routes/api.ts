@@ -1185,12 +1185,8 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
     };
 
     // If any critical check fails, return 503
-    const redisIsHealthy =
-      health.checks.redis.status === 'ok' || health.checks.redis.status === 'disabled';
     const isHealthy =
-      health.checks.database.status === 'ok' &&
-      health.checks.environment.status === 'ok' &&
-      redisIsHealthy;
+      health.checks.database.status === 'ok' && health.checks.environment.status === 'ok';
     if (!isHealthy) health.status = 'unhealthy';
 
     json(res, health, isHealthy ? 200 : 503);
