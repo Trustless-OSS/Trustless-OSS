@@ -5,12 +5,12 @@ import { redisClient, checkRedisHealth } from '../redis';
 describe('Cache Utility', () => {
   // Clear Redis before each test
   beforeEach(async () => {
-    await redisClient.flushall();
+    await redisClient.flushdb(); 
   });
 
   // Clean up after all tests
   afterEach(async () => {
-    await redisClient.flushall();
+    await redisClient.flushdb(); 
   });
 
   describe('cache.get() and cache.set()', () => {

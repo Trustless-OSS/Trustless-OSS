@@ -39,6 +39,13 @@ export const cache = {
    */
   async set<T>(key: string, value: T, ttl: number = DEFAULT_TTL): Promise<void> {
     try {
+      // Validate TTL
+      const validTtl = Number(ttl);
+      if (!Number.isFinite(validTtl) || validTtl <= 0) {
+        console.warn(`[Cache] Invalid TTL provided for key "${key}": ${ttl}. Using default TTL.`);
+        ttl = DEFAULT_TTL;
+      }
+
       const health = await checkRedisHealth();
       if (health.status !== 'ok') {
         console.warn(`[Cache] Redis unavailable, cache set skipped for key: ${key}`);

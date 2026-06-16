@@ -1,8 +1,8 @@
 import IORedis from 'ioredis';
 
-export const redisClient = new IORedis({
-  host: 'localhost',
-  port: 6379,
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+export const redisClient = new IORedis(redisUrl, {
   maxRetriesPerRequest: 3,
 });
 
