@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import http from 'http';
 import dns from 'dns';
-import appHandler from './app.js';
+import appHandler from './handler/app_handler';
 
 // Fix for Node 18+ Undici fetch timing out on IPv6 addresses
 dns.setDefaultResultOrder('ipv4first');
