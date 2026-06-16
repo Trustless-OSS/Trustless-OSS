@@ -1,4 +1,13 @@
 {
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "projects": {
+    "frontend": {
+      "rootDirectory": "apps/frontend",
+      "outputDirectory": ".next"
+    },
+    "backend": {
+      "rootDirectory": "apps/backend"
+    }
+  }
 }
