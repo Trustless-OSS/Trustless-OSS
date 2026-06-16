@@ -52,12 +52,12 @@ create table if not exists assignments (
   pr_number             int,
   pr_merged_at          timestamptz,
   payout_status         text default 'pending' check (payout_status in ('pending', 'released', 'failed')),
-  completion_percentage numeric default null,
+  completion_percentage numeric check (completion_percentage >= 0 and completion_percentage <= 100) default null,
   unique(issue_id)
 );
 
 -- Ensure completion_percentage column exists for existing tables
-ALTER TABLE assignments ADD COLUMN IF NOT EXISTS completion_percentage numeric default null;
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS completion_percentage numeric check (completion_percentage >= 0 and completion_percentage <= 100) default null;
 
 -- ============================================================
 -- Row Level Security (RLS)
