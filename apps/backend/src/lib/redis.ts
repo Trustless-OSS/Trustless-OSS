@@ -62,7 +62,7 @@ export const checkRedisHealth = async (): Promise<{
 };
 
 export const disconnectRedis = async (): Promise<void> => {
-  if (status === 'connected' || status === 'connecting') {
+  if (status !== 'disconnected') {
     await redisClient.quit();
   }
 };
