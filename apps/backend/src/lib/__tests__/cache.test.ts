@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cache } from '../cache.js';
-import { redisClient, checkRedisHealth } from '../redis';
+import { redisClient } from '../redis';
 
 describe('Cache Utility', () => {
   // Clear Redis before each test
   beforeEach(async () => {
-    await redisClient.flushdb(); 
+    await redisClient.flushdb();
   });
 
   // Clean up after all tests
   afterEach(async () => {
-    await redisClient.flushdb(); 
+    await redisClient.flushdb();
   });
 
   describe('cache.get() and cache.set()', () => {
@@ -41,7 +41,6 @@ describe('Cache Utility', () => {
 
     it('should return null for expired key', async () => {
       await cache.set('test:ttl', 'expires soon', 1);
-      // Wait 2 seconds for TTL to expire
       await new Promise((resolve) => setTimeout(resolve, 1500));
       const result = await cache.get('test:ttl');
       expect(result).toBeNull();
@@ -70,14 +69,12 @@ describe('Cache Utility', () => {
 
   describe('Graceful fallback when Redis is down', () => {
     it('should return null from get when Redis is unavailable', async () => {
-      // Mock Redis to simulate failure
       const originalPing = redisClient.ping.bind(redisClient);
       vi.spyOn(redisClient, 'ping').mockRejectedValueOnce(new Error('Redis connection failed'));
 
       const result = await cache.get('some:key');
       expect(result).toBeNull();
 
-      // Restore original ping
       redisClient.ping = originalPing;
     });
 
@@ -87,7 +84,6 @@ describe('Cache Utility', () => {
 
       await expect(cache.set('test:key', 'value')).resolves.not.toThrow();
 
-      // Restore original ping
       redisClient.ping = originalPing;
     });
 
@@ -97,7 +93,6 @@ describe('Cache Utility', () => {
 
       await expect(cache.invalidate('test:key')).resolves.not.toThrow();
 
-      // Restore original ping
       redisClient.ping = originalPing;
     });
   });
@@ -105,7 +100,6 @@ describe('Cache Utility', () => {
   describe('Cache with different TTL values', () => {
     it('should use default TTL (300s) when not specified', async () => {
       await cache.set('test:default', 'default TTL');
-      // Check TTL by getting it directly from Redis
       const ttl = await redisClient.ttl('test:default');
       expect(ttl).toBeGreaterThan(0);
       expect(ttl).toBeLessThanOrEqual(300);
