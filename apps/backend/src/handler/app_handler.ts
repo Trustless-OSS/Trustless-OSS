@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import http from 'http';
 import { json, dispatch } from '../router';
+import '../app';
 
 const ALLOWED_ORIGIN = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 
