@@ -28,18 +28,18 @@ const shutdown = (signal: string) => {
     if (err) {
       console.error('[Server] Error during shutdown:', err);
       process.exit(1);
+      return;
     }
     console.log('[Server] HTTP server closed.');
 
     disconnectRedis()
       .then(() => {
         console.log('[Redis] Client disconnected.');
+        process.exit(0);
       })
       .catch((redisErr) => {
         console.error('[Redis] Error during disconnection:', redisErr);
-      })
-      .finally(() => {
-        process.exit(0);
+        process.exit(1);
       });
   });
 };
