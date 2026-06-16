@@ -2,6 +2,7 @@ import 'dotenv/config';
 import http from 'http';
 import dns from 'dns';
 import appHandler from './handler/app_handler';
+import { disconnectRedis } from './lib/redis.js';
 
 // Fix for Node 18+ Undici fetch timing out on IPv6 addresses
 dns.setDefaultResultOrder('ipv4first');
@@ -20,3 +21,22 @@ server.listen(PORT, () => {
 ╚═══════════════════════════════════════════╝
   `);
 });
+
+const shutdown = async (signal: string) => {
+  console.log(`\n[Server] Received ${signal}. Shutting down gracefully...`);
+  server.close(async (err) => {
+    if (err) {
+      console.error('[Server] Error during shutdown:', err);
+      process.exit(1);
+    }
+    console.log('[Server] HTTP server closed.');
+
+    await disconnectRedis();
+    console.log('[Redis] Client disconnected.');
+
+    process.exit(0);
+  });
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
