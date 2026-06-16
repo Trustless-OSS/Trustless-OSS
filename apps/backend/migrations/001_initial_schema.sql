@@ -90,6 +90,9 @@ create policy "assignments_read" on assignments
 -- ============================================================
 -- Indexes for performance
 -- ============================================================
+-- These indexes are critical for optimizing the listIssuesHandler query
+-- which fetches issues with assignments and contributors in a single call.
+-- They prevent N+1 queries by enabling efficient joins on foreign keys.
 
 create index if not exists idx_repos_github_id       on repos(github_repo_id);
 create index if not exists idx_issues_repo            on issues(repo_id);
