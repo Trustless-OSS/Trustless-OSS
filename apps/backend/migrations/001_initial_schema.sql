@@ -45,15 +45,19 @@ create table if not exists issues (
 
 -- assignments: which contributor is working on which issue
 create table if not exists assignments (
-  id              uuid primary key default gen_random_uuid(),
-  issue_id        uuid references issues(id) on delete cascade,
-  contributor_id  uuid references contributors(id),
-  assigned_at     timestamptz default now(),
-  pr_number       int,
-  pr_merged_at    timestamptz,
-  payout_status   text default 'pending' check (payout_status in ('pending', 'released', 'failed')),
+  id                    uuid primary key default gen_random_uuid(),
+  issue_id              uuid references issues(id) on delete cascade,
+  contributor_id        uuid references contributors(id),
+  assigned_at           timestamptz default now(),
+  pr_number             int,
+  pr_merged_at          timestamptz,
+  payout_status         text default 'pending' check (payout_status in ('pending', 'released', 'failed')),
+  completion_percentage numeric default null,
   unique(issue_id)
 );
+
+-- Ensure completion_percentage column exists for existing tables
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS completion_percentage numeric default null;
 
 -- ============================================================
 -- Row Level Security (RLS)

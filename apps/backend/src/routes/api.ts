@@ -791,6 +791,7 @@ export async function listIssuesHandler(
         pr_number,
         pr_merged_at,
         payout_status,
+        completion_percentage,
         contributors(
           id,
           github_user_id,
