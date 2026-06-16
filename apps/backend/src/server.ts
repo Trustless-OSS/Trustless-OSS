@@ -22,19 +22,25 @@ server.listen(PORT, () => {
   `);
 });
 
-const shutdown = async (signal: string) => {
+const shutdown = (signal: string) => {
   console.log(`\n[Server] Received ${signal}. Shutting down gracefully...`);
-  server.close(async (err) => {
+  server.close((err) => {
     if (err) {
       console.error('[Server] Error during shutdown:', err);
       process.exit(1);
     }
     console.log('[Server] HTTP server closed.');
 
-    await disconnectRedis();
-    console.log('[Redis] Client disconnected.');
-
-    process.exit(0);
+    disconnectRedis()
+      .then(() => {
+        console.log('[Redis] Client disconnected.');
+      })
+      .catch((redisErr) => {
+        console.error('[Redis] Error during disconnection:', redisErr);
+      })
+      .finally(() => {
+        process.exit(0);
+      });
   });
 };
 
