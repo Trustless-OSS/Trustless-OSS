@@ -8,7 +8,7 @@ async function fetchTime(): Promise<number> {
   return new Promise((resolve, reject) => {
     http
       .get(URL, { headers: { authorization: 'Bearer dummy-token' } }, (res) => {
-        res.on('data', () => { });
+        res.on('data', () => {});
         res.on('end', () => resolve(performance.now() - start));
       })
       .on('error', reject);
