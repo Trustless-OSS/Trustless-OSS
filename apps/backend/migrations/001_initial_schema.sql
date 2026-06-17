@@ -45,15 +45,19 @@ create table if not exists issues (
 
 -- assignments: which contributor is working on which issue
 create table if not exists assignments (
-  id              uuid primary key default gen_random_uuid(),
-  issue_id        uuid references issues(id) on delete cascade,
-  contributor_id  uuid references contributors(id),
-  assigned_at     timestamptz default now(),
-  pr_number       int,
-  pr_merged_at    timestamptz,
-  payout_status   text default 'pending' check (payout_status in ('pending', 'released', 'failed')),
+  id                    uuid primary key default gen_random_uuid(),
+  issue_id              uuid references issues(id) on delete cascade,
+  contributor_id        uuid references contributors(id),
+  assigned_at           timestamptz default now(),
+  pr_number             int,
+  pr_merged_at          timestamptz,
+  payout_status         text default 'pending' check (payout_status in ('pending', 'released', 'failed')),
+  completion_percentage numeric check (completion_percentage >= 0 and completion_percentage <= 100) default null,
   unique(issue_id)
 );
+
+-- Ensure completion_percentage column exists for existing tables
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS completion_percentage numeric check (completion_percentage >= 0 and completion_percentage <= 100) default null;
 
 -- ============================================================
 -- Row Level Security (RLS)
@@ -90,6 +94,9 @@ create policy "assignments_read" on assignments
 -- ============================================================
 -- Indexes for performance
 -- ============================================================
+-- These indexes are critical for optimizing the listIssuesHandler query
+-- which fetches issues with assignments and contributors in a single call.
+-- They prevent N+1 queries by enabling efficient joins on foreign keys.
 
 create index if not exists idx_repos_github_id       on repos(github_repo_id);
 create index if not exists idx_issues_repo            on issues(repo_id);
