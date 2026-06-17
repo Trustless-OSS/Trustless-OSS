@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
 import { supabase } from '../lib/supabase.js';
+import { logger } from '../lib/logger.js';
+
+const log = logger.child({ module: 'api' });
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
 import type { Repo, Issue, Contributor, Assignment } from '../types/index.js';
 import { isMaintainer, isAssignedContributor } from '../lib/auth.js';
@@ -79,18 +82,19 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
       });
 
       if (createRes.ok) {
-        console.log(`[GitHub] ✅ Webhook installed on ${body.fullName} → ${webhookUrl}`);
+        log.info({ repo: body.fullName, url: webhookUrl }, 'webhook installed');
       } else {
         const errText = await createRes.text();
-        console.error(
-          `[GitHub] ❌ Failed to install webhook on ${body.fullName}: ${createRes.status} ${errText}`
+        log.error(
+          { repo: body.fullName, status: createRes.status, detail: errText },
+          'failed to install webhook'
         );
       }
     } else {
-      console.log(`[GitHub] Webhook already exists on ${body.fullName}, skipping.`);
+      log.info({ repo: body.fullName }, 'webhook already exists, skipping');
     }
   } catch (err) {
-    console.error(`[GitHub] Exception while installing webhook:`, err);
+    log.error({ err }, 'exception while installing webhook');
   }
 
   const { data, error } = await supabase
@@ -259,9 +263,7 @@ export async function fundEscrowUnsignedHandler(
     amount: number;
     funderWallet: string;
   };
-  console.log(
-    `[Fund] Request for repo ${body.repoId}, amount: ${body.amount}, funder: ${body.funderWallet}`
-  );
+  log.info({ repoId: body.repoId, amount: body.amount }, 'fund escrow request');
 
   if (!body.amount || body.amount <= 0 || !body.funderWallet) {
     json(res, { error: 'Invalid amount or funder wallet' }, 400);
@@ -305,7 +307,7 @@ export async function fundEscrowUnsignedHandler(
 
     json(res, { unsignedTransaction: response.unsignedTransaction });
   } catch (err: any) {
-    console.error(`[Fund] TrustlessWork Error: ${err.message}`);
+    log.error({ err, repoId: body.repoId }, 'TrustlessWork fund error');
     json(res, { error: err.message }, 500);
   }
 }
@@ -424,7 +426,7 @@ export async function refundEscrowHandler(
     const isDualWallet = escrowData.roles?.disputeResolver === resolverPubKey;
 
     if (isDualWallet) {
-      console.log(`[Refund] Using dual-wallet Dispute+Resolve strategy for repo ${repo.full_name}`);
+      log.info({ repo: repo.full_name }, 'using dual-wallet dispute+resolve refund strategy');
       for (let i = 0; i < milestones.length; i++) {
         const m = milestones[i];
         if (m.flags?.released || m.flags?.resolved) continue;
@@ -459,7 +461,7 @@ export async function refundEscrowHandler(
       }
     } else {
       // Legacy Strategy: Update + Release
-      console.log(`[Refund] Using legacy Update+Release strategy for repo ${repo.full_name}`);
+      log.info({ repo: repo.full_name }, 'using legacy update+release refund strategy');
       const newMilestones = milestones.map((m: any) => {
         if (m.flags?.released || m.flags?.resolved)
           return { ...m, amount: Number(m.amount), evidence: m.evidence ?? '' };
@@ -527,9 +529,7 @@ export async function refundEscrowHandler(
     const currentBalance = Number(balRes[0]?.balance ?? 0);
 
     if (currentBalance > 0) {
-      console.log(
-        `[Refund] Withdrawing extra remaining balance ${currentBalance} for repo ${repo.full_name}`
-      );
+      log.info({ repo: repo.full_name, balance: currentBalance }, 'withdrawing remaining balance');
       const wRes = (await twFetch('/escrow/multi-release/withdraw-remaining-funds', {
         method: 'POST',
         body: JSON.stringify({
@@ -573,7 +573,7 @@ export async function refundEscrowHandler(
     await supabase.from('repos').update({ escrow_balance: 0 }).eq('id', repoId);
     json(res, { refundedAmount: totalRefunded, cancelledIssues: cancelledCount });
   } catch (err: any) {
-    console.error('[Refund] Failed:', err);
+    log.error({ err, repoId }, 'refund failed');
     json(res, { error: err.message }, 500);
   }
 }
@@ -724,13 +724,10 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
   const githubUsername =
     user.user_metadata?.user_name ?? user.user_metadata?.preferred_username ?? '';
 
-  console.log(`[API] listRepos: user=${user.id}, githubId=${githubId}, username=${githubUsername}`);
+  log.info({ userId: user.id, githubId, username: githubUsername }, 'listRepos');
 
   if (!githubId || isNaN(githubId)) {
-    console.error(
-      `[API] listRepos: could not resolve GitHub ID from user metadata:`,
-      JSON.stringify(user.user_metadata)
-    );
+    log.warn({ userId: user.id }, 'listRepos: could not resolve GitHub ID from user metadata');
     // Fall back to username-based lookup
     if (githubUsername) {
       const { data, error, count } = await supabase
@@ -761,9 +758,7 @@ export async function listReposHandler(req: IncomingMessage, res: ServerResponse
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  console.log(
-    `[API] listRepos: found ${data?.length ?? 0} filtered repos for githubId=${githubId}`
-  );
+  log.info({ githubId, count: data?.length ?? 0 }, 'listRepos: filtered repos found');
 
   if (error) {
     json(res, { error: error.message }, 400);
@@ -892,7 +887,7 @@ export async function pushMilestoneHandler(
       `✅ **Wallet Connected!** Bounty of **${issue.reward_amount} USDC** is now locked in escrow. Merge the PR to release the funds.`
     );
   } catch (e) {
-    console.error('[API] Failed to post comment after wallet connect:', e);
+    log.error({ err: e }, 'failed to post comment after wallet connect');
   }
 
   json(res, {
@@ -1119,7 +1114,7 @@ export async function retryIssueHandler(
         return;
       }
     } catch (e) {
-      console.error('[API] Failed to verify GitHub issue state:', e);
+      log.error({ err: e, issueId: params.issueId }, 'failed to verify GitHub issue state');
       json(res, { error: 'Could not verify GitHub issue state' }, 500);
       return;
     }
@@ -1133,8 +1128,7 @@ export async function retryIssueHandler(
       await supabase.from('issues').update({ status: 'completed' }).eq('id', currentIssue.id);
       json(res, { ok: true, step: 'released', txHash });
     } catch (releaseErr: any) {
-      console.error('[API] releaseEscrowMilestone threw:', releaseErr.message);
-      // Return the actual TW API error so the frontend can display it
+      log.error({ err: releaseErr, issueId: params.issueId }, 'releaseEscrowMilestone failed');
       json(res, { error: `On-chain release failed: ${releaseErr.message}` }, 500);
     }
     return;
@@ -1303,9 +1297,7 @@ export async function deleteRepoHandler(
           await app.octokit.request('DELETE /app/installations/{installation_id}', {
             installation_id: installationId,
           });
-          console.log(
-            `[API] ✅ Uninstalled GitHub App for installation ${installationId} (last repo: ${repo.full_name})`
-          );
+          log.info({ installationId, repo: repo.full_name }, 'uninstalled GitHub App (last repo)');
         } else {
           // Other repos still exist in our DB — try to remove just this one
           try {
@@ -1316,20 +1308,20 @@ export async function deleteRepoHandler(
                 repository_id: Number(repo.github_repo_id),
               }
             );
-            console.log(
-              `[API] ✅ Removed repository ${repo.full_name} from installation ${installationId}`
+            log.info(
+              { repo: repo.full_name, installationId },
+              'removed repository from installation'
             );
           } catch (removeErr: any) {
-            // If removing one repo fails (e.g. "All repositories" selection), it's often a 403 or 422.
-            console.warn(
-              `[API] ⚠️ Could not remove repo from installation (might be 'All repositories' selection): ${removeErr.message}`
+            log.warn(
+              { err: removeErr, repo: repo.full_name },
+              "could not remove repo from installation (might be 'All repositories' selection)"
             );
           }
         }
       }
     } catch (ghErr: any) {
-      // Log but don't fail — still proceed with DB cleanup
-      console.error(`[API] ⚠️ GitHub App management failed (continuing): ${ghErr.message}`);
+      log.error({ err: ghErr }, 'GitHub App management failed (continuing with DB cleanup)');
     }
   }
 
@@ -1349,7 +1341,7 @@ export async function deleteRepoHandler(
     return;
   }
 
-  console.log(`[API] 🗑️ Repo deleted: ${repo.full_name} (id=${repoId})`);
+  log.info({ repo: repo.full_name, repoId }, 'repo deleted');
   json(res, { ok: true });
 }
 

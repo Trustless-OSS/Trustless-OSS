@@ -1,4 +1,7 @@
 import IORedis from 'ioredis';
+import { logger } from './logger.js';
+
+const log = logger.child({ module: 'redis' });
 
 let client: IORedis;
 let status: 'connecting' | 'connected' | 'disconnected' | 'error' = 'disconnected';
@@ -12,31 +15,31 @@ if (process.env.REDIS_URL) {
   status = 'connecting';
 
   client.on('connect', () => {
-    console.log('[Redis] Client connecting...');
+    log.info('Redis client connecting');
   });
 
   client.on('ready', () => {
     status = 'connected';
-    console.log('[Redis] ✅ Client connected successfully and ready to use.');
+    log.info('Redis client connected and ready');
   });
 
   client.on('error', (err) => {
     status = 'error';
-    console.error('[Redis] ❌ Connection error:', err.message);
+    log.error({ err: err.message }, 'Redis connection error');
     // Don't crash the app, ioredis will try to reconnect.
   });
 
   client.on('close', () => {
     status = 'disconnected';
-    console.log('[Redis] Connection closed.');
+    log.info('Redis connection closed');
   });
 
   client.on('reconnecting', () => {
     status = 'connecting';
-    console.log('[Redis] Client is reconnecting...');
+    log.info('Redis client reconnecting');
   });
 } else {
-  console.warn('[Redis] REDIS_URL not set, Redis client is disabled.');
+  log.warn('REDIS_URL not set, Redis client is disabled');
   // Create a mock client to avoid errors if it's called during development
   client = {
     ping: () => Promise.resolve('PONG'),

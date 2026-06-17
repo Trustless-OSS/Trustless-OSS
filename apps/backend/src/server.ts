@@ -3,6 +3,9 @@ import http from 'http';
 import dns from 'dns';
 import appHandler from './handler/app_handler';
 import { disconnectRedis } from './lib/redis.js';
+import { logger } from './lib/logger.js';
+
+const log = logger.child({ module: 'server' });
 
 // Fix for Node 18+ Undici fetch timing out on IPv6 addresses
 dns.setDefaultResultOrder('ipv4first');
@@ -14,31 +17,26 @@ const server = http.createServer((req, res) => {
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
 
 server.listen(PORT, () => {
-  console.log(`
-╔═══════════════════════════════════════════╗
-║  Trustless OSS Backend                    ║
-║  Running on http://localhost:${PORT}          ║
-╚═══════════════════════════════════════════╝
-  `);
+  log.info({ port: PORT }, 'Trustless OSS Backend running');
 });
 
 const shutdown = (signal: string) => {
-  console.log(`\n[Server] Received ${signal}. Shutting down gracefully...`);
+  log.info({ signal }, 'shutting down gracefully');
   server.close((err) => {
     if (err) {
-      console.error('[Server] Error during shutdown:', err);
+      log.error({ err }, 'error during shutdown');
       process.exit(1);
       return;
     }
-    console.log('[Server] HTTP server closed.');
+    log.info('HTTP server closed');
 
     disconnectRedis()
       .then(() => {
-        console.log('[Redis] Client disconnected.');
+        log.info('Redis client disconnected');
         process.exit(0);
       })
       .catch((redisErr) => {
-        console.error('[Redis] Error during disconnection:', redisErr);
+        log.error({ err: redisErr }, 'error during Redis disconnection');
         process.exit(1);
       });
   });

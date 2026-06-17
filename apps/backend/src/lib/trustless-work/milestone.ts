@@ -2,6 +2,9 @@ import { twFetch } from './client.js';
 import { signAndSendTransaction } from '../stellar/signer.js';
 import { supabase } from '../supabase.js';
 import type { Repo, Issue } from '../../types/index.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'milestone' });
 
 export async function pushMilestoneOnChain(
   repo: Repo,
@@ -75,9 +78,7 @@ export async function pushMilestoneOnChain(
     .update({ milestone_index: milestoneIndex, status: 'active' })
     .eq('id', issue.id);
 
-  console.log(
-    `[Milestone] Issue #${issue.github_issue_number} pushed on-chain at index ${milestoneIndex}`
-  );
+  log.info({ issue: issue.github_issue_number, milestoneIndex }, 'issue pushed on-chain');
 }
 
 export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<string> {
@@ -105,8 +106,9 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
     // If it's already approved, we can safely proceed to release
     const isAlreadyApproved = err.message.includes('already been approved previously');
     if (isAlreadyApproved) {
-      console.log(
-        `[Milestone] Milestone ${issue.milestone_index} already approved, skipping approval step.`
+      log.info(
+        { milestoneIndex: issue.milestone_index },
+        'milestone already approved, skipping approval step'
       );
     } else {
       throw err;
@@ -130,8 +132,9 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
     };
     const hash = result.hash || result.transactionHash;
 
-    console.log(
-      `[Milestone] Released milestone ${issue.milestone_index} for issue #${issue.github_issue_number}. Hash: ${hash}`
+    log.info(
+      { milestoneIndex: issue.milestone_index, issue: issue.github_issue_number, hash },
+      'milestone released'
     );
     return hash ?? 'success';
   } catch (err: any) {
@@ -140,8 +143,9 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
       err.message.includes('already been released previously') ||
       err.message.includes('already been paid');
     if (isAlreadyReleased) {
-      console.log(
-        `[Milestone] Milestone ${issue.milestone_index} already released, returning success.`
+      log.info(
+        { milestoneIndex: issue.milestone_index },
+        'milestone already released, returning success'
       );
       return 'success';
     }
@@ -152,8 +156,9 @@ export async function releaseEscrowMilestone(repo: Repo, issue: Issue): Promise<
       'Only the dispute resolver can execute this function'
     );
     if (isDisputeError && Number(issue.reward_amount) === 0) {
-      console.log(
-        `[Milestone] Milestone ${issue.milestone_index} (0.00 USDC) encountered a contract restriction. Marking as success locally.`
+      log.info(
+        { milestoneIndex: issue.milestone_index },
+        '0-amount milestone encountered contract restriction — marking as success locally'
       );
       return 'success';
     }
