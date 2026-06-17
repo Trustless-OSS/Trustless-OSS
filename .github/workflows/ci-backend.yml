@@ -3,8 +3,16 @@ name: Backend CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'apps/backend/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/ci-backend.yml'
   pull_request:
     branches: [main, develop]
+    paths:
+      - 'apps/backend/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/ci-backend.yml'
 
 jobs:
   lint-and-typecheck:

@@ -1,0 +1,47 @@
+name: Contracts CI
+
+on:
+  push:
+    branches: [ "main" , "develop" ]
+    paths:
+      - 'apps/contracts/**'
+  pull_request:
+    branches: [ "main" , "develop" ]
+    paths:
+      - 'apps/contracts/**'
+
+defaults:
+  run:
+    working-directory: apps/contracts
+
+jobs:
+  build_and_test:
+    name: Build, Test, and Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/contracts
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Cargo Check
+        run: cargo check --all-targets --all-features
+
+      - name: Build Contract (WASM)
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Run Tests
+        run: cargo test

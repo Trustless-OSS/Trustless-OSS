@@ -65,13 +65,13 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             const body = pr.body || '';
-            
+
             if (body.trim().length < 20) {
               core.setFailed(
                 'PR description is too short. Please describe what this PR does and why.'
               );
             }
-            
+
             // Warn (but don't block) if no issue is linked
             const hasIssueRef = /closes?\s+#\d+|fixes?\s+#\d+|resolves?\s+#\d+/i.test(body);
             if (!hasIssueRef) {
@@ -97,18 +97,18 @@ jobs:
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
             });
-            
+
             const sensitivePatterns = [
               /\.env$/,
-              /\.env\./,
+              /\.env\.(?!example)/,
               /secrets/i,
               /private[_-]?key/i,
             ];
-            
+
             const sensitiveFiles = files
               .map(f => f.filename)
               .filter(name => sensitivePatterns.some(p => p.test(name)));
-            
+
             if (sensitiveFiles.length > 0) {
               core.setFailed(
                 `PR modifies potentially sensitive files:\n${sensitiveFiles.join('\n')}\n\nPlease review carefully.`
