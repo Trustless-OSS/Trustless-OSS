@@ -1154,7 +1154,23 @@ export async function healthHandler(_req: IncomingMessage, res: ServerResponse):
       };
     }
 
-    // 3. Environment Check (Required Variables)
+    // 3. Redis Check
+    const startRedis = Date.now();
+    try {
+      const { checkRedisHealth } = await import('../lib/redis.js');
+      const redisHealth = await checkRedisHealth();
+      health.checks.redis = {
+        ...redisHealth,
+        latency: `${Date.now() - startRedis}ms`,
+      };
+    } catch (e: any) {
+      health.checks.redis = {
+        status: 'error',
+        message: e.message,
+      };
+    }
+
+    // 4. Environment Check (Required Variables)
     const requiredVars = [
       'SUPABASE_URL',
       'SUPABASE_SERVICE_ROLE_KEY',

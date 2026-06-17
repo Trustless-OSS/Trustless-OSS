@@ -31,11 +31,11 @@
   "lint-staged": {
     "apps/backend/src/**/*.ts": [
       "prettier --write",
-      "pnpm --filter @trustless-oss/backend lint:fix"
+      "pnpm --filter @trustless-oss/backend exec eslint --fix"
     ],
     "apps/frontend/**/*.{ts,tsx}": [
       "prettier --write",
-      "pnpm --filter @trustless-oss/frontend lint:fix"
+      "pnpm --filter @trustless-oss/frontend exec eslint --fix"
     ],
     "**/*.{json,md}": [
       "prettier --write"
