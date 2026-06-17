@@ -3,8 +3,16 @@ name: Frontend CI
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'apps/frontend/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/ci-frontend.yml'
   pull_request:
     branches: [main, develop]
+    paths:
+      - 'apps/frontend/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/ci-frontend.yml'
 
 jobs:
   lint-and-typecheck:
