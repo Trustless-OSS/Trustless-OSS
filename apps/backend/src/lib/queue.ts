@@ -1,12 +1,12 @@
 import { Queue, QueueEvents } from 'bullmq';
-import { redisConnection } from './redis.js';
+import { redisClient } from './redis.js';
 
 /* ------------------------------------------------------------------ */
 /* Queues Initialization                                              */
 /* ------------------------------------------------------------------ */
 
 export const webhooksQueue = new Queue('webhooks', {
-  connection: redisConnection as any,
+  connection: redisClient as any,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -19,7 +19,7 @@ export const webhooksQueue = new Queue('webhooks', {
 });
 
 export const escrowOperationsQueue = new Queue('escrow-operations', {
-  connection: redisConnection as any,
+  connection: redisClient as any,
   defaultJobOptions: {
     attempts: 5,
     backoff: {
@@ -32,7 +32,7 @@ export const escrowOperationsQueue = new Queue('escrow-operations', {
 });
 
 export const syncQueue = new Queue('sync', {
-  connection: redisConnection as any,
+  connection: redisClient as any,
   defaultJobOptions: {
     attempts: 2,
     backoff: {
@@ -49,7 +49,7 @@ export const syncQueue = new Queue('sync', {
 /* ------------------------------------------------------------------ */
 
 const setupLogging = (queueName: string) => {
-  const queueEvents = new QueueEvents(queueName, { connection: redisConnection as any });
+  const queueEvents = new QueueEvents(queueName, { connection: redisClient as any });
 
   queueEvents.on('added', ({ jobId }) => {
     console.log(`[Queue:${queueName}] 📥 Job added (ID: ${jobId})`);

@@ -1,20 +1,3 @@
-
-import Redis from 'ioredis';
-
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-
-export const redisConnection = new Redis(redisUrl, {
-  maxRetriesPerRequest: null,
-});
-
-redisConnection.on('error', (err) => {
-  console.error('[Redis] Error connecting to Redis:', err);
-});
-
-redisConnection.on('connect', () => {
-  console.log('[Redis] Connected to Redis successfully');
-});
-
 import IORedis from 'ioredis';
 
 let client: IORedis;
@@ -22,7 +5,7 @@ let status: 'connecting' | 'connected' | 'disconnected' | 'error' = 'disconnecte
 
 if (process.env.REDIS_URL) {
   client = new IORedis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null,
     // The client will attempt to reconnect automatically on error.
   });
 
@@ -83,4 +66,3 @@ export const disconnectRedis = async (): Promise<void> => {
     await redisClient.quit();
   }
 };
-

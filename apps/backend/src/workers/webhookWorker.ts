@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq';
-import { redisConnection } from '../lib/redis.js';
+import { redisClient } from '../lib/redis.js';
 import {
   handleIssueLabeled,
   handleIssueAssigned,
@@ -45,7 +45,7 @@ export const startWebhookWorker = () => {
         await handleInstallationRepositories(payload);
       }
     },
-    { connection: redisConnection as any }
+    { connection: redisClient as any }
   );
 
   worker.on('error', (err) => {
