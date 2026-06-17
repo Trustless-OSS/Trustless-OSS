@@ -1,12 +1,12 @@
-use soroban_sdk::{contracttype, Env, Vec, Address};
 use crate::types::{EscrowState, Milestone};
+use soroban_sdk::{contracttype, Address, Env, Vec};
 
 #[contracttype]
 pub enum StorageKey {
-    Escrow,                                // EscrowState
-    Milestone(u64),                        // issue_id → Milestone
-    EscrowIssueIds,                        // Vec<u64>
-    Admin,                                 // Address — can call initialize_escrow
+    Escrow,         // EscrowState
+    Milestone(u64), // issue_id → Milestone
+    EscrowIssueIds, // Vec<u64>
+    Admin,          // Address — can call initialize_escrow
 }
 
 pub fn get_escrow(_env: &Env) -> EscrowState {

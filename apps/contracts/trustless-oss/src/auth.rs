@@ -1,5 +1,5 @@
-use soroban_sdk::Env;
 use crate::types::EscrowState;
+use soroban_sdk::Env;
 
 pub fn require_platform(_env: &Env, _escrow: &EscrowState) {
     unimplemented!()

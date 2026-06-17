@@ -2,11 +2,11 @@
 
 use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
 
-pub mod types;
+pub mod auth;
 pub mod error;
 pub mod events;
 pub mod storage;
-pub mod auth;
+pub mod types;
 
 #[cfg(test)]
 mod test;
@@ -19,7 +19,7 @@ pub struct TrustlessOssContract;
 #[contractimpl]
 impl TrustlessOssContract {
     /// Initializes the single-repo escrow state with the maintainer, platform, and token configurations.
-    pub fn initialize_escrow(
+    pub fn initialize(
         _env: Env,
         _repo_id: u64,
         _maintainer: Address,
@@ -40,30 +40,17 @@ impl TrustlessOssContract {
     }
 
     /// Creates a new pending milestone, reserving the specified reward amount.
-    pub fn create_milestone(
-        _env: Env,
-        _issue_id: u64,
-        _title: String,
-        _reward: i128,
-    ) {
+    pub fn create_milestone(_env: Env, _issue_id: u64, _title: String, _reward: i128) {
         unimplemented!()
     }
 
     /// Assigns a contributor to a pending milestone and moves it to active status.
-    pub fn assign_contributor(
-        _env: Env,
-        _issue_id: u64,
-        _contributor: Address,
-    ) {
+    pub fn assign_contributor(_env: Env, _issue_id: u64, _contributor: Address) {
         unimplemented!()
     }
 
     /// Reassigns an active milestone to a new contributor.
-    pub fn reassign_contributor(
-        _env: Env,
-        _issue_id: u64,
-        _new_contributor: Address,
-    ) {
+    pub fn reassign_contributor(_env: Env, _issue_id: u64, _new_contributor: Address) {
         unimplemented!()
     }
 
@@ -73,11 +60,7 @@ impl TrustlessOssContract {
     }
 
     /// Releases a partial reward amount to the contributor and returns the remainder to the available pool.
-    pub fn partial_release(
-        _env: Env,
-        _issue_id: u64,
-        _release_amount: i128,
-    ) {
+    pub fn partial_release(_env: Env, _issue_id: u64, _release_amount: i128) {
         unimplemented!()
     }
 

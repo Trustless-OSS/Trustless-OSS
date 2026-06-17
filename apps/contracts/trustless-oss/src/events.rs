@@ -1,4 +1,4 @@
-use soroban_sdk::{Env, Address};
+use soroban_sdk::{Address, Env};
 
 pub fn emit_escrow_initialized(_env: &Env, _repo_id: u64, _maintainer: Address) {
     unimplemented!()
@@ -28,7 +28,13 @@ pub fn emit_funds_released(_env: &Env, _issue_id: u64, _contributor: Address, _a
     unimplemented!()
 }
 
-pub fn emit_partial_release(_env: &Env, _issue_id: u64, _contributor: Address, _released: i128, _returned_to_pool: i128) {
+pub fn emit_partial_release(
+    _env: &Env,
+    _issue_id: u64,
+    _contributor: Address,
+    _released: i128,
+    _returned_to_pool: i128,
+) {
     unimplemented!()
 }
 
