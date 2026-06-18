@@ -1,5 +1,8 @@
 import { Keypair, TransactionBuilder, Networks, Transaction } from '@stellar/stellar-sdk';
 import { twFetch } from '../trustless-work/client.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'stellar-signer' });
 
 export async function signAndSendTransaction(
   unsignedXdr: string,
@@ -19,6 +22,6 @@ export async function signAndSendTransaction(
     body: JSON.stringify({ signedXdr }),
   });
 
-  console.log('[Stellar] Transaction submitted:', result);
+  log.info({ result }, 'transaction submitted');
   return result;
 }
