@@ -1,5 +1,8 @@
 import { supabase } from '../supabase.js';
 import { getInstallationToken } from './auth.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'github-comments' });
 
 const commentCache = new Map<string, number>();
 const CACHE_TTL = 10000; // 10 seconds
@@ -14,7 +17,7 @@ export async function postComment(
   const lastSent = commentCache.get(cacheKey);
 
   if (lastSent && now - lastSent < CACHE_TTL) {
-    console.log(`[GitHub] Skipping duplicate comment on ${fullName}#${issueNumber}`);
+    log.debug({ repo: fullName, issue: issueNumber }, 'skipping duplicate comment');
     return;
   }
 
@@ -29,22 +32,16 @@ export async function postComment(
       .single();
 
     if (!repo) {
-      console.error(
-        `[GitHub] ❌ Cannot post comment. Repository ${fullName} not found in database.`
-      );
+      log.error({ repo: fullName }, 'cannot post comment — repository not found in database');
       return;
     }
 
     // 2. Get a fresh Installation Token
     const repoId = repo.github_repo_id;
-    console.error(
-      `[GitHub] 🔑 Requesting installation token for ${fullName} (DB ID: ${repoId}, Type: ${typeof repoId})`
-    );
+    log.debug({ repo: fullName, repoId }, 'requesting installation token');
     const token = await getInstallationToken(Number(repoId));
     if (!token) {
-      console.error(
-        `[GitHub] ❌ Cannot post comment. Failed to generate auth token for ${fullName}`
-      );
+      log.error({ repo: fullName }, 'cannot post comment — failed to generate auth token');
       return;
     }
 
@@ -63,15 +60,16 @@ export async function postComment(
     );
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error(
-        `[GitHub] Failed to post comment on ${fullName}#${issueNumber}: ${res.status} ${err}`
+      const errText = await res.text();
+      log.error(
+        { repo: fullName, issue: issueNumber, status: res.status, detail: errText },
+        'failed to post comment'
       );
       return;
     }
 
-    console.log(`[GitHub] ✅ Posted comment on ${fullName}#${issueNumber} using App Auth`);
+    log.info({ repo: fullName, issue: issueNumber }, 'comment posted');
   } catch (err) {
-    console.error(`[GitHub] ❌ Failed to post comment on ${fullName}#${issueNumber}:`, err);
+    log.error({ err, repo: fullName, issue: issueNumber }, 'exception posting comment');
   }
 }

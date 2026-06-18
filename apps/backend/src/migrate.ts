@@ -2,17 +2,16 @@ import fs from 'fs';
 import path from 'path';
 import { Client } from 'pg';
 import dotenv from 'dotenv';
+import { logger } from './lib/logger.js';
 
 dotenv.config();
+
+const log = logger.child({ module: 'migrate' });
 
 const dbUrl = process.env.DATABASE_URL;
 
 if (!dbUrl) {
-  console.error('❌ Missing DATABASE_URL in .env');
-  console.error('Please add your direct Postgres connection string to .env.');
-  console.error(
-    'You can find it in your Supabase Dashboard: Project Settings -> Database -> Connection string -> URI'
-  );
+  log.error('Missing DATABASE_URL in .env — add your Supabase direct Postgres connection string');
   process.exit(1);
 }
 
@@ -24,17 +23,17 @@ async function migrate() {
 
   try {
     await client.connect();
-    console.log('✅ Connected to database');
+    log.info('connected to database');
 
     const schemaPath = path.join(__dirname, '../migrations/001_initial_schema.sql');
     const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
 
-    console.log('Running schema.sql...');
+    log.info('running schema.sql');
     await client.query(schemaSql);
 
-    console.log('🎉 Migration successful!');
+    log.info('migration successful');
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    log.error({ err: error }, 'migration failed');
   } finally {
     await client.end();
   }

@@ -2,6 +2,10 @@ import 'dotenv/config';
 import http from 'http';
 import { json, dispatch } from '../router';
 import '../app';
+import { logger } from '../lib/logger.js';
+import { attachRequestContext } from '../middleware/logging.js';
+
+const log = logger.child({ module: 'app' });
 
 const ALLOWED_ORIGIN = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 
@@ -19,10 +23,12 @@ export default async function appHandler(
     return;
   }
 
+  attachRequestContext(req, res);
+
   try {
     await dispatch(req, res);
   } catch (err) {
-    console.error('[Server] Unhandled error:', err);
+    log.error({ err }, 'unhandled error');
     if (!res.headersSent) {
       json(res, { error: 'Internal Server Error' }, 500);
     }

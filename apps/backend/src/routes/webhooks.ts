@@ -2,6 +2,19 @@ import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
 import { webhooksQueue } from '../lib/queue.js';
+import {
+  handleIssueLabeled,
+  handleIssueAssigned,
+  handleIssueUnassigned,
+  handleIssueClosed,
+  handleIssueCommentCreated,
+  handlePRMerged,
+  handleInstallation,
+  handleInstallationRepositories,
+} from '../lib/github/webhook.js';
+import { logger } from '../lib/logger.js';
+
+const log = logger.child({ module: 'webhook-route' });
 
 export async function githubWebhookHandler(
   req: IncomingMessage,
@@ -15,27 +28,24 @@ export async function githubWebhookHandler(
 
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
   if (!secret) {
-    console.error('[Webhook] ❌ GITHUB_WEBHOOK_SECRET is not set in environment variables');
+    log.error('GITHUB_WEBHOOK_SECRET is not set in environment variables');
     json(res, { error: 'Internal server error — missing secret' }, 500);
     return;
   }
 
   const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
 
-  // Robust signature comparison
   let authorized = false;
   try {
     if (sig.length === expected.length) {
       authorized = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
     }
   } catch (err) {
-    console.error('[Webhook] Signature comparison error:', err);
+    log.error({ err }, 'signature comparison error');
   }
 
   if (!authorized) {
-    console.error(`[Webhook] ❌ Unauthorized signature for event: ${event}.`);
-    console.error(`Received: ${sig.slice(0, 15)}...`);
-    console.error(`Expected: ${expected.slice(0, 15)}...`);
+    log.warn({ event }, 'unauthorized webhook signature');
     json(res, { error: 'Unauthorized — invalid webhook signature' }, 401);
     return;
   }
@@ -44,8 +54,9 @@ export async function githubWebhookHandler(
   const action = payload.action as string | undefined;
   const repository = payload.repository as { id: number; full_name: string } | undefined;
 
-  console.log(
-    `[Webhook] ✅ Authorized: ${event}.${action ?? ''} for repo: ${repository?.full_name} (ID: ${repository?.id})`
+  log.info(
+    { event, action: action ?? '', repo: repository?.full_name, repoId: repository?.id },
+    'authorized webhook received'
   );
 
   try {
@@ -57,6 +68,7 @@ export async function githubWebhookHandler(
     json(res, { ok: true });
   } catch (err) {
     console.error('[Webhook] Queue error:', err);
+    log.error({ err, event, action }, 'webhook handler error');
     json(res, { error: 'Internal server error' }, 500);
   }
 }

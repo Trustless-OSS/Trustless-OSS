@@ -1,4 +1,7 @@
 import { redisClient, checkRedisHealth } from './redis';
+import { logger } from './logger.js';
+
+const log = logger.child({ module: 'cache' });
 
 const DEFAULT_TTL = 300; // 5 minutes
 
@@ -15,20 +18,20 @@ export const cache = {
     try {
       const health = await checkRedisHealth();
       if (health.status !== 'ok') {
-        console.warn(`[Cache] Redis unavailable, cache miss for key: ${key}`);
+        log.warn({ key }, 'Redis unavailable, cache miss');
         return null;
       }
 
       const value = await redisClient.get(key);
       if (value === null) {
-        console.log(`[Cache] Miss: ${key}`);
+        log.debug({ key }, 'cache miss');
         return null;
       }
 
-      console.log(`[Cache] Hit: ${key}`);
+      log.debug({ key }, 'cache hit');
       return JSON.parse(value) as T;
     } catch (error) {
-      console.error(`[Cache] Error getting key "${key}":`, error);
+      log.error({ err: error, key }, 'error getting cache key');
       return null;
     }
   },
@@ -42,21 +45,21 @@ export const cache = {
       // Validate TTL
       const validTtl = Number(ttl);
       if (!Number.isFinite(validTtl) || validTtl <= 0) {
-        console.warn(`[Cache] Invalid TTL provided for key "${key}": ${ttl}. Using default TTL.`);
+        log.warn({ key, ttl }, 'invalid TTL provided, using default');
         ttl = DEFAULT_TTL;
       }
 
       const health = await checkRedisHealth();
       if (health.status !== 'ok') {
-        console.warn(`[Cache] Redis unavailable, cache set skipped for key: ${key}`);
+        log.warn({ key }, 'Redis unavailable, cache set skipped');
         return;
       }
 
       const serialized = JSON.stringify(value);
       await redisClient.set(key, serialized, 'EX', ttl);
-      console.log(`[Cache] Set: ${key} (TTL: ${ttl}s)`);
+      log.debug({ key, ttl }, 'cache set');
     } catch (error) {
-      console.error(`[Cache] Error setting key "${key}":`, error);
+      log.error({ err: error, key }, 'error setting cache key');
     }
   },
 
@@ -68,14 +71,14 @@ export const cache = {
     try {
       const health = await checkRedisHealth();
       if (health.status !== 'ok') {
-        console.warn(`[Cache] Redis unavailable, cache invalidate skipped for key: ${key}`);
+        log.warn({ key }, 'Redis unavailable, cache invalidate skipped');
         return;
       }
 
       await redisClient.del(key);
-      console.log(`[Cache] Invalidated: ${key}`);
+      log.debug({ key }, 'cache invalidated');
     } catch (error) {
-      console.error(`[Cache] Error invalidating key "${key}":`, error);
+      log.error({ err: error, key }, 'error invalidating cache key');
     }
   },
 };

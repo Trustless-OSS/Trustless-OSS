@@ -1,5 +1,8 @@
 import { twFetch } from './client.js';
 import { signAndSendTransaction } from '../stellar/signer.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'escrow' });
 
 // Testnet USDC issuer
 const TESTNET_USDC = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
@@ -11,7 +14,7 @@ export async function createRepoEscrow(params: {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
   const resolverKey = 'GDC7GQGFJHEWFI3H6GAAYVYCUOPSENNUN2KDJBG3D5PFOX35FTRSYACX';
 
-  console.log(`[Escrow] Hardcoded Resolver Key Active: ${resolverKey}`);
+  log.debug({ resolverKey }, 'hardcoded resolver key active');
 
   const response = (await twFetch('/deployer/multi-release', {
     method: 'POST',

@@ -4,6 +4,9 @@ import { postComment } from './comments.js';
 import { pushMilestoneOnChain, releaseEscrowMilestone } from '../trustless-work/milestone.js';
 import { twFetch } from '../trustless-work/client.js';
 import type { Repo, Contributor, Issue, Assignment } from '../../types/index.js';
+import { logger } from '../logger.js';
+
+const log = logger.child({ module: 'github-webhook' });
 
 /* ------------------------------------------------------------------ */
 /* helpers                                                              */
@@ -124,8 +127,9 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
       })
       .eq('id', existing.id);
 
-    console.log(
-      `[Webhook] Updated bounty amount: ${repository.full_name}#${issue.number} -> ${rewardAmount} USDC`
+    log.info(
+      { repo: repository.full_name, issue: issue.number, rewardAmount },
+      'bounty amount updated'
     );
 
     await postComment(
@@ -143,14 +147,15 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
     )) as any[];
     const onChainBalance = Number(escrowArray[0]?.balance ?? 0);
     if (onChainBalance !== repo.escrow_balance) {
-      console.log(
-        `[Webhook] Syncing balance for ${repo.id}: ${repo.escrow_balance} -> ${onChainBalance}`
+      log.info(
+        { repoId: repo.id, prev: repo.escrow_balance, next: onChainBalance },
+        'syncing escrow balance'
       );
       await supabase.from('repos').update({ escrow_balance: onChainBalance }).eq('id', repo.id);
       repo.escrow_balance = onChainBalance;
     }
   } catch (e) {
-    console.error('[Webhook] Failed to sync balance:', e);
+    log.error({ err: e }, 'failed to sync escrow balance');
   }
 
   // Solvency check — only if reward is set
@@ -195,8 +200,9 @@ export async function handleIssueLabeled(payload: Record<string, unknown>): Prom
       `Assign a contributor to lock the funds.`
   );
 
-  console.log(
-    `[Webhook] Created bounty issue: ${repository.full_name}#${issue.number} → ${rewardAmount} USDC`
+  log.info(
+    { repo: repository.full_name, issue: issue.number, rewardAmount },
+    'bounty issue created'
   );
 }
 
@@ -248,7 +254,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
       // It's a PR, so issue.body is the PR body
       const extractedNumber = extractIssueNumber(issue.body);
       if (!extractedNumber) {
-        console.log('[Webhook] PR comment command but no linked issue found in PR body');
+        log.info('PR comment command but no linked issue found in PR body');
         return;
       }
       targetIssueNumber = extractedNumber;
@@ -306,7 +312,7 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
     }
 
     if (targetIssue.milestone_index === null) {
-      console.log('[Webhook] Missing milestone index for active issue');
+      log.warn('missing milestone index for active issue');
       return;
     }
 
@@ -644,14 +650,15 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
     )) as any[];
     const onChainBalance = Number(escrowArray[0]?.balance ?? 0);
     if (onChainBalance !== repo.escrow_balance) {
-      console.log(
-        `[Webhook] Syncing balance for ${repo.id}: ${repo.escrow_balance} -> ${onChainBalance}`
+      log.info(
+        { repoId: repo.id, prev: repo.escrow_balance, next: onChainBalance },
+        'syncing escrow balance'
       );
       await supabase.from('repos').update({ escrow_balance: onChainBalance }).eq('id', repo.id);
       repo.escrow_balance = onChainBalance;
     }
   } catch (e) {
-    console.error('[Webhook] Failed to sync balance:', e);
+    log.error({ err: e }, 'failed to sync escrow balance');
   }
 
   // Solvency check
@@ -694,8 +701,9 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
       `Assign a contributor to get started.`
   );
 
-  console.log(
-    `[Webhook] Custom bounty via comment: ${repository.full_name}#${issue.number} → ${customAmount} USDC`
+  log.info(
+    { repo: repository.full_name, issue: issue.number, customAmount },
+    'custom bounty created via comment'
   );
 }
 
@@ -856,7 +864,7 @@ export async function handleIssueUnassigned(payload: Record<string, unknown>): P
         }
       }
     } catch (err) {
-      console.error('[Webhook] Failed to zero out milestone on unassign:', err);
+      log.error({ err }, 'failed to zero out milestone on unassign');
     }
   }
 
@@ -872,7 +880,7 @@ export async function handleIssueUnassigned(payload: Record<string, unknown>): P
     `🔄 Contributor unassigned. The milestone has been closed. The bounty of **${issueRecord.reward_amount} USDC** remains available for the next assignee.`
   );
 
-  console.log(`[Webhook] Unassigned and closed milestone for issue #${issue.number}`);
+  log.info({ issue: issue.number }, 'unassigned and closed milestone');
 }
 
 /* ------------------------------------------------------------------ */
@@ -891,7 +899,7 @@ export async function handleIssueClosed(payload: Record<string, unknown>): Promi
 
   // We no longer trigger automated payouts on issue close to avoid race conditions with PR merges.
   // Payouts are handled by handlePRMerged or explicit commands.
-  console.log(`[Webhook] Issue #${issue.number} closed as completed. Skipping automated payout.`);
+  log.info({ issue: issue.number }, 'issue closed as completed — skipping automated payout');
 }
 
 /* ------------------------------------------------------------------ */
@@ -909,13 +917,13 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
 
   // If PR has "rejected" label, skip payout entirely
   if (hasRejectedLabel(pr.labels ?? [])) {
-    console.log(`[Webhook] PR #${pr.number} has 'rejected' label — skipping payout`);
+    log.info({ pr: pr.number }, "PR has 'rejected' label — skipping payout");
     return;
   }
 
   const issueNumber = extractIssueNumber(pr.body);
   if (!issueNumber) {
-    console.log('[Webhook] PR merged but no linked issue found in body');
+    log.info('PR merged but no linked issue found in body');
     return;
   }
 
@@ -956,14 +964,13 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
   // If issue is still pending, push milestone first (needs a wallet)
   if (issueRecord.status === 'pending') {
     if (!assignment.contributors?.stellar_wallet) {
-      console.log(
-        `[Webhook] PR merged for #${issueNumber} but contributor has no wallet. Skipping release.`
+      log.warn(
+        { issue: issueNumber },
+        'PR merged but contributor has no wallet — skipping release'
       );
       return;
     }
-    console.log(
-      `[Webhook] PR merged for #${issueNumber} but issue is pending. Pushing milestone first...`
-    );
+    log.info({ issue: issueNumber }, 'PR merged but issue is pending — pushing milestone first');
     await pushMilestoneOnChain(repo, issueRecord, assignment.contributors.stellar_wallet);
     // Refresh
     const { data: updatedIssue } = await supabase
@@ -1094,7 +1101,7 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
           `[View Escrow](https://viewer.trustlesswork.com/${repo.escrow_contract_id})`
       );
     } catch (releaseErr: any) {
-      console.error('[Webhook] Partial payment failed on merge:', releaseErr.message);
+      log.error({ err: releaseErr, issue: issueNumber }, 'partial payment failed on merge');
       await postComment(
         repository.full_name,
         issueNumber,
@@ -1131,7 +1138,7 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
         `Thanks for your contribution! 🚀`
     );
   } catch (releaseErr: any) {
-    console.error('[Webhook] releaseEscrowMilestone failed (PR merged):', releaseErr.message);
+    log.error({ err: releaseErr, issue: issueNumber }, 'releaseEscrowMilestone failed (PR merged)');
     await supabase.from('assignments').update({ payout_status: 'failed' }).eq('id', assignment.id);
     await postComment(
       repository.full_name,
@@ -1162,8 +1169,9 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
   if (action === 'created') {
     // Only allow installations on User accounts (not Organizations)
     if (installation.account.type !== 'User') {
-      console.log(
-        `[Webhook] ⏭️ Skipping installation on ${installation.account.type}: ${installation.account.login}`
+      log.info(
+        { type: installation.account.type, account: installation.account.login },
+        'skipping installation on non-User account'
       );
       return;
     }
@@ -1171,7 +1179,7 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
     for (const repo of repositories) {
       // Filter out forks and private repositories
       if (repo.fork || repo.private) {
-        console.log(`[Webhook] ⏭️ Skipping repo (fork/private): ${repo.full_name}`);
+        log.info({ repo: repo.full_name }, 'skipping repo (fork/private)');
         continue;
       }
 
@@ -1194,31 +1202,30 @@ export async function handleInstallation(payload: Record<string, unknown>): Prom
       );
 
       if (error) {
-        console.error(`[Webhook] ❌ Failed to save repo ${repo.full_name}:`, error.message);
+        log.error({ err: error, repo: repo.full_name }, 'failed to save repo on installation');
       } else {
-        console.log(
-          `[Webhook] ✅ Installed app on repo: ${repo.full_name} (Installer: ${sender.id}, Installation: ${(installation as any).id})`
+        log.info(
+          { repo: repo.full_name, installer: sender.id, installationId: (installation as any).id },
+          'app installed on repo'
         );
       }
     }
   } else if (action === 'deleted') {
-    // Cleanup all repos associated with this installation
-    console.log(
-      `[Webhook] 🗑️ Uninstalled app from account: ${installation.account.login} (Installation ID: ${installation.id})`
+    log.info(
+      { account: installation.account.login, installationId: installation.id },
+      'app uninstalled from account'
     );
     const { error } = await supabase
       .from('repos')
       .delete()
       .eq('github_installation_id', installation.id);
     if (error) {
-      console.error(
-        `[Webhook] ❌ Failed to cleanup repos for uninstalled installation ${installation.id}:`,
-        error.message
+      log.error(
+        { err: error, installationId: installation.id },
+        'failed to cleanup repos for uninstalled installation'
       );
     } else {
-      console.log(
-        `[Webhook] ✅ Successfully cleared all repos for installation ${installation.id} from DB.`
-      );
+      log.info({ installationId: installation.id }, 'cleared all repos for installation');
     }
   }
 }
@@ -1246,8 +1253,9 @@ export async function handleInstallationRepositories(
   if (action === 'added') {
     // Only allow for User accounts
     if (installation.account.type !== 'User') {
-      console.log(
-        `[Webhook] ⏭️ Skipping added repos for ${installation.account.type}: ${installation.account.login}`
+      log.info(
+        { type: installation.account.type, account: installation.account.login },
+        'skipping added repos for non-User account'
       );
       return;
     }
@@ -1255,7 +1263,7 @@ export async function handleInstallationRepositories(
     for (const repo of repositoriesAdded) {
       // Filter out forks and private repositories
       if (repo.fork || repo.private) {
-        console.log(`[Webhook] ⏭️ Skipping added repo (fork/private): ${repo.full_name}`);
+        log.info({ repo: repo.full_name }, 'skipping added repo (fork/private)');
         continue;
       }
 
@@ -1278,26 +1286,19 @@ export async function handleInstallationRepositories(
       );
 
       if (error) {
-        console.error(`[Webhook] ❌ Failed to add repo ${repo.full_name}:`, error.message);
+        log.error({ err: error, repo: repo.full_name }, 'failed to add repo to installation');
       } else {
-        console.log(
-          `[Webhook] ✅ Added repo to installation: ${repo.full_name} (Installer: ${sender.id})`
-        );
+        log.info({ repo: repo.full_name, installer: sender.id }, 'added repo to installation');
       }
     }
   } else if (action === 'removed') {
     for (const repo of repositoriesRemoved) {
-      console.log(
-        `[Webhook] ➖ Removed repo from installation: ${repo.full_name} (ID: ${repo.id})`
-      );
+      log.info({ repo: repo.full_name, repoId: repo.id }, 'removed repo from installation');
       const { error } = await supabase.from('repos').delete().eq('github_repo_id', repo.id);
       if (error) {
-        console.error(
-          `[Webhook] ❌ Failed to remove repo ${repo.full_name} from DB:`,
-          error.message
-        );
+        log.error({ err: error, repo: repo.full_name }, 'failed to remove repo from DB');
       } else {
-        console.log(`[Webhook] ✅ Successfully removed repo ${repo.full_name} from DB.`);
+        log.info({ repo: repo.full_name }, 'removed repo from DB');
       }
     }
   }
