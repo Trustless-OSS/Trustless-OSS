@@ -2,16 +2,7 @@ import crypto from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
 import { webhooksQueue } from '../lib/queue.js';
-import {
-  handleIssueLabeled,
-  handleIssueAssigned,
-  handleIssueUnassigned,
-  handleIssueClosed,
-  handleIssueCommentCreated,
-  handlePRMerged,
-  handleInstallation,
-  handleInstallationRepositories,
-} from '../lib/github/webhook.js';
+
 import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'webhook-route' });
