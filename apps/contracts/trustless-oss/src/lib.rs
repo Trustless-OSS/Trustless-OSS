@@ -27,16 +27,16 @@ impl TrustlessOssContract {
         platform: Address,
         token: Address,
     ) -> Result<(), ContractError> {
+        if storage::has_escrow(&env) {
+            return Err(ContractError::EscrowAlreadyExists);
+        }
+
         let stored_admin = storage::get_admin(&env);
         if let Some(admin) = stored_admin {
             admin.require_auth();
         } else {
             maintainer.require_auth();
             storage::set_admin(&env, &maintainer);
-        }
-
-        if storage::has_escrow(&env) {
-            return Err(ContractError::EscrowAlreadyExists);
         }
 
         let escrow = EscrowState {
