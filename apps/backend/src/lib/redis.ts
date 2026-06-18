@@ -8,7 +8,7 @@ let status: 'connecting' | 'connected' | 'disconnected' | 'error' = 'disconnecte
 
 if (process.env.REDIS_URL) {
   client = new IORedis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: null,
     // The client will attempt to reconnect automatically on error.
   });
 
