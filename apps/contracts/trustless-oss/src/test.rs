@@ -370,6 +370,26 @@ fn test_ttl_extended_on_issue_ids_write() {
 }
 
 // ---------------------------------------------------------------------------
+// get_balance
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_get_balance_after_initialize() {
+    let (env, contract_id) = setup_env();
+    let c = client(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (admin, maintainer, platform, token) = addresses(&env);
+    c.initialize(&1, &admin, &maintainer, &platform, &token);
+
+    let balance = c.get_balance();
+    assert_eq!(balance.total_deposited, 0);
+    assert_eq!(balance.reserved, 0);
+    assert_eq!(balance.available, 0);
+    assert_eq!(balance.total_released, 0);
+}
+
+// ---------------------------------------------------------------------------
 // list_milestones
 // ---------------------------------------------------------------------------
 

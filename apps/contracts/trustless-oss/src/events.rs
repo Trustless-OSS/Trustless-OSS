@@ -21,17 +21,30 @@ pub fn emit_milestone_created(env: &Env, issue_id: u64, reward: i128) {
 }
 
 pub fn emit_contributor_assigned(env: &Env, issue_id: u64, contributor: Address) {
-    let topics = (Symbol::new(env, "contributor_assigned"), issue_id, contributor);
+    let topics = (
+        Symbol::new(env, "contributor_assigned"),
+        issue_id,
+        contributor,
+    );
     env.events().publish(topics, ());
 }
 
 pub fn emit_contributor_reassigned(env: &Env, issue_id: u64, new_contributor: Address) {
-    let topics = (Symbol::new(env, "contributor_reassigned"), issue_id, new_contributor);
+    let topics = (
+        Symbol::new(env, "contributor_reassigned"),
+        issue_id,
+        new_contributor,
+    );
     env.events().publish(topics, ());
 }
 
 pub fn emit_funds_released(env: &Env, issue_id: u64, contributor: Address, amount: i128) {
-    let topics = (Symbol::new(env, "funds_released"), issue_id, contributor, amount);
+    let topics = (
+        Symbol::new(env, "funds_released"),
+        issue_id,
+        contributor,
+        amount,
+    );
     env.events().publish(topics, ());
 }
 
