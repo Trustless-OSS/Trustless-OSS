@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
 
 pub mod auth;
 pub mod error;
@@ -19,27 +19,24 @@ pub struct TrustlessOssContract;
 
 #[contractimpl]
 impl TrustlessOssContract {
+    /// Initializes the single-repo escrow state with the maintainer, platform, and token configurations.
     pub fn initialize(
         env: Env,
         repo_id: u64,
-        admin: Address,
         maintainer: Address,
         platform: Address,
         token: Address,
-    ) {
-        admin.require_auth();
-
+    ) -> Result<(), ContractError> {
         let stored_admin = storage::get_admin(&env);
-        if let Some(stored) = stored_admin {
-            if admin != stored {
-                panic_with_error!(&env, ContractError::NotAdmin);
-            }
+        if let Some(admin) = stored_admin {
+            admin.require_auth();
         } else {
-            storage::set_admin(&env, &admin);
+            maintainer.require_auth();
+            storage::set_admin(&env, &maintainer);
         }
 
         if storage::has_escrow(&env) {
-            panic_with_error!(&env, ContractError::EscrowAlreadyExists);
+            return Err(ContractError::EscrowAlreadyExists);
         }
 
         let escrow = EscrowState {
@@ -58,50 +55,80 @@ impl TrustlessOssContract {
         storage::set_issue_ids(&env, &Vec::new(&env));
 
         events::emit_escrow_initialized(&env, repo_id, maintainer);
+
+        Ok(())
     }
 
-    pub fn deposit_funds(_env: Env, _amount: i128) {
+    /// Deposits USDC into the contract to fund upcoming milestones.
+    pub fn deposit_funds(_env: Env, _amount: i128) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn withdraw_funds(_env: Env, _amount: i128) {
+    /// Withdraws unreserved USDC funds back to the maintainer.
+    pub fn withdraw_funds(_env: Env, _amount: i128) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn create_milestone(_env: Env, _issue_id: u64, _title: String, _reward: i128) {
+    /// Creates a new pending milestone, reserving the specified reward amount.
+    pub fn create_milestone(
+        _env: Env,
+        _issue_id: u64,
+        _title: String,
+        _reward: i128,
+    ) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn assign_contributor(_env: Env, _issue_id: u64, _contributor: Address) {
+    /// Assigns a contributor to a pending milestone and moves it to active status.
+    pub fn assign_contributor(
+        _env: Env,
+        _issue_id: u64,
+        _contributor: Address,
+    ) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn reassign_contributor(_env: Env, _issue_id: u64, _new_contributor: Address) {
+    /// Reassigns an active milestone to a new contributor.
+    pub fn reassign_contributor(
+        _env: Env,
+        _issue_id: u64,
+        _new_contributor: Address,
+    ) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn release_funds(_env: Env, _issue_id: u64) {
+    /// Releases the fully reserved reward amount to the assigned contributor upon completion.
+    pub fn release_funds(_env: Env, _issue_id: u64) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn partial_release(_env: Env, _issue_id: u64, _release_amount: i128) {
+    /// Releases a partial reward amount to the contributor and returns the remainder to the available pool.
+    pub fn partial_release(
+        _env: Env,
+        _issue_id: u64,
+        _release_amount: i128,
+    ) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn cancel_milestone(_env: Env, _issue_id: u64) {
+    /// Cancels a milestone and un-reserves the funds, returning them to the available pool.
+    pub fn cancel_milestone(_env: Env, _issue_id: u64) -> Result<(), ContractError> {
         unimplemented!()
     }
 
-    pub fn get_escrow(env: Env) -> EscrowState {
+    /// Retrieves the global state for this repository's escrow.
+    pub fn get_escrow(env: Env) -> Result<EscrowState, ContractError> {
         storage::get_escrow(&env)
     }
 
-    pub fn get_milestone(env: Env, issue_id: u64) -> Milestone {
+    /// Retrieves the details and current status of a specific milestone by its issue ID.
+    pub fn get_milestone(env: Env, issue_id: u64) -> Result<Milestone, ContractError> {
         storage::get_milestone(&env, issue_id)
     }
 
-    pub fn get_balance(env: Env) -> BalanceInfo {
-        let escrow = storage::get_escrow(&env);
+    /// Returns the overall balance information including deposited, reserved, and available amounts.
+    pub fn get_balance(env: Env) -> Result<BalanceInfo, ContractError> {
+        let escrow = storage::get_escrow(&env)?;
         let total_deposited = escrow.total_deposited;
         let reserved = escrow.reserved;
         let total_released = escrow.total_released;
@@ -110,21 +137,22 @@ impl TrustlessOssContract {
             .unwrap_or(0)
             .checked_sub(total_released)
             .unwrap_or(0);
-        BalanceInfo {
+        Ok(BalanceInfo {
             total_deposited,
             reserved,
             available,
             total_released,
-        }
+        })
     }
 
-    pub fn list_milestones(env: Env) -> Vec<Milestone> {
+    /// Lists all milestones that have been created for this repository.
+    pub fn list_milestones(env: Env) -> Result<Vec<Milestone>, ContractError> {
         let issue_ids = storage::get_issue_ids(&env);
         let mut milestones: Vec<Milestone> = Vec::new(&env);
         for i in 0..issue_ids.len() {
             let id = issue_ids.get(i).unwrap();
-            milestones.push_back(storage::get_milestone(&env, id));
+            milestones.push_back(storage::get_milestone(&env, id)?);
         }
-        milestones
+        Ok(milestones)
     }
 }

@@ -1,3 +1,4 @@
+use crate::error::ContractError;
 use crate::types::{EscrowState, Milestone};
 use soroban_sdk::{contracttype, Address, Env, Vec};
 
@@ -6,18 +7,18 @@ const TTL_MAX: u32 = 100_000;
 
 #[contracttype]
 pub enum StorageKey {
-    Escrow,
-    Milestone(u64),
-    EscrowIssueIds,
-    Admin,
+    Escrow,         // EscrowState
+    Milestone(u64), // issue_id → Milestone
+    EscrowIssueIds, // Vec<u64>
+    Admin,          // Address — can call initialize_escrow
 }
 
-pub fn get_escrow(env: &Env) -> EscrowState {
+pub fn get_escrow(env: &Env) -> Result<EscrowState, ContractError> {
     let key = StorageKey::Escrow;
     env.storage()
         .persistent()
         .get(&key)
-        .expect("escrow not found")
+        .ok_or(ContractError::EscrowNotFound)
 }
 
 pub fn set_escrow(env: &Env, escrow: &EscrowState) {
@@ -33,12 +34,12 @@ pub fn has_escrow(env: &Env) -> bool {
     env.storage().persistent().has(&key)
 }
 
-pub fn get_milestone(env: &Env, issue_id: u64) -> Milestone {
+pub fn get_milestone(env: &Env, issue_id: u64) -> Result<Milestone, ContractError> {
     let key = StorageKey::Milestone(issue_id);
     env.storage()
         .persistent()
         .get(&key)
-        .expect("milestone not found")
+        .ok_or(ContractError::MilestoneNotFound)
 }
 
 pub fn set_milestone(env: &Env, issue_id: u64, milestone: &Milestone) {

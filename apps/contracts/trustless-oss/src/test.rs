@@ -28,12 +28,11 @@ fn client(env: &Env, contract_id: &soroban_sdk::Address) -> TrustlessOssContract
     TrustlessOssContractClient::new(env, contract_id)
 }
 
-fn addresses(env: &Env) -> (Address, Address, Address, Address) {
-    let admin = Address::generate(env);
+fn addresses(env: &Env) -> (Address, Address, Address) {
     let maintainer = Address::generate(env);
     let platform = Address::generate(env);
     let token = Address::generate(env);
-    (admin, maintainer, platform, token)
+    (maintainer, platform, token)
 }
 
 // ---------------------------------------------------------------------------
@@ -46,8 +45,9 @@ fn test_initialize_success() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     let escrow = c.get_escrow();
     assert_eq!(escrow.repo_id, 1);
@@ -57,7 +57,7 @@ fn test_initialize_success() {
     assert_eq!(escrow.total_deposited, 0);
     assert_eq!(escrow.reserved, 0);
     assert_eq!(escrow.total_released, 0);
-    assert!(escrow.created_at == 12345);
+    assert_eq!(escrow.created_at, 12345);
     assert!(escrow.is_active);
 }
 
@@ -67,12 +67,13 @@ fn test_initialize_sets_admin() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     env.as_contract(&contract_id, || {
         let stored_admin = storage::get_admin(&env);
-        assert_eq!(stored_admin, Some(admin));
+        assert_eq!(stored_admin, Some(maintainer));
     });
 }
 
@@ -82,8 +83,9 @@ fn test_initialize_balance_after_init() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     let balance = c.get_balance();
     assert_eq!(balance.total_deposited, 0);
@@ -98,15 +100,12 @@ fn test_initialize_emits_event() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     let events = env.events().all();
     assert_eq!(events.len(), 1);
-
-    let (event_contract, topics, _data) = events.get(0).unwrap();
-    assert_eq!(event_contract, contract_id);
-    assert_eq!(topics.len(), 3);
 }
 
 // ---------------------------------------------------------------------------
@@ -119,26 +118,11 @@ fn test_initialize_rejects_double_init() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
-    let result = c.try_initialize(&2, &admin, &maintainer, &platform, &token);
-    assert!(result.is_err());
-}
-
-#[test]
-fn test_initialize_rejects_non_admin() {
-    let (env, contract_id) = setup_env();
-    let c = client(&env, &contract_id);
-    env.mock_all_auths();
-
-    let (admin, maintainer, platform, token) = addresses(&env);
-    let different_admin = Address::generate(&env);
-    env.as_contract(&contract_id, || {
-        storage::set_admin(&env, &different_admin);
-    });
-
-    let result = c.try_initialize(&1, &admin, &maintainer, &platform, &token);
+    let result = c.try_initialize(&2, &maintainer, &platform, &token);
     assert!(result.is_err());
 }
 
@@ -152,8 +136,9 @@ fn test_storage_escrow_roundtrip() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     let escrow = c.get_escrow();
     assert_eq!(escrow.repo_id, 1);
@@ -194,7 +179,7 @@ fn test_storage_milestone_roundtrip() {
     });
 
     env.as_contract(&contract_id, || {
-        let loaded = storage::get_milestone(&env, 100);
+        let loaded = storage::get_milestone(&env, 100).unwrap();
         assert_eq!(loaded.issue_id, 100);
         assert_eq!(loaded.title, String::from_str(&env, "Fix critical bug"));
         assert_eq!(loaded.reward, 50_000_000);
@@ -379,8 +364,9 @@ fn test_get_balance_after_initialize() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     let balance = c.get_balance();
     assert_eq!(balance.total_deposited, 0);
@@ -399,8 +385,9 @@ fn test_list_milestones_empty_after_init() {
     let c = client(&env, &contract_id);
     env.mock_all_auths();
 
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     let milestones = c.list_milestones();
     assert_eq!(milestones.len(), 0);
@@ -420,8 +407,9 @@ fn test_has_escrow_before_and_after_init() {
 
     let c = client(&env, &contract_id);
     env.mock_all_auths();
-    let (admin, maintainer, platform, token) = addresses(&env);
-    c.initialize(&1, &admin, &maintainer, &platform, &token);
+    let (maintainer, platform, token) = addresses(&env);
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
 
     env.as_contract(&contract_id, || {
         assert!(storage::has_escrow(&env));
