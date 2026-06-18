@@ -1,10 +1,6 @@
 import 'dotenv/config';
 import { initializeQueues } from './lib/queue.js';
 import { startWebhookWorker } from './workers/webhookWorker.js';
-
-initializeQueues();
-startWebhookWorker();
-
 import { routers } from './router.js';
 import { githubWebhookHandler } from './routes/webhooks.js';
 import { debugAuthHandler } from './routes/debug.js';
@@ -28,6 +24,8 @@ import {
   deleteRepoHandler,
 } from './routes/api.js';
 
+initializeQueues();
+startWebhookWorker();
 /* ------------------------------------------------------------------ */
 /* Register routes                                                      */
 /* ------------------------------------------------------------------ */
