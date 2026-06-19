@@ -1,5 +1,9 @@
+use crate::error::ContractError;
 use crate::types::{EscrowState, Milestone};
 use soroban_sdk::{contracttype, Address, Env, Vec};
+
+const TTL_MIN: u32 = 100_000;
+const TTL_MAX: u32 = 100_000;
 
 #[contracttype]
 pub enum StorageKey {
@@ -9,34 +13,82 @@ pub enum StorageKey {
     Admin,          // Address — can call initialize_escrow
 }
 
-pub fn get_escrow(_env: &Env) -> EscrowState {
-    unimplemented!()
+pub fn get_escrow(env: &Env) -> Result<EscrowState, ContractError> {
+    let key = StorageKey::Escrow;
+    env.storage()
+        .persistent()
+        .get(&key)
+        .ok_or(ContractError::EscrowNotFound)
 }
 
-pub fn set_escrow(_env: &Env, _escrow: &EscrowState) {
-    unimplemented!()
+pub fn set_escrow(env: &Env, escrow: &EscrowState) {
+    let key = StorageKey::Escrow;
+    env.storage().persistent().set(&key, escrow);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_MIN, TTL_MAX);
 }
 
-pub fn get_milestone(_env: &Env, _issue_id: u64) -> Milestone {
-    unimplemented!()
+pub fn has_escrow(env: &Env) -> bool {
+    let key = StorageKey::Escrow;
+    env.storage().persistent().has(&key)
 }
 
-pub fn set_milestone(_env: &Env, _issue_id: u64, _milestone: &Milestone) {
-    unimplemented!()
+pub fn get_milestone(env: &Env, issue_id: u64) -> Result<Milestone, ContractError> {
+    let key = StorageKey::Milestone(issue_id);
+    env.storage()
+        .persistent()
+        .get(&key)
+        .ok_or(ContractError::MilestoneNotFound)
 }
 
-pub fn get_issue_ids(_env: &Env) -> Vec<u64> {
-    unimplemented!()
+pub fn set_milestone(env: &Env, issue_id: u64, milestone: &Milestone) {
+    let key = StorageKey::Milestone(issue_id);
+    env.storage().persistent().set(&key, milestone);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_MIN, TTL_MAX);
 }
 
-pub fn push_issue_id(_env: &Env, _issue_id: u64) {
-    unimplemented!()
+pub fn get_issue_ids(env: &Env) -> Vec<u64> {
+    let key = StorageKey::EscrowIssueIds;
+    env.storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env))
 }
 
-pub fn get_admin(_env: &Env) -> Option<Address> {
-    unimplemented!()
+pub fn push_issue_id(env: &Env, issue_id: u64) {
+    let key = StorageKey::EscrowIssueIds;
+    let mut ids: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get(&key)
+        .unwrap_or(Vec::new(env));
+    ids.push_back(issue_id);
+    env.storage().persistent().set(&key, &ids);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_MIN, TTL_MAX);
 }
 
-pub fn set_admin(_env: &Env, _admin: &Address) {
-    unimplemented!()
+pub fn set_issue_ids(env: &Env, ids: &Vec<u64>) {
+    let key = StorageKey::EscrowIssueIds;
+    env.storage().persistent().set(&key, ids);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_MIN, TTL_MAX);
+}
+
+pub fn get_admin(env: &Env) -> Option<Address> {
+    let key = StorageKey::Admin;
+    env.storage().persistent().get(&key)
+}
+
+pub fn set_admin(env: &Env, admin: &Address) {
+    let key = StorageKey::Admin;
+    env.storage().persistent().set(&key, admin);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, TTL_MIN, TTL_MAX);
 }
