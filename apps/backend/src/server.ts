@@ -4,6 +4,7 @@ import dns from 'dns';
 import appHandler from './handler/app_handler';
 import { disconnectRedis } from './lib/redis.js';
 import { logger } from './lib/logger.js';
+import { performHealthCheck, closeDbPool } from './lib/monitoring.js';
 
 const log = logger.child({ module: 'server' });
 
@@ -16,8 +17,36 @@ const server = http.createServer((req, res) => {
 
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
 
+const healthLog = logger.child({ module: 'health-monitor' });
+
+async function runPeriodicHealthCheck() {
+  try {
+    const health = await performHealthCheck('readiness');
+    if (health.status === 'ok') {
+      healthLog.info({ health }, 'Periodic health check: OK');
+    } else {
+      healthLog.warn({ health }, 'Periodic health check: DEGRADED/UNHEALTHY');
+    }
+  } catch (err: any) {
+    healthLog.error({ err: err.message }, 'Periodic health check failed with error');
+  }
+}
+
 server.listen(PORT, () => {
   log.info({ port: PORT }, 'Trustless OSS Backend running');
+
+  // Run once on startup (after 5 seconds)
+  setTimeout(() => {
+    void runPeriodicHealthCheck();
+  }, 5000);
+
+  // Log health check results every 5 minutes
+  setInterval(
+    () => {
+      void runPeriodicHealthCheck();
+    },
+    5 * 60 * 1000
+  );
 });
 
 const shutdown = (signal: string) => {
@@ -30,13 +59,13 @@ const shutdown = (signal: string) => {
     }
     log.info('HTTP server closed');
 
-    disconnectRedis()
+    Promise.all([disconnectRedis(), closeDbPool()])
       .then(() => {
-        log.info('Redis client disconnected');
+        log.info('Redis and DB connections disconnected');
         process.exit(0);
       })
-      .catch((redisErr) => {
-        log.error({ err: redisErr }, 'error during Redis disconnection');
+      .catch((disconnectErr) => {
+        log.error({ err: disconnectErr }, 'error during graceful disconnection');
         process.exit(1);
       });
   });

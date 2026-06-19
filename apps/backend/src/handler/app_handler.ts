@@ -4,6 +4,7 @@ import { json, dispatch } from '../router';
 import '../app';
 import { logger } from '../lib/logger.js';
 import { attachRequestContext } from '../middleware/logging.js';
+import { trackHttpRequest } from '../lib/monitoring.js';
 
 const log = logger.child({ module: 'app' });
 
@@ -24,6 +25,15 @@ export default async function appHandler(
   }
 
   attachRequestContext(req, res);
+
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const method = req.method || 'GET';
+    const status = res.statusCode;
+    const route = (req as any).routePattern || 'unknown';
+    trackHttpRequest(method, route, status, duration);
+  });
 
   try {
     await dispatch(req, res);

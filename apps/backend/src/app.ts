@@ -4,6 +4,8 @@ import { startWebhookWorker } from './workers/webhookWorker.js';
 import { routers } from './router.js';
 import { githubWebhookHandler } from './routes/webhooks.js';
 import { debugAuthHandler } from './routes/debug.js';
+import { metricsHandler } from './routes/metrics.js';
+import './lib/monitoring.js';
 import {
   connectRepoHandler,
   createEscrowUnsignedHandler,
@@ -32,6 +34,7 @@ startWebhookWorker();
 
 // Health
 routers('GET', '/api/health', healthHandler);
+routers('GET', '/api/metrics', metricsHandler);
 
 // Debug (remove before going public with sensitive repos)
 routers('GET', '/api/debug/auth', debugAuthHandler);

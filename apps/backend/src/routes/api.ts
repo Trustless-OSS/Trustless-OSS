@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
 import { supabase } from '../lib/supabase.js';
 import { logger } from '../lib/logger.js';
+import { performHealthCheck } from '../lib/monitoring.js';
 
 const log = logger.child({ module: 'api' });
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
@@ -1140,80 +1141,15 @@ export async function retryIssueHandler(
 /* ------------------------------------------------------------------ */
 /* GET /api/health                                                      */
 /* ------------------------------------------------------------------ */
-export async function healthHandler(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const health: any = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development',
-    version: '1.0.0',
-    checks: {},
-  };
-
+export async function healthHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
-    // 1. Database Check
-    const startDb = Date.now();
-    const { error: dbError } = await supabase
-      .from('repos')
-      .select('id', { count: 'exact', head: true })
-      .limit(1);
-    health.checks.database = {
-      status: dbError ? 'error' : 'ok',
-      latency: `${Date.now() - startDb}ms`,
-      message: dbError?.message,
-    };
+    const url = new URL(req.url ?? '/', `http://${req.headers.host || 'localhost'}`);
+    const type = url.searchParams.get('type') || 'readiness';
 
-    // 2. Trustless Work API Check
-    const startTw = Date.now();
-    try {
-      const { twFetch } = await import('../lib/trustless-work/client.js');
-      await twFetch('/helper/health', { method: 'GET' });
-      health.checks.trustless_work = {
-        status: 'ok',
-        latency: `${Date.now() - startTw}ms`,
-      };
-    } catch (e: any) {
-      health.checks.trustless_work = {
-        status: 'degraded',
-        error: e.message,
-      };
-    }
+    const health = await performHealthCheck(type);
+    const status = health.status === 'ok' ? 200 : 503;
 
-    // 3. Redis Check
-    const startRedis = Date.now();
-    try {
-      const { checkRedisHealth } = await import('../lib/redis.js');
-      const redisHealth = await checkRedisHealth();
-      health.checks.redis = {
-        ...redisHealth,
-        latency: `${Date.now() - startRedis}ms`,
-      };
-    } catch (e: any) {
-      health.checks.redis = {
-        status: 'error',
-        message: e.message,
-      };
-    }
-
-    // 4. Environment Check (Required Variables)
-    const requiredVars = [
-      'SUPABASE_URL',
-      'SUPABASE_SERVICE_ROLE_KEY',
-      'PLATFORM_STELLAR_PUBLIC_KEY',
-      'GITHUB_BOT_TOKEN',
-      'GITHUB_WEBHOOK_SECRET',
-    ];
-    const missing = requiredVars.filter((v) => !process.env[v]);
-    health.checks.environment = {
-      status: missing.length === 0 ? 'ok' : 'error',
-      missing_variables: missing.length > 0 ? missing : undefined,
-    };
-
-    // If any critical check fails, return 503
-    const isHealthy =
-      health.checks.database.status === 'ok' && health.checks.environment.status === 'ok';
-    if (!isHealthy) health.status = 'unhealthy';
-
-    json(res, health, isHealthy ? 200 : 503);
+    json(res, health, status);
   } catch (err: any) {
     json(res, { status: 'error', message: err.message }, 500);
   }

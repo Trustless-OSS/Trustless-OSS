@@ -11,6 +11,7 @@ interface Route {
   pattern: RegExp;
   paramNames: string[];
   handler: Handler;
+  path: string;
 }
 
 const routes: Route[] = [];
@@ -26,7 +27,7 @@ function pathToRegex(path: string): { pattern: RegExp; paramNames: string[] } {
 
 export function routers(method: string, path: string, handler: Handler): void {
   const { pattern, paramNames } = pathToRegex(path);
-  routes.push({ method: method.toUpperCase(), pattern, paramNames, handler });
+  routes.push({ method: method.toUpperCase(), pattern, paramNames, handler, path });
 }
 
 export async function dispatch(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -44,6 +45,7 @@ export async function dispatch(req: IncomingMessage, res: ServerResponse): Promi
       params[name] = match[i + 1]!;
     });
 
+    (req as any).routePattern = route.path;
     await route.handler(req, res, params);
     return;
   }
