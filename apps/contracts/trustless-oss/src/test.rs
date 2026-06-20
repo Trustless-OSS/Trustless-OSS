@@ -61,6 +61,20 @@ fn initialize_with_funding(
     (c, maintainer, platform, token)
 }
 
+fn assert_contract_err<T>(
+    result: Result<
+        Result<T, soroban_sdk::ConversionError>,
+        Result<ContractError, soroban_sdk::InvokeError>,
+    >,
+    expected: ContractError,
+) {
+    match result {
+        Err(Ok(actual)) => assert_eq!(actual, expected),
+        Err(Err(_)) => panic!("expected contract error {expected:?}, got host invocation error"),
+        Ok(_) => panic!("expected contract error {expected:?}, got success"),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // initialize – success path
 // ---------------------------------------------------------------------------
@@ -418,12 +432,12 @@ fn test_create_milestone_rejects_underfunded_and_duplicate_issue() {
 
     let title = String::from_str(&env, "Too expensive");
     let result = c.try_create_milestone(&102, &title, &60_000_000);
-    assert!(result.is_err());
+    assert_contract_err(result, ContractError::InsufficientBalance);
 
     let result = c.try_create_milestone(&102, &title, &30_000_000);
     assert!(result.is_ok());
     let result = c.try_create_milestone(&102, &title, &10_000_000);
-    assert!(result.is_err());
+    assert_contract_err(result, ContractError::DuplicateIssueId);
 }
 
 #[test]
@@ -438,7 +452,7 @@ fn test_assign_and_reassign_contributor_require_valid_state() {
     assert!(result.is_ok());
 
     let result = c.try_reassign_contributor(&103, &replacement);
-    assert!(result.is_err());
+    assert_contract_err(result, ContractError::MilestoneNotActive);
 
     let result = c.try_assign_contributor(&103, &contributor);
     assert!(result.is_ok());
@@ -447,7 +461,7 @@ fn test_assign_and_reassign_contributor_require_valid_state() {
     assert_eq!(milestone.contributor, Some(contributor));
 
     let result = c.try_assign_contributor(&103, &replacement);
-    assert!(result.is_err());
+    assert_contract_err(result, ContractError::MilestoneNotPending);
 
     let result = c.try_reassign_contributor(&103, &replacement);
     assert!(result.is_ok());
@@ -481,8 +495,34 @@ fn test_cancel_milestone_returns_reserved_funds_to_available_pool() {
     assert_eq!(balance.available, 100_000_000);
 
     let result = c.try_reassign_contributor(&104, &Address::generate(&env));
-    assert!(result.is_err());
+    assert_contract_err(result, ContractError::MilestoneNotActive);
     let result = c.try_cancel_milestone(&104);
+    assert_contract_err(result, ContractError::MilestoneNotActive);
+}
+
+#[test]
+fn test_create_milestone_requires_platform_auth() {
+    let (env, contract_id) = setup_env();
+    let c = client(&env, &contract_id);
+    let (_maintainer, platform, token) = addresses(&env);
+
+    env.as_contract(&contract_id, || {
+        let escrow = EscrowState {
+            repo_id: 1,
+            maintainer: Address::generate(&env),
+            platform,
+            token,
+            total_deposited: 100_000_000,
+            reserved: 0,
+            total_released: 0,
+            created_at: 12345,
+            is_active: true,
+        };
+        storage::set_escrow(&env, &escrow);
+    });
+
+    let title = String::from_str(&env, "Unauthorized create");
+    let result = c.try_create_milestone(&105, &title, &10_000_000);
     assert!(result.is_err());
 }
 

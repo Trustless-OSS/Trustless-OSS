@@ -91,9 +91,9 @@ impl TrustlessOssContract {
         let available = escrow
             .total_deposited
             .checked_sub(escrow.reserved)
-            .unwrap_or(0)
+            .ok_or(ContractError::InsufficientBalance)?
             .checked_sub(escrow.total_released)
-            .unwrap_or(0);
+            .ok_or(ContractError::InsufficientBalance)?;
         if reward > available {
             return Err(ContractError::InsufficientBalance);
         }
@@ -109,7 +109,10 @@ impl TrustlessOssContract {
             actual_released: 0,
         };
 
-        escrow.reserved += reward;
+        escrow.reserved = escrow
+            .reserved
+            .checked_add(reward)
+            .ok_or(ContractError::InsufficientBalance)?;
         storage::set_escrow(&env, &escrow);
         storage::set_milestone(&env, issue_id, &milestone);
         storage::push_issue_id(&env, issue_id);
@@ -190,7 +193,10 @@ impl TrustlessOssContract {
             return Err(ContractError::MilestoneNotActive);
         }
 
-        escrow.reserved = escrow.reserved.checked_sub(milestone.reward).unwrap_or(0);
+        escrow.reserved = escrow
+            .reserved
+            .checked_sub(milestone.reward)
+            .ok_or(ContractError::InsufficientBalance)?;
         milestone.status = MilestoneStatus::Cancelled;
         storage::set_escrow(&env, &escrow);
         storage::set_milestone(&env, issue_id, &milestone);
@@ -217,9 +223,9 @@ impl TrustlessOssContract {
         let total_released = escrow.total_released;
         let available = total_deposited
             .checked_sub(reserved)
-            .unwrap_or(0)
+            .ok_or(ContractError::InsufficientBalance)?
             .checked_sub(total_released)
-            .unwrap_or(0);
+            .ok_or(ContractError::InsufficientBalance)?;
         Ok(BalanceInfo {
             total_deposited,
             reserved,
