@@ -35,6 +35,32 @@ fn addresses(env: &Env) -> (Address, Address, Address) {
     (maintainer, platform, token)
 }
 
+fn initialize_with_funding(
+    env: &Env,
+    contract_id: &soroban_sdk::Address,
+    total_deposited: i128,
+) -> (
+    TrustlessOssContractClient<'static>,
+    Address,
+    Address,
+    Address,
+) {
+    let c = client(env, contract_id);
+    env.mock_all_auths();
+    let (maintainer, platform, token) = addresses(env);
+
+    let result = c.try_initialize(&1, &maintainer, &platform, &token);
+    assert!(result.is_ok());
+
+    env.as_contract(contract_id, || {
+        let mut escrow = storage::get_escrow(env).unwrap();
+        escrow.total_deposited = total_deposited;
+        storage::set_escrow(env, &escrow);
+    });
+
+    (c, maintainer, platform, token)
+}
+
 // ---------------------------------------------------------------------------
 // initialize – success path
 // ---------------------------------------------------------------------------
@@ -352,6 +378,112 @@ fn test_ttl_extended_on_issue_ids_write() {
             .get_ttl(&storage::StorageKey::EscrowIssueIds);
         assert!(ttl >= 100_000);
     });
+}
+
+// ---------------------------------------------------------------------------
+// milestone lifecycle
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_create_milestone_reserves_funds_and_lists_issue() {
+    let (env, contract_id) = setup_env();
+    let (c, _, _, _) = initialize_with_funding(&env, &contract_id, 100_000_000);
+
+    let title = String::from_str(&env, "Ship milestone lifecycle");
+    let result = c.try_create_milestone(&101, &title, &40_000_000);
+    assert!(result.is_ok());
+
+    let milestone = c.get_milestone(&101);
+    assert_eq!(milestone.issue_id, 101);
+    assert_eq!(milestone.title, title);
+    assert_eq!(milestone.reward, 40_000_000);
+    assert_eq!(milestone.contributor, None);
+    assert_eq!(milestone.status, MilestoneStatus::Pending);
+
+    let escrow = c.get_escrow();
+    assert_eq!(escrow.reserved, 40_000_000);
+
+    let balance = c.get_balance();
+    assert_eq!(balance.available, 60_000_000);
+
+    let milestones = c.list_milestones();
+    assert_eq!(milestones.len(), 1);
+    assert_eq!(milestones.get(0).unwrap().issue_id, 101);
+}
+
+#[test]
+fn test_create_milestone_rejects_underfunded_and_duplicate_issue() {
+    let (env, contract_id) = setup_env();
+    let (c, _, _, _) = initialize_with_funding(&env, &contract_id, 50_000_000);
+
+    let title = String::from_str(&env, "Too expensive");
+    let result = c.try_create_milestone(&102, &title, &60_000_000);
+    assert!(result.is_err());
+
+    let result = c.try_create_milestone(&102, &title, &30_000_000);
+    assert!(result.is_ok());
+    let result = c.try_create_milestone(&102, &title, &10_000_000);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_assign_and_reassign_contributor_require_valid_state() {
+    let (env, contract_id) = setup_env();
+    let (c, _, _, _) = initialize_with_funding(&env, &contract_id, 100_000_000);
+    let title = String::from_str(&env, "Assign contributor");
+    let contributor = Address::generate(&env);
+    let replacement = Address::generate(&env);
+
+    let result = c.try_create_milestone(&103, &title, &25_000_000);
+    assert!(result.is_ok());
+
+    let result = c.try_reassign_contributor(&103, &replacement);
+    assert!(result.is_err());
+
+    let result = c.try_assign_contributor(&103, &contributor);
+    assert!(result.is_ok());
+    let milestone = c.get_milestone(&103);
+    assert_eq!(milestone.status, MilestoneStatus::Active);
+    assert_eq!(milestone.contributor, Some(contributor));
+
+    let result = c.try_assign_contributor(&103, &replacement);
+    assert!(result.is_err());
+
+    let result = c.try_reassign_contributor(&103, &replacement);
+    assert!(result.is_ok());
+    let milestone = c.get_milestone(&103);
+    assert_eq!(milestone.status, MilestoneStatus::Active);
+    assert_eq!(milestone.contributor, Some(replacement));
+}
+
+#[test]
+fn test_cancel_milestone_returns_reserved_funds_to_available_pool() {
+    let (env, contract_id) = setup_env();
+    let (c, _, _, _) = initialize_with_funding(&env, &contract_id, 100_000_000);
+    let title = String::from_str(&env, "Cancel milestone");
+    let contributor = Address::generate(&env);
+
+    let result = c.try_create_milestone(&104, &title, &40_000_000);
+    assert!(result.is_ok());
+    let result = c.try_assign_contributor(&104, &contributor);
+    assert!(result.is_ok());
+
+    let result = c.try_cancel_milestone(&104);
+    assert!(result.is_ok());
+
+    let milestone = c.get_milestone(&104);
+    assert_eq!(milestone.status, MilestoneStatus::Cancelled);
+    assert_eq!(milestone.contributor, Some(contributor));
+
+    let escrow = c.get_escrow();
+    assert_eq!(escrow.reserved, 0);
+    let balance = c.get_balance();
+    assert_eq!(balance.available, 100_000_000);
+
+    let result = c.try_reassign_contributor(&104, &Address::generate(&env));
+    assert!(result.is_err());
+    let result = c.try_cancel_milestone(&104);
+    assert!(result.is_err());
 }
 
 // ---------------------------------------------------------------------------

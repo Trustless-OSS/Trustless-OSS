@@ -12,7 +12,7 @@ pub mod types;
 mod test;
 
 use error::ContractError;
-use types::{BalanceInfo, EscrowState, Milestone};
+use types::{BalanceInfo, EscrowState, Milestone, MilestoneStatus};
 
 #[contract]
 pub struct TrustlessOssContract;
@@ -71,30 +71,96 @@ impl TrustlessOssContract {
 
     /// Creates a new pending milestone, reserving the specified reward amount.
     pub fn create_milestone(
-        _env: Env,
-        _issue_id: u64,
-        _title: String,
-        _reward: i128,
+        env: Env,
+        issue_id: u64,
+        title: String,
+        reward: i128,
     ) -> Result<(), ContractError> {
-        unimplemented!()
+        if reward <= 0 {
+            return Err(ContractError::ZeroAmount);
+        }
+
+        let mut escrow = storage::get_escrow(&env)?;
+        auth::require_active(&escrow)?;
+        auth::require_platform(&env, &escrow)?;
+
+        if storage::get_milestone(&env, issue_id).is_ok() {
+            return Err(ContractError::DuplicateIssueId);
+        }
+
+        let available = escrow
+            .total_deposited
+            .checked_sub(escrow.reserved)
+            .unwrap_or(0)
+            .checked_sub(escrow.total_released)
+            .unwrap_or(0);
+        if reward > available {
+            return Err(ContractError::InsufficientBalance);
+        }
+
+        let milestone = Milestone {
+            issue_id,
+            title,
+            reward,
+            contributor: None,
+            status: MilestoneStatus::Pending,
+            created_at: env.ledger().timestamp(),
+            released_at: None,
+            actual_released: 0,
+        };
+
+        escrow.reserved += reward;
+        storage::set_escrow(&env, &escrow);
+        storage::set_milestone(&env, issue_id, &milestone);
+        storage::push_issue_id(&env, issue_id);
+        events::emit_milestone_created(&env, issue_id, reward);
+
+        Ok(())
     }
 
     /// Assigns a contributor to a pending milestone and moves it to active status.
     pub fn assign_contributor(
-        _env: Env,
-        _issue_id: u64,
-        _contributor: Address,
+        env: Env,
+        issue_id: u64,
+        contributor: Address,
     ) -> Result<(), ContractError> {
-        unimplemented!()
+        let escrow = storage::get_escrow(&env)?;
+        auth::require_active(&escrow)?;
+        auth::require_platform(&env, &escrow)?;
+
+        let mut milestone = storage::get_milestone(&env, issue_id)?;
+        if milestone.status != MilestoneStatus::Pending {
+            return Err(ContractError::MilestoneNotPending);
+        }
+
+        milestone.contributor = Some(contributor.clone());
+        milestone.status = MilestoneStatus::Active;
+        storage::set_milestone(&env, issue_id, &milestone);
+        events::emit_contributor_assigned(&env, issue_id, contributor);
+
+        Ok(())
     }
 
     /// Reassigns an active milestone to a new contributor.
     pub fn reassign_contributor(
-        _env: Env,
-        _issue_id: u64,
-        _new_contributor: Address,
+        env: Env,
+        issue_id: u64,
+        new_contributor: Address,
     ) -> Result<(), ContractError> {
-        unimplemented!()
+        let escrow = storage::get_escrow(&env)?;
+        auth::require_active(&escrow)?;
+        auth::require_platform(&env, &escrow)?;
+
+        let mut milestone = storage::get_milestone(&env, issue_id)?;
+        if milestone.status != MilestoneStatus::Active {
+            return Err(ContractError::MilestoneNotActive);
+        }
+
+        milestone.contributor = Some(new_contributor.clone());
+        storage::set_milestone(&env, issue_id, &milestone);
+        events::emit_contributor_reassigned(&env, issue_id, new_contributor);
+
+        Ok(())
     }
 
     /// Releases the fully reserved reward amount to the assigned contributor upon completion.
@@ -112,8 +178,25 @@ impl TrustlessOssContract {
     }
 
     /// Cancels a milestone and un-reserves the funds, returning them to the available pool.
-    pub fn cancel_milestone(_env: Env, _issue_id: u64) -> Result<(), ContractError> {
-        unimplemented!()
+    pub fn cancel_milestone(env: Env, issue_id: u64) -> Result<(), ContractError> {
+        let mut escrow = storage::get_escrow(&env)?;
+        auth::require_active(&escrow)?;
+        auth::require_platform(&env, &escrow)?;
+
+        let mut milestone = storage::get_milestone(&env, issue_id)?;
+        if milestone.status != MilestoneStatus::Pending
+            && milestone.status != MilestoneStatus::Active
+        {
+            return Err(ContractError::MilestoneNotActive);
+        }
+
+        escrow.reserved = escrow.reserved.checked_sub(milestone.reward).unwrap_or(0);
+        milestone.status = MilestoneStatus::Cancelled;
+        storage::set_escrow(&env, &escrow);
+        storage::set_milestone(&env, issue_id, &milestone);
+        events::emit_milestone_cancelled(&env, issue_id);
+
+        Ok(())
     }
 
     /// Retrieves the global state for this repository's escrow.
