@@ -13,8 +13,12 @@ export const webhooksQueue = new Queue('webhooks', {
       type: 'exponential',
       delay: 1000,
     },
-    removeOnComplete: true,
-    removeOnFail: false,
+    removeOnComplete: {
+      age: 300, // 5 min
+    },
+    removeOnFail: {
+      age: 86400, // 24h
+    },
   },
 });
 
@@ -26,8 +30,12 @@ export const escrowOperationsQueue = new Queue('escrow-operations', {
       type: 'exponential',
       delay: 2000,
     },
-    removeOnComplete: true,
-    removeOnFail: false,
+    removeOnComplete: {
+      age: 300, // 5 min
+    },
+    removeOnFail: {
+      age: 86400, // 24h
+    },
   },
 });
 
@@ -39,8 +47,12 @@ export const syncQueue = new Queue('sync', {
       type: 'exponential',
       delay: 5000,
     },
-    removeOnComplete: true,
-    removeOnFail: false,
+    removeOnComplete: {
+      age: 300, // 5 min
+    },
+    removeOnFail: {
+      age: 86400, // 24h
+    },
   },
 });
 
