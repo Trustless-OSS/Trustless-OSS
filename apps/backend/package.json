@@ -4,7 +4,7 @@
   "description": "Trustless-OSS backend — Node.js + TypeScript",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --exclude \"node_modules/**\" --exclude \"../../node_modules/**\" --exclude \"dist/**\" src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "migrate": "tsx src/migrate.ts",
