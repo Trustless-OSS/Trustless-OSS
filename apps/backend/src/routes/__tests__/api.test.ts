@@ -1,6 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { listReposHandler, listIssuesHandler } from '../api.js';
+import { listReposHandler, listIssuesHandler, queueStatsHandler } from '../api.js';
 import { supabase } from '../../lib/supabase.js';
+import { webhooksQueue, escrowOperationsQueue, syncQueue } from '../../lib/queue.js';
+
+vi.mock('../../lib/queue.js', () => ({
+  webhooksQueue: {
+    getJobCounts: vi.fn(),
+  },
+  escrowOperationsQueue: {
+    getJobCounts: vi.fn(),
+  },
+  syncQueue: {
+    getJobCounts: vi.fn(),
+  },
+}));
 
 vi.mock('../../lib/supabase.js', () => ({
   supabase: {
@@ -99,6 +112,30 @@ describe('Pagination Endpoints', () => {
       total_count: 100,
       limit: 100,
       offset: 0,
+    });
+  });
+
+  describe('Queue Stats Endpoint', () => {
+    it('returns queue statistics successfully', async () => {
+      const mockCounts = { waiting: 1, active: 2, completed: 3, failed: 4, delayed: 5 };
+      (webhooksQueue.getJobCounts as any).mockResolvedValue(mockCounts);
+      (escrowOperationsQueue.getJobCounts as any).mockResolvedValue(mockCounts);
+      (syncQueue.getJobCounts as any).mockResolvedValue(mockCounts);
+
+      const req = {} as any;
+      const res = {} as any;
+
+      await queueStatsHandler(req, res);
+
+      expect(webhooksQueue.getJobCounts).toHaveBeenCalled();
+      expect(escrowOperationsQueue.getJobCounts).toHaveBeenCalled();
+      expect(syncQueue.getJobCounts).toHaveBeenCalled();
+
+      expect(mockJson).toHaveBeenCalledWith(res, {
+        webhooks: mockCounts,
+        'escrow-operations': mockCounts,
+        sync: mockCounts,
+      });
     });
   });
 });
