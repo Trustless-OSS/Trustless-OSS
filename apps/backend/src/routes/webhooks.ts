@@ -7,6 +7,9 @@ import { logger } from '../lib/logger.js';
 
 const log = logger.child({ module: 'webhook-route' });
 
+const webhookHistory: boolean[] = [];
+const MAX_HISTORY_LEN = 100;
+
 export async function githubWebhookHandler(
   req: IncomingMessage,
   res: ServerResponse
@@ -52,6 +55,44 @@ export async function githubWebhookHandler(
 
   try {
     const deliveryId = req.headers['x-github-delivery'] as string | undefined;
+
+    let isDuplicate = false;
+    if (deliveryId) {
+      const existingJob = await webhooksQueue.getJob(deliveryId);
+      if (existingJob) {
+        isDuplicate = true;
+      }
+    }
+
+    webhookHistory.push(isDuplicate);
+    if (webhookHistory.length > MAX_HISTORY_LEN) {
+      webhookHistory.shift();
+    }
+
+    const duplicateCount = webhookHistory.filter(Boolean).length;
+    const duplicateRate = duplicateCount / webhookHistory.length;
+
+    log.info(
+      {
+        deliveryId,
+        isDuplicate,
+        duplicateRate: `${(duplicateRate * 100).toFixed(1)}%`,
+        windowSize: webhookHistory.length,
+      },
+      'webhook delivery check'
+    );
+
+    if (webhookHistory.length >= 10 && duplicateRate > 0.3) {
+      log.warn(
+        { duplicateRate: `${(duplicateRate * 100).toFixed(1)}%` },
+        'High webhook duplication rate detected (>30%)'
+      );
+    }
+
+    if (isDuplicate) {
+      json(res, { ok: true, duplicate: true });
+      return;
+    }
 
     // Queue the webhook event instead of processing inline
     await webhooksQueue.add('github-webhook', { event, action, payload }, { jobId: deliveryId });
