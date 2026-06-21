@@ -526,11 +526,7 @@ fn test_create_milestone_rejects_insufficient_funds() {
     let (env, contract_id) = setup_env();
     // Only 100 USDC deposited; trying to create a 1000 USDC milestone must fail.
     let (c, _m, _p, _t, _s, _sa) = setup_with_token(&env, &contract_id, 100_000_000);
-    let result = c.try_create_milestone(
-        &1,
-        &String::from_str(&env, "Over budget"),
-        &1_000_000_000,
-    );
+    let result = c.try_create_milestone(&1, &String::from_str(&env, "Over budget"), &1_000_000_000);
     assert_contract_err(result, ContractError::InsufficientBalance);
 
     let escrow = c.get_escrow();
@@ -542,11 +538,7 @@ fn test_create_milestone_rejects_duplicate_issue_id() {
     let (env, contract_id) = setup_env();
     let (c, _m, _p, _t, _s, _sa) = setup_with_token(&env, &contract_id, 1_000_000_000);
 
-    let first = c.try_create_milestone(
-        &42,
-        &String::from_str(&env, "First"),
-        &10_000_000,
-    );
+    let first = c.try_create_milestone(&42, &String::from_str(&env, "First"), &10_000_000);
     assert!(first.is_ok());
 
     let dup = c.try_create_milestone(&42, &String::from_str(&env, "Dup"), &10_000_000);
@@ -559,11 +551,7 @@ fn test_create_milestone_uses_checked_add_no_overflow() {
     // Two milestones whose rewards sum exceeds i128 should not silently overflow.
     let (c, _m, _p, _t, _s, _sa) = setup_with_token(&env, &contract_id, i128::MAX);
 
-    let result = c.try_create_milestone(
-        &1,
-        &String::from_str(&env, "Half"),
-        &(i128::MAX / 2 + 1),
-    );
+    let result = c.try_create_milestone(&1, &String::from_str(&env, "Half"), &(i128::MAX / 2 + 1));
     assert!(result.is_ok());
 
     let overflow = c.try_create_milestone(
@@ -792,7 +780,8 @@ fn test_partial_release_rejects_zero() {
 
     c.try_create_milestone(&10, &String::from_str(&env, "Task"), &50_000_000)
         .unwrap();
-    c.try_assign_contributor(&10, &Address::generate(&env)).unwrap();
+    c.try_assign_contributor(&10, &Address::generate(&env))
+        .unwrap();
 
     let result = c.try_partial_release(&10, &0);
     assert_contract_err(result, ContractError::ZeroAmount);
@@ -805,7 +794,8 @@ fn test_partial_release_rejects_amount_greater_than_reward() {
 
     c.try_create_milestone(&10, &String::from_str(&env, "Task"), &50_000_000)
         .unwrap();
-    c.try_assign_contributor(&10, &Address::generate(&env)).unwrap();
+    c.try_assign_contributor(&10, &Address::generate(&env))
+        .unwrap();
 
     let result = c.try_partial_release(&10, &51_000_000);
     assert_contract_err(result, ContractError::ReleaseTooLarge);
@@ -887,7 +877,8 @@ fn test_list_milestones_after_lifecycle() {
     c.try_create_milestone(&3, &String::from_str(&env, "c"), &30_000_000)
         .unwrap();
 
-    c.try_assign_contributor(&2, &Address::generate(&env)).unwrap();
+    c.try_assign_contributor(&2, &Address::generate(&env))
+        .unwrap();
     c.try_release_funds(&2).unwrap();
 
     let milestones = c.list_milestones();
