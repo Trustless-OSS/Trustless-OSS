@@ -39,6 +39,9 @@
     ],
     "**/*.{json,md}": [
       "prettier --write"
+    ],
+    "**/*.rs": [
+      "echo"
     ]
   },
   "pnpm": {
