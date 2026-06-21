@@ -9,34 +9,36 @@ pub enum StorageKey {
     Admin,          // Address — can call initialize_escrow
 }
 
-pub fn get_escrow(_env: &Env) -> EscrowState {
-    unimplemented!()
+pub fn get_escrow(env: &Env) -> EscrowState {
+    env.storage().instance().get(&StorageKey::Escrow).unwrap()
 }
 
-pub fn set_escrow(_env: &Env, _escrow: &EscrowState) {
-    unimplemented!()
+pub fn set_escrow(env: &Env, escrow: &EscrowState) {
+    env.storage().instance().set(&StorageKey::Escrow, escrow);
 }
 
-pub fn get_milestone(_env: &Env, _issue_id: u64) -> Milestone {
-    unimplemented!()
+pub fn get_milestone(env: &Env, issue_id: u64) -> Milestone {
+    env.storage().instance().get(&StorageKey::Milestone(issue_id)).unwrap()
 }
 
-pub fn set_milestone(_env: &Env, _issue_id: u64, _milestone: &Milestone) {
-    unimplemented!()
+pub fn set_milestone(env: &Env, issue_id: u64, milestone: &Milestone) {
+    env.storage().instance().set(&StorageKey::Milestone(issue_id), milestone);
 }
 
-pub fn get_issue_ids(_env: &Env) -> Vec<u64> {
-    unimplemented!()
+pub fn get_issue_ids(env: &Env) -> Vec<u64> {
+    env.storage().instance().get(&StorageKey::EscrowIssueIds).unwrap_or(Vec::new(env))
 }
 
-pub fn push_issue_id(_env: &Env, _issue_id: u64) {
-    unimplemented!()
+pub fn push_issue_id(env: &Env, issue_id: u64) {
+    let mut ids = get_issue_ids(env);
+    ids.push_back(issue_id);
+    env.storage().instance().set(&StorageKey::EscrowIssueIds, &ids);
 }
 
-pub fn get_admin(_env: &Env) -> Option<Address> {
-    unimplemented!()
+pub fn get_admin(env: &Env) -> Option<Address> {
+    env.storage().instance().get(&StorageKey::Admin)
 }
 
-pub fn set_admin(_env: &Env, _admin: &Address) {
-    unimplemented!()
+pub fn set_admin(env: &Env, admin: &Address) {
+    env.storage().instance().set(&StorageKey::Admin, admin);
 }
