@@ -808,7 +808,7 @@ fn test_partial_release_rejects_amount_greater_than_reward() {
 #[test]
 fn test_fund_conservation_pending_then_cancel() {
     let (env, contract_id) = setup_env();
-    let (c, _m, _p, _t, _s, _sa) = setup_with_token(&env, &contract_id, 1_000_000_000);
+    let (c, _m, _p, _t, sac, _sa) = setup_with_token(&env, &contract_id, 1_000_000_000);
 
     // Reserve 30, 20, 10 = 60 from a 100 pool. Cancel them all.
     c.try_create_milestone(&1, &String::from_str(&env, "a"), &30_000_000)
@@ -831,6 +831,12 @@ fn test_fund_conservation_pending_then_cancel() {
     assert_eq!(balance.reserved, 0);
     assert_eq!(balance.total_released, 0);
     assert_eq!(balance.available, 1_000_000_000);
+
+    // Reconciliation: the actual token ledger must mirror the internal
+    // available pool. Cancelling returns reserved funds to the contract
+    // balance (no transfers happened), so the contract still holds the
+    // full deposited amount.
+    assert_eq!(sac.balance(&contract_id), 1_000_000_000);
 }
 
 #[test]
@@ -863,6 +869,12 @@ fn test_fund_conservation_full_release_then_partial_release() {
     // Both contributors received exactly what the contract says they did.
     assert_eq!(sac.balance(&contributor_a), 40_000_000);
     assert_eq!(sac.balance(&contributor_b), 25_000_000);
+
+    // Reconciliation: contract-held token ledger equals the available
+    // pool. 65 USDC was transferred out, so the contract must hold the
+    // remainder (1B - 65M). Catches any drift between internal
+    // bookkeeping and the actual Stellar Asset contract balance.
+    assert_eq!(sac.balance(&contract_id), 1_000_000_000 - 65_000_000);
 }
 
 #[test]
@@ -886,4 +898,224 @@ fn test_list_milestones_after_lifecycle() {
     assert_eq!(milestones.get(0).unwrap().status, MilestoneStatus::Pending);
     assert_eq!(milestones.get(1).unwrap().status, MilestoneStatus::Released);
     assert_eq!(milestones.get(2).unwrap().status, MilestoneStatus::Pending);
+}
+
+// ---------------------------------------------------------------------------
+// Milestone lifecycle — `require_platform` auth enforcement (negative paths)
+//
+// `setup_with_token` globally calls `env.mock_all_auths()`, which silently
+// approves every signature in the test. That hides any regression in the
+// `require_platform` gate. These tests deliberately do NOT mock auth and
+// invoke each lifecycle function from the default (non-platform) test
+// context — the host must reject the call with an auth error.
+//
+// Auth failures surface as `Err(Err(InvokeError))` (host-level), not as a
+// `ContractError`, so we assert `result.is_err()` rather than matching a
+// specific error variant.
+// ---------------------------------------------------------------------------
+
+/// Same wiring as `setup_with_token` but does NOT call `env.mock_all_auths()`
+/// AND bypasses `initialize` (which itself invokes `require_auth` and would
+/// pollute the auth state). Instead we seed the EscrowState directly via
+/// `env.as_contract` so subsequent lifecycle calls exercise the real
+/// `require_platform` gate.
+///
+/// The helper does NOT mint tokens — these tests are about the auth gate,
+/// not the transfer path. Funds are irrelevant because the contract call
+/// must reject before any transfer is attempted.
+fn setup_with_token_strict_auth(
+    env: &Env,
+    contract_id: &soroban_sdk::Address,
+) -> (
+    TrustlessOssContractClient<'static>,
+    Address,
+    Address,
+    Address,
+    token::Client<'static>,
+    token::StellarAssetClient<'static>,
+) {
+    let c = client(env, contract_id);
+    // Intentionally NO mock_all_auths() here — that's the whole point.
+
+    // Deploy a real Stellar Asset token (USDC stand-in) so the storage
+    // and types line up. We never mint on it from the strict path.
+    let token_admin = Address::generate(env);
+    let token_addr = env.register_stellar_asset_contract_v2(token_admin.clone());
+    let sac = token::Client::new(env, &token_addr.address());
+    let sac_admin = token::StellarAssetClient::new(env, &token_addr.address());
+
+    // Seed the EscrowState directly. `addresses` generates three new
+    // addresses: (maintainer, platform, _unused). The configured `platform`
+    // is therefore distinct from any default test source account, so
+    // `require_platform` will reject any call that doesn't explicitly
+    // authenticate as that one address.
+    let (maintainer, platform, _token_addr) = addresses(env);
+
+    env.as_contract(contract_id, || {
+        let escrow = crate::types::EscrowState {
+            repo_id: 1,
+            maintainer: maintainer.clone(),
+            platform: platform.clone(),
+            token: token_addr.address(),
+            total_deposited: 0,
+            reserved: 0,
+            total_released: 0,
+            created_at: 12345,
+            is_active: true,
+        };
+        crate::storage::set_escrow(env, &escrow);
+        // Mark the contract as initialized so getters don't panic.
+        crate::storage::set_admin(env, &maintainer);
+    });
+
+    (c, maintainer, platform, token_admin, sac, sac_admin)
+}
+
+#[test]
+fn test_require_platform_create_milestone_rejects_unauthorized() {
+    let (env, contract_id) = setup_env();
+    let (c, _m, _p, _t, _s, _sa) = setup_with_token_strict_auth(&env, &contract_id);
+
+    let result = c.try_create_milestone(&1, &String::from_str(&env, "x"), &10_000_000);
+    assert!(
+        result.is_err(),
+        "create_milestone must reject non-platform caller"
+    );
+}
+
+#[test]
+fn test_require_platform_assign_contributor_rejects_unauthorized() {
+    let (env, contract_id) = setup_env();
+    let (c, _m, _p, _t, _s, _sa) = setup_with_token_strict_auth(&env, &contract_id);
+
+    // Seed a Pending milestone directly in storage so the auth gate (not
+    // the state-machine guard) is what we are exercising.
+    let milestone = crate::types::Milestone {
+        issue_id: 1,
+        title: String::from_str(&env, "x"),
+        reward: 10_000_000,
+        actual_released: 0,
+        contributor: None,
+        status: crate::types::MilestoneStatus::Pending,
+        created_at: 12345,
+        released_at: None,
+    };
+    env.as_contract(&contract_id, || {
+        crate::storage::set_milestone(&env, 1, &milestone);
+    });
+
+    let result = c.try_assign_contributor(&1, &Address::generate(&env));
+    assert!(
+        result.is_err(),
+        "assign_contributor must reject non-platform caller"
+    );
+}
+
+#[test]
+fn test_require_platform_reassign_contributor_rejects_unauthorized() {
+    let (env, contract_id) = setup_env();
+    let (c, _m, _p, _t, _s, _sa) = setup_with_token_strict_auth(&env, &contract_id);
+
+    // Seed an Active milestone so the auth gate, not the state guard, is
+    // what we are exercising.
+    let contributor = Address::generate(&env);
+    let milestone = crate::types::Milestone {
+        issue_id: 1,
+        title: String::from_str(&env, "x"),
+        reward: 10_000_000,
+        actual_released: 0,
+        contributor: Some(contributor.clone()),
+        status: crate::types::MilestoneStatus::Active,
+        created_at: 12345,
+        released_at: None,
+    };
+    env.as_contract(&contract_id, || {
+        crate::storage::set_milestone(&env, 1, &milestone);
+    });
+
+    let result = c.try_reassign_contributor(&1, &Address::generate(&env));
+    assert!(
+        result.is_err(),
+        "reassign_contributor must reject non-platform caller"
+    );
+}
+
+#[test]
+fn test_require_platform_cancel_milestone_rejects_unauthorized() {
+    let (env, contract_id) = setup_env();
+    let (c, _m, _p, _t, _s, _sa) = setup_with_token_strict_auth(&env, &contract_id);
+
+    let milestone = crate::types::Milestone {
+        issue_id: 1,
+        title: String::from_str(&env, "x"),
+        reward: 10_000_000,
+        actual_released: 0,
+        contributor: None,
+        status: crate::types::MilestoneStatus::Pending,
+        created_at: 12345,
+        released_at: None,
+    };
+    env.as_contract(&contract_id, || {
+        crate::storage::set_milestone(&env, 1, &milestone);
+    });
+
+    let result = c.try_cancel_milestone(&1);
+    assert!(
+        result.is_err(),
+        "cancel_milestone must reject non-platform caller"
+    );
+}
+
+#[test]
+fn test_require_platform_release_funds_rejects_unauthorized() {
+    let (env, contract_id) = setup_env();
+    let (c, _m, _p, _t, _s, _sa) = setup_with_token_strict_auth(&env, &contract_id);
+
+    let contributor = Address::generate(&env);
+    let milestone = crate::types::Milestone {
+        issue_id: 1,
+        title: String::from_str(&env, "x"),
+        reward: 10_000_000,
+        actual_released: 0,
+        contributor: Some(contributor.clone()),
+        status: crate::types::MilestoneStatus::Active,
+        created_at: 12345,
+        released_at: None,
+    };
+    env.as_contract(&contract_id, || {
+        crate::storage::set_milestone(&env, 1, &milestone);
+    });
+
+    let result = c.try_release_funds(&1);
+    assert!(
+        result.is_err(),
+        "release_funds must reject non-platform caller"
+    );
+}
+
+#[test]
+fn test_require_platform_partial_release_rejects_unauthorized() {
+    let (env, contract_id) = setup_env();
+    let (c, _m, _p, _t, _s, _sa) = setup_with_token_strict_auth(&env, &contract_id);
+
+    let contributor = Address::generate(&env);
+    let milestone = crate::types::Milestone {
+        issue_id: 1,
+        title: String::from_str(&env, "x"),
+        reward: 10_000_000,
+        actual_released: 0,
+        contributor: Some(contributor.clone()),
+        status: crate::types::MilestoneStatus::Active,
+        created_at: 12345,
+        released_at: None,
+    };
+    env.as_contract(&contract_id, || {
+        crate::storage::set_milestone(&env, 1, &milestone);
+    });
+
+    let result = c.try_partial_release(&1, &5_000_000);
+    assert!(
+        result.is_err(),
+        "partial_release must reject non-platform caller"
+    );
 }
