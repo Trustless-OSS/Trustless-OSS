@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { readBody, json } from '../router.js';
 import { supabase } from '../lib/supabase.js';
 import { logger } from '../lib/logger.js';
+import { webhooksQueue, escrowOperationsQueue, syncQueue } from '../lib/queue.js';
 
 const log = logger.child({ module: 'api' });
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
@@ -1353,4 +1354,44 @@ function getToken(req: IncomingMessage): string | null {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return null;
   return auth.slice(7);
+}
+
+/* ------------------------------------------------------------------ */
+/* GET /api/queue/stats                                                 */
+/* ------------------------------------------------------------------ */
+export async function queueStatsHandler(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    const [webhooks, escrow, sync] = await Promise.all([
+      webhooksQueue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed'),
+      escrowOperationsQueue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed'),
+      syncQueue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed'),
+    ]);
+
+    json(res, {
+      webhooks: {
+        waiting: webhooks.waiting ?? 0,
+        active: webhooks.active ?? 0,
+        completed: webhooks.completed ?? 0,
+        failed: webhooks.failed ?? 0,
+        delayed: webhooks.delayed ?? 0,
+      },
+      'escrow-operations': {
+        waiting: escrow.waiting ?? 0,
+        active: escrow.active ?? 0,
+        completed: escrow.completed ?? 0,
+        failed: escrow.failed ?? 0,
+        delayed: escrow.delayed ?? 0,
+      },
+      sync: {
+        waiting: sync.waiting ?? 0,
+        active: sync.active ?? 0,
+        completed: sync.completed ?? 0,
+        failed: sync.failed ?? 0,
+        delayed: sync.delayed ?? 0,
+      },
+    });
+  } catch (err: any) {
+    log.error({ err }, 'failed to get queue stats');
+    json(res, { error: err.message }, 500);
+  }
 }

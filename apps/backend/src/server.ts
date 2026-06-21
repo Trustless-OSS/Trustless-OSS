@@ -4,6 +4,7 @@ import dns from 'dns';
 import appHandler from './handler/app_handler';
 import { disconnectRedis } from './lib/redis.js';
 import { logger } from './lib/logger.js';
+import { shutdownHooks } from './app.js';
 
 const log = logger.child({ module: 'server' });
 
@@ -20,27 +21,55 @@ server.listen(PORT, () => {
   log.info({ port: PORT }, 'Trustless OSS Backend running');
 });
 
-const shutdown = (signal: string) => {
+const shutdown = async (signal: string) => {
   log.info({ signal }, 'shutting down gracefully');
-  server.close((err) => {
-    if (err) {
-      log.error({ err }, 'error during shutdown');
-      process.exit(1);
-      return;
-    }
-    log.info('HTTP server closed');
 
-    disconnectRedis()
-      .then(() => {
-        log.info('Redis client disconnected');
-        process.exit(0);
-      })
-      .catch((redisErr) => {
-        log.error({ err: redisErr }, 'error during Redis disconnection');
-        process.exit(1);
+  const forceExitTimeout = setTimeout(() => {
+    log.error('Graceful shutdown timed out (2 min). Forcing exit.');
+    process.exit(1);
+  }, 120_000);
+
+  try {
+    // 1. Run app-level graceful shutdown hooks (cron, workers, queues)
+    log.info('Running app-level graceful shutdown hooks...');
+    for (const hook of shutdownHooks) {
+      try {
+        await hook();
+      } catch (hookErr) {
+        log.error({ err: hookErr }, 'Error during shutdown hook execution');
+      }
+    }
+    log.info('App-level graceful shutdown hooks completed.');
+
+    // 2. Close HTTP Server
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          log.error({ err }, 'Error closing HTTP server');
+          reject(err);
+        } else {
+          log.info('HTTP server closed');
+          resolve();
+        }
       });
-  });
+    });
+
+    // 3. Disconnect Redis
+    await disconnectRedis();
+    log.info('Redis client disconnected');
+
+    clearTimeout(forceExitTimeout);
+    log.info('Graceful shutdown completed successfully.');
+    process.exit(0);
+  } catch (err) {
+    log.error({ err }, 'Error during graceful shutdown process');
+    process.exit(1);
+  }
 };
 
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => {
+  void shutdown('SIGINT');
+});
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM');
+});
