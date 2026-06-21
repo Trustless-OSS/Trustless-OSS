@@ -55,11 +55,6 @@ pub fn emit_partial_release(
     released: i128,
     returned_to_pool: i128,
 ) {
-    env.events().publish((Symbol::new(env, "part_rel"), issue_id), (contributor, released, returned_to_pool));
-}
-
-pub fn emit_milestone_cancelled(env: &Env, issue_id: u64) {
-    env.events().publish((symbol_short!("cancel"), issue_id), ());
     let topics = (
         EventKey::PartialRelease,
         issue_id,
