@@ -110,7 +110,10 @@ impl TrustlessOssContract {
         }
 
         let reward = milestone.reward;
-        let contributor = milestone.contributor.clone().unwrap();
+        let contributor = milestone
+            .contributor
+            .clone()
+            .ok_or(ContractError::ContributorNotSet)?;
 
         escrow.reserved -= reward;
         escrow.total_released += reward;
@@ -150,7 +153,10 @@ impl TrustlessOssContract {
             panic_with_error!(&env, ContractError::ReleaseTooLarge);
         }
 
-        let contributor = milestone.contributor.clone().unwrap();
+        let contributor = milestone
+            .contributor
+            .clone()
+            .ok_or(ContractError::ContributorNotSet)?;
 
         escrow.reserved -= milestone.reward;
         escrow.total_released += release_amount;
