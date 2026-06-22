@@ -5,10 +5,6 @@ const log = logger.child({ module: 'cache' });
 
 const DEFAULT_TTL = 300; // 5 minutes
 
-/**
- * Generic Redis cache utility with get/set/invalidate functions.
- * Gracefully handles Redis being unavailable.
- */
 export const cache = {
   /**
    * Retrieve a cached value by key.

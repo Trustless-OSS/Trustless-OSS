@@ -1,7 +1,3 @@
--- Ensure columns exist for existing tables
-ALTER TABLE repos ADD COLUMN IF NOT EXISTS installer_github_id bigint;
-ALTER TABLE repos ADD COLUMN IF NOT EXISTS github_installation_id bigint;
-
 -- repos: one row per connected GitHub repo
 create table if not exists repos (
   id                  uuid primary key default gen_random_uuid(),
@@ -10,7 +6,10 @@ create table if not exists repos (
   full_name           text not null,
   owner_github_id     bigint not null,
   owner_username      text not null,
+  owner_type          text check (owner_type in ('User', 'Organization')),
   installer_github_id bigint,
+  is_fork             boolean default false,
+  is_private          boolean default false,
   escrow_contract_id  text,
   escrow_balance      numeric default 0,
   reward_low          numeric default 0,
@@ -56,10 +55,8 @@ create table if not exists assignments (
   unique(issue_id)
 );
 
--- Ensure completion_percentage column exists for existing tables
+-- Ensure completion_percentage column exists for existing tables (idempotent)
 ALTER TABLE assignments ADD COLUMN IF NOT EXISTS completion_percentage numeric check (completion_percentage >= 0 and completion_percentage <= 100) default null;
-
--- ============================================================
 -- Row Level Security (RLS)
 -- ============================================================
 
