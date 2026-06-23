@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
+use soroban_sdk::{contract, contractimpl, panic_with_error, token, Address, Env, String, Vec};
 
 pub mod auth;
 pub mod error;
@@ -98,17 +98,93 @@ impl TrustlessOssContract {
     }
 
     /// Releases the fully reserved reward amount to the assigned contributor upon completion.
-    pub fn release_funds(_env: Env, _issue_id: u64) -> Result<(), ContractError> {
-        unimplemented!()
+    pub fn release_funds(env: Env, issue_id: u64) -> Result<(), ContractError> {
+        let mut escrow = storage::get_escrow(&env)?;
+        auth::require_platform(&env, &escrow);
+        auth::require_active(&env, &escrow);
+
+        let mut milestone = storage::get_milestone(&env, issue_id)?;
+
+        if milestone.status != types::MilestoneStatus::Active {
+            panic_with_error!(&env, ContractError::MilestoneNotActive);
+        }
+
+        let reward = milestone.reward;
+        let contributor = milestone
+            .contributor
+            .clone()
+            .ok_or(ContractError::ContributorNotSet)?;
+
+        escrow.reserved -= reward;
+        escrow.total_released += reward;
+
+        milestone.status = types::MilestoneStatus::Released;
+        milestone.actual_released = reward;
+        milestone.released_at = Some(env.ledger().timestamp());
+
+        let token_client = token::Client::new(&env, &escrow.token);
+        token_client.transfer(&env.current_contract_address(), &contributor, &reward);
+
+        storage::set_escrow(&env, &escrow);
+        storage::set_milestone(&env, issue_id, &milestone);
+
+        events::emit_funds_released(&env, issue_id, contributor, reward);
+
+        Ok(())
     }
 
     /// Releases a partial reward amount to the contributor and returns the remainder to the available pool.
     pub fn partial_release(
-        _env: Env,
-        _issue_id: u64,
-        _release_amount: i128,
+        env: Env,
+        issue_id: u64,
+        release_amount: i128,
     ) -> Result<(), ContractError> {
-        unimplemented!()
+        let mut escrow = storage::get_escrow(&env)?;
+        auth::require_platform(&env, &escrow);
+        auth::require_active(&env, &escrow);
+
+        let mut milestone = storage::get_milestone(&env, issue_id)?;
+
+        if milestone.status != types::MilestoneStatus::Active {
+            panic_with_error!(&env, ContractError::MilestoneNotActive);
+        }
+
+        if release_amount > milestone.reward {
+            panic_with_error!(&env, ContractError::ReleaseTooLarge);
+        }
+
+        let contributor = milestone
+            .contributor
+            .clone()
+            .ok_or(ContractError::ContributorNotSet)?;
+
+        escrow.reserved -= milestone.reward;
+        escrow.total_released += release_amount;
+
+        milestone.status = types::MilestoneStatus::Released;
+        milestone.actual_released = release_amount;
+        milestone.released_at = Some(env.ledger().timestamp());
+
+        let token_client = token::Client::new(&env, &escrow.token);
+        token_client.transfer(
+            &env.current_contract_address(),
+            &contributor,
+            &release_amount,
+        );
+
+        storage::set_escrow(&env, &escrow);
+        storage::set_milestone(&env, issue_id, &milestone);
+
+        let returned_to_pool = milestone.reward - release_amount;
+        events::emit_partial_release(
+            &env,
+            issue_id,
+            contributor,
+            release_amount,
+            returned_to_pool,
+        );
+
+        Ok(())
     }
 
     /// Cancels a milestone and un-reserves the funds, returning them to the available pool.

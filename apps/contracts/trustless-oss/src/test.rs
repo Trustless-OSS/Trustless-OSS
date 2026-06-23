@@ -415,3 +415,91 @@ fn test_has_escrow_before_and_after_init() {
         assert!(storage::has_escrow(&env));
     });
 }
+
+// ---------------------------------------------------------------------------
+// release_funds edge cases
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_release_funds_not_active_panics() {
+    let (env, contract_id) = setup_env();
+    let c = client(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (maintainer, platform, token) = addresses(&env);
+    c.try_initialize(&1, &maintainer, &platform, &token)
+        .unwrap();
+
+    let milestone = Milestone {
+        issue_id: 1,
+        title: String::from_str(&env, "Test"),
+        reward: 100,
+        contributor: Some(Address::generate(&env)),
+        status: MilestoneStatus::Pending,
+        created_at: 100,
+        released_at: None,
+        actual_released: 0,
+    };
+    env.as_contract(&contract_id, || {
+        storage::set_milestone(&env, 1, &milestone);
+    });
+
+    let result = c.try_release_funds(&1);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_release_funds_contributor_not_set() {
+    let (env, contract_id) = setup_env();
+    let c = client(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (maintainer, platform, token) = addresses(&env);
+    c.try_initialize(&1, &maintainer, &platform, &token)
+        .unwrap();
+
+    let milestone = Milestone {
+        issue_id: 2,
+        title: String::from_str(&env, "Test 2"),
+        reward: 100,
+        contributor: None,
+        status: MilestoneStatus::Active,
+        created_at: 100,
+        released_at: None,
+        actual_released: 0,
+    };
+    env.as_contract(&contract_id, || {
+        storage::set_milestone(&env, 2, &milestone);
+    });
+
+    let result = c.try_release_funds(&2);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_partial_release_too_large() {
+    let (env, contract_id) = setup_env();
+    let c = client(&env, &contract_id);
+    env.mock_all_auths();
+
+    let (maintainer, platform, token) = addresses(&env);
+    c.try_initialize(&1, &maintainer, &platform, &token)
+        .unwrap();
+
+    let milestone = Milestone {
+        issue_id: 3,
+        title: String::from_str(&env, "Test 3"),
+        reward: 100,
+        contributor: Some(Address::generate(&env)),
+        status: MilestoneStatus::Active,
+        created_at: 100,
+        released_at: None,
+        actual_released: 0,
+    };
+    env.as_contract(&contract_id, || {
+        storage::set_milestone(&env, 3, &milestone);
+    });
+
+    let result = c.try_partial_release(&3, &150);
+    assert!(result.is_err());
+}
