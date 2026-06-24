@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import InstallationSuccessHandler from './InstallationSuccessHandler';
+import EscrowEventLog from '@/app/components/EscrowEventLog';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -173,6 +174,11 @@ export default async function DashboardPage(props: DashboardProps) {
           )}
         </div>
       )}
+
+      {/* Escrow Event Logs — Real-Time Feed */}
+      <div className="mt-12">
+        <EscrowEventLog />
+      </div>
     </div>
   );
 }
