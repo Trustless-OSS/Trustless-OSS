@@ -8,14 +8,13 @@ import { shutdownHooks } from './app.js';
 
 const log = logger.child({ module: 'server' });
 
-// Fix for Node 18+ Undici fetch timing out on IPv6 addresses
 dns.setDefaultResultOrder('ipv4first');
 
 const server = http.createServer((req, res) => {
   void appHandler(req, res);
 });
 
-const PORT = parseInt(process.env.PORT ?? '4000', 10);
+const PORT = parseInt(process.env.PORT ?? '5000', 10);
 
 server.listen(PORT, () => {
   log.info({ port: PORT }, 'Trustless OSS Backend running');
@@ -30,7 +29,6 @@ const shutdown = async (signal: string) => {
   }, 120_000);
 
   try {
-    // 1. Run app-level graceful shutdown hooks (cron, workers, queues)
     log.info('Running app-level graceful shutdown hooks...');
     for (const hook of shutdownHooks) {
       try {
@@ -41,7 +39,6 @@ const shutdown = async (signal: string) => {
     }
     log.info('App-level graceful shutdown hooks completed.');
 
-    // 2. Close HTTP Server
     await new Promise<void>((resolve, reject) => {
       server.close((err) => {
         if (err) {
@@ -54,7 +51,6 @@ const shutdown = async (signal: string) => {
       });
     });
 
-    // 3. Disconnect Redis
     await disconnectRedis();
     log.info('Redis client disconnected');
 
