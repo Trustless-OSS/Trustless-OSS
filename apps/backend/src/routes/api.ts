@@ -1395,3 +1395,171 @@ export async function queueStatsHandler(_req: IncomingMessage, res: ServerRespon
     json(res, { error: err.message }, 500);
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* GET /api/dashboard/overview                                         */
+/* ------------------------------------------------------------------ */
+export async function dashboardOverviewHandler(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> {
+  const token = getToken(req);
+  if (!token) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
+  if (!user) {
+    json(res, { error: 'Unauthorized' }, 401);
+    return;
+  }
+
+  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+
+  try {
+    // 1. Fetch repos owned or installed by the user
+    const { data: repos, error: reposError } = await supabase
+      .from('repos')
+      .select('id, escrow_balance, created_at, escrow_contract_id')
+      .or(`owner_github_id.eq.${githubId},installer_github_id.eq.${githubId}`);
+
+    if (reposError) {
+      json(res, { error: reposError.message }, 400);
+      return;
+    }
+
+    // 2. Fetch total verified contributors in the system
+    const { count: contributorsCount, error: contribError } = await supabase
+      .from('contributors')
+      .select('*', { count: 'exact', head: true });
+
+    if (contribError) {
+      json(res, { error: contribError.message }, 400);
+      return;
+    }
+
+    // 3. Fetch issues and assignments for these repos
+    let issues: any[] = [];
+    if (repos && repos.length > 0) {
+      const repoIds = repos.map((r) => r.id);
+      const { data: issuesData, error: issuesError } = await supabase
+        .from('issues')
+        .select('id, reward_amount, status, created_at, assignments(pr_merged_at, payout_status)')
+        .in('repo_id', repoIds);
+
+      if (issuesError) {
+        json(res, { error: issuesError.message }, 400);
+        return;
+      }
+      issues = issuesData || [];
+    }
+
+    // Calculate metrics
+    // Total Value Locked (TVL) = sum of active repo escrow balances
+    const tvl = repos ? repos.reduce((sum, r) => sum + Number(r.escrow_balance || 0), 0) : 0;
+
+    // Active Smart Pools = repos with escrow_contract_id IS NOT NULL
+    const activePools = repos ? repos.filter((r) => r.escrow_contract_id !== null).length : 0;
+    const totalPools = repos ? repos.length : 0;
+
+    // Last 12 months structure
+    const monthsList = [
+      { year: 2025, month: 6, label: 'Jul' },
+      { year: 2025, month: 7, label: 'Aug' },
+      { year: 2025, month: 8, label: 'Sep' },
+      { year: 2025, month: 9, label: 'Oct' },
+      { year: 2025, month: 10, label: 'Nov' },
+      { year: 2025, month: 11, label: 'Dec' },
+      { year: 2026, month: 0, label: 'Jan' },
+      { year: 2026, month: 1, label: 'Feb' },
+      { year: 2026, month: 2, label: 'Mar' },
+      { year: 2026, month: 3, label: 'Apr' },
+      { year: 2026, month: 4, label: 'May' },
+      { year: 2026, month: 5, label: 'Jun' },
+    ];
+
+    const chartData = monthsList.map((m) => {
+      // Calculate TVL at the end of this month
+      const monthEnd = new Date(m.year, m.month + 1, 0, 23, 59, 59, 999);
+
+      let monthlyTvl = 0;
+      if (repos) {
+        repos.forEach((repo) => {
+          const repoCreated = new Date(repo.created_at);
+          if (repoCreated <= monthEnd && repo.escrow_contract_id !== null) {
+            monthlyTvl += Number(repo.escrow_balance || 0);
+          }
+        });
+      }
+
+      // Add locked reward amounts for issues active in this month
+      issues.forEach((issue) => {
+        const issueCreated = new Date(issue.created_at);
+        if (issueCreated <= monthEnd) {
+          const assignmentList = Array.isArray(issue.assignments)
+            ? issue.assignments
+            : issue.assignments
+              ? [issue.assignments]
+              : [];
+          const assignment = assignmentList[0];
+          const isReleased = assignment && assignment.payout_status === 'released';
+          const prMergedAt =
+            assignment && assignment.pr_merged_at ? new Date(assignment.pr_merged_at) : null;
+
+          if (issue.status === 'pending' || issue.status === 'active') {
+            monthlyTvl += Number(issue.reward_amount || 0);
+          } else if (isReleased && prMergedAt && prMergedAt > monthEnd) {
+            monthlyTvl += Number(issue.reward_amount || 0);
+          }
+        }
+      });
+
+      // Calculate payouts released in this month
+      let monthlyPayouts = 0;
+      issues.forEach((issue) => {
+        const assignmentList = Array.isArray(issue.assignments)
+          ? issue.assignments
+          : issue.assignments
+            ? [issue.assignments]
+            : [];
+        const assignment = assignmentList[0];
+        if (assignment && assignment.payout_status === 'released' && assignment.pr_merged_at) {
+          const mergedDate = new Date(assignment.pr_merged_at);
+          if (mergedDate.getFullYear() === m.year && mergedDate.getMonth() === m.month) {
+            monthlyPayouts += Number(issue.reward_amount || 0);
+          }
+        }
+      });
+
+      return {
+        month: m.label,
+        tvl: monthlyTvl,
+        payouts: monthlyPayouts,
+      };
+    });
+
+    // Calculate percentage change from May to June
+    const currentTvlVal = chartData[11].tvl;
+    const prevTvlVal = chartData[10].tvl;
+    let tvlChange = 0;
+    if (prevTvlVal > 0) {
+      tvlChange = Number((((currentTvlVal - prevTvlVal) / prevTvlVal) * 100).toFixed(1));
+    } else if (currentTvlVal > 0) {
+      tvlChange = 100;
+    }
+
+    json(res, {
+      tvl,
+      tvlChange,
+      activePools,
+      totalPools,
+      contributorsCount: contributorsCount || 0,
+      chartData,
+    });
+  } catch (err: any) {
+    log.error({ err }, 'failed to get dashboard overview');
+    json(res, { error: err.message }, 500);
+  }
+}

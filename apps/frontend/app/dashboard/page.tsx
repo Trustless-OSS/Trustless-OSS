@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import InstallationSuccessHandler from './InstallationSuccessHandler';
+import DashboardMetrics from '../components/DashboardMetrics';
+import FundsMovementChart from '../components/FundsMovementChart';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -25,7 +27,7 @@ async function getRepos(token: string): Promise<{ repos: any[]; error: string | 
     if (!res.ok) {
       return { repos: [], error: data.error ?? `API error ${res.status}` };
     }
-    return { repos: data.repos ?? [], error: null };
+    return { repos: data.repos ?? data.data ?? [], error: null };
   } catch (e: any) {
     return { repos: [], error: `Fetch to "${url}" failed: ${e.message}` };
   }
@@ -74,6 +76,10 @@ export default async function DashboardPage(props: DashboardProps) {
           + ADD_REPO
         </Link>
       </div>
+
+      {/* Metrics and Chart Overview Section */}
+      <DashboardMetrics initialToken={session?.access_token ?? ''} />
+      <FundsMovementChart initialToken={session?.access_token ?? ''} />
 
       {reposError && (
         <div className="mb-8 p-6 bg-red-100 brutal-border flex flex-col gap-2 brutal-shadow">

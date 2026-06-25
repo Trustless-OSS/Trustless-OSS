@@ -6,12 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint 'app/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' --max-warnings=-1",
-    "lint:fix": "eslint 'app/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' --fix",
+    "lint": "eslint \"app/**/*.{ts,tsx}\" \"lib/**/*.{ts,tsx}\" --max-warnings=-1",
+    "lint:fix": "eslint \"app/**/*.{ts,tsx}\" \"lib/**/*.{ts,tsx}\" --fix",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write '**/*.{ts,tsx}'",
     "format:check": "prettier --check '**/*.{ts,tsx}'",
-    "clean": "rm -rf .next out"
+    "clean": "rm -rf .next out",
+    "test": "vitest run"
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.2.0",
@@ -23,18 +24,24 @@
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "^2.15.0",
     "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.0.0",
     "eslint-config-next": "15.3.3",
+    "jsdom": "^26.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.8"
   }
 }

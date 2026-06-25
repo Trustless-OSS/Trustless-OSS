@@ -26,6 +26,7 @@ import {
   submitCloseHandler,
   deleteRepoHandler,
   queueStatsHandler,
+  dashboardOverviewHandler,
 } from './routes/api.js';
 
 const log = logger.child({ module: 'app-init' });
@@ -80,6 +81,9 @@ routers('POST', '/api/webhooks/github', githubWebhookHandler);
 
 // Queue Stats
 routers('GET', '/api/queue/stats', queueStatsHandler);
+
+// Dashboard Overview Stats
+routers('GET', '/api/dashboard/overview', dashboardOverviewHandler);
 
 // Repos
 routers('GET', '/api/repos', listReposHandler);
