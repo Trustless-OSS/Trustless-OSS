@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.enabled=true --coverage.provider=v8 --coverage.include=app/components/HeroSection.tsx --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85 --coverage.thresholds.statements=85",
     "lint": "eslint 'app/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' --max-warnings=-1",
     "lint:fix": "eslint 'app/**/*.{ts,tsx}' 'lib/**/*.{ts,tsx}' --fix",
     "typecheck": "tsc --noEmit",
@@ -32,9 +34,11 @@
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^8.0.0",
     "eslint-config-next": "15.3.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }
