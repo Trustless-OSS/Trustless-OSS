@@ -20,6 +20,8 @@ export const viewport = {
   userScalable: false,
 };
 
+export const revalidate = 86400;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${jbMono.variable}`}>

@@ -9,9 +9,7 @@ export default function Footer() {
         {/* Column 1: Branding */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-2 rounded-sm font-sans font-black tracking-tighter leading-none border-2 border-slate-950 shadow-[2px_2px_0px_0px_rgba(2,6,23,1)]">
-              Trustless
-            </div>
+            <img src="/favicon.ico" alt="Trustless Logo" className="w-10 h-10 object-contain" />
             <div className="flex flex-col leading-none">
               <span className="text-base tracking-widest">TRUSTLESS <span className="text-blue-600">OSS</span></span>
               <span className="text-[0.65rem] text-slate-500 tracking-wider">ON-CHAIN ESCROW PROTOCOL</span>
