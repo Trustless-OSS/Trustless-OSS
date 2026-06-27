@@ -25,7 +25,7 @@ async function getRepos(token: string): Promise<{ repos: any[]; error: string | 
     if (!res.ok) {
       return { repos: [], error: data.error ?? `API error ${res.status}` };
     }
-    return { repos: data.repos ?? [], error: null };
+    return { repos: data.data ?? data.repos ?? [], error: null };
   } catch (e: any) {
     return { repos: [], error: `Fetch to "${url}" failed: ${e.message}` };
   }

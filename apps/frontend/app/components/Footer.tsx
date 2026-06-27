@@ -5,18 +5,22 @@ export default function Footer() {
   return (
     <footer className="border-t-[4px] border-slate-950 bg-white py-12 px-6 font-mono text-xs font-bold uppercase relative z-10 text-slate-950">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-        
         {/* Column 1: Branding */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <img src="/favicon.ico" alt="Trustless Logo" className="w-10 h-10 object-contain" />
             <div className="flex flex-col leading-none">
-              <span className="text-base tracking-widest">TRUSTLESS <span className="text-blue-600">OSS</span></span>
-              <span className="text-[0.65rem] text-slate-500 tracking-wider">ON-CHAIN ESCROW PROTOCOL</span>
+              <span className="text-base tracking-widest">
+                TRUSTLESS <span className="text-blue-600">OSS</span>
+              </span>
+              <span className="text-[0.65rem] text-slate-500 tracking-wider">
+                ON-CHAIN ESCROW PROTOCOL
+              </span>
             </div>
           </div>
           <p className="text-slate-500 text-[0.65rem] leading-relaxed mt-2 max-w-[250px]">
-            © {new Date().getFullYear()} TRUSTLESS OSS PROTOCOL INC. ALL ESCROWS AUTOMATED VIA SMART-CONTRACT DEPLOYMENT.
+            © {new Date().getFullYear()} TRUSTLESS OSS PROTOCOL INC. ALL ESCROWS AUTOMATED VIA
+            SMART-CONTRACT DEPLOYMENT.
           </p>
         </div>
 
@@ -53,7 +57,9 @@ export default function Footer() {
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-green-600 font-black tracking-widest">SYS_OK</span>
-              <span className="text-slate-500 tracking-wider text-[0.65rem]">v1.0.0 [OPERATIONAL]</span>
+              <span className="text-slate-500 tracking-wider text-[0.65rem]">
+                v1.0.0 [OPERATIONAL]
+              </span>
             </div>
           </div>
         </div>
@@ -89,7 +95,6 @@ export default function Footer() {
             </a>
           </div>
         </div>
-
       </div>
     </footer>
   );
