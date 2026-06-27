@@ -4,9 +4,10 @@ use soroban_sdk::testutils::storage::Persistent as _;
 use soroban_sdk::testutils::Events as _;
 
 use super::*;
+use crate::error::ContractError;
 use crate::types::MilestoneStatus;
 use soroban_sdk::testutils::{Address as _, Ledger, LedgerInfo};
-use soroban_sdk::{Address, Env, String, Vec};
+use soroban_sdk::{token, Address, Env, String, Vec};
 
 fn setup_env() -> (Env, soroban_sdk::Address) {
     let env = Env::default();
@@ -502,4 +503,200 @@ fn test_partial_release_too_large() {
 
     let result = c.try_partial_release(&3, &150);
     assert!(result.is_err());
+}
+
+// ---------------------------------------------------------------------------
+// Funding mechanics – helpers
+// ---------------------------------------------------------------------------
+
+struct FundingSetup {
+    env: Env,
+    contract_id: Address,
+    client: TrustlessOssContractClient<'static>,
+    maintainer: Address,
+    token: Address,
+}
+
+fn setup_funding_env(initial_mint: i128) -> FundingSetup {
+    let (env, contract_id) = setup_env();
+    let c = client(&env, &contract_id);
+    env.mock_all_auths();
+
+    let maintainer = Address::generate(&env);
+    let platform = Address::generate(&env);
+    let token_admin = Address::generate(&env);
+    let token_contract = env.register_stellar_asset_contract_v2(token_admin.clone());
+    let token = token_contract.address();
+
+    c.try_initialize(&1, &maintainer, &platform, &token)
+        .unwrap()
+        .unwrap();
+
+    if initial_mint > 0 {
+        let sac = token::StellarAssetClient::new(&env, &token);
+        sac.mint(&maintainer, &initial_mint);
+    }
+
+    FundingSetup {
+        env,
+        contract_id,
+        client: c,
+        maintainer,
+        token,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// deposit_funds
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_deposit_funds_success() {
+    let setup = setup_funding_env(500);
+    let token_client = token::Client::new(&setup.env, &setup.token);
+
+    setup.client.try_deposit_funds(&200).unwrap().unwrap();
+
+    let escrow = setup.client.get_escrow();
+    assert_eq!(escrow.total_deposited, 200);
+
+    let balance = setup.client.get_balance();
+    assert_eq!(balance.total_deposited, 200);
+    assert_eq!(balance.available, 200);
+
+    assert_eq!(token_client.balance(&setup.contract_id), 200);
+    assert_eq!(token_client.balance(&setup.maintainer), 300);
+}
+
+#[test]
+fn test_deposit_emits_event() {
+    let setup = setup_funding_env(100);
+    let events_before = setup.env.events().all().len();
+
+    setup.client.try_deposit_funds(&50).unwrap().unwrap();
+
+    assert!(setup.env.events().all().len() > events_before);
+}
+
+#[test]
+fn test_deposit_zero_amount_panics() {
+    let setup = setup_funding_env(100);
+    let result = setup.client.try_deposit_funds(&0);
+    assert_eq!(result.unwrap_err().unwrap(), ContractError::ZeroAmount);
+}
+
+#[test]
+fn test_deposit_negative_amount_panics() {
+    let setup = setup_funding_env(100);
+    let result = setup.client.try_deposit_funds(&-1);
+    assert_eq!(result.unwrap_err().unwrap(), ContractError::ZeroAmount);
+}
+
+#[test]
+#[should_panic(expected = "Unauthorized function call for address")]
+fn test_deposit_requires_maintainer() {
+    let setup = setup_funding_env(100);
+    setup.env.set_auths(&[]);
+    setup.client.deposit_funds(&50);
+}
+
+// ---------------------------------------------------------------------------
+// withdraw_funds
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_withdraw_funds_success() {
+    let setup = setup_funding_env(1_000);
+    setup.client.try_deposit_funds(&1_000).unwrap().unwrap();
+
+    let token_client = token::Client::new(&setup.env, &setup.token);
+
+    setup.client.try_withdraw_funds(&400).unwrap().unwrap();
+
+    let escrow = setup.client.get_escrow();
+    assert_eq!(escrow.total_deposited, 600);
+
+    let balance = setup.client.get_balance();
+    assert_eq!(balance.available, 600);
+
+    assert_eq!(token_client.balance(&setup.contract_id), 600);
+    assert_eq!(token_client.balance(&setup.maintainer), 400);
+}
+
+#[test]
+fn test_withdraw_up_to_available() {
+    let setup = setup_funding_env(500);
+    setup.client.try_deposit_funds(&500).unwrap().unwrap();
+
+    setup.client.try_withdraw_funds(&500).unwrap().unwrap();
+
+    let balance = setup.client.get_balance();
+    assert_eq!(balance.available, 0);
+    assert_eq!(balance.total_deposited, 0);
+}
+
+#[test]
+fn test_withdraw_exceeds_available_panics() {
+    let setup = setup_funding_env(500);
+    setup.client.try_deposit_funds(&500).unwrap().unwrap();
+
+    let result = setup.client.try_withdraw_funds(&501);
+    assert_eq!(
+        result.unwrap_err().unwrap(),
+        ContractError::WithdrawExceedsAvailable
+    );
+}
+
+#[test]
+fn test_withdraw_zero_amount_panics() {
+    let setup = setup_funding_env(500);
+    setup.client.try_deposit_funds(&500).unwrap().unwrap();
+
+    let result = setup.client.try_withdraw_funds(&0);
+    assert_eq!(result.unwrap_err().unwrap(), ContractError::ZeroAmount);
+}
+
+#[test]
+fn test_withdraw_respects_reserved() {
+    let setup = setup_funding_env(1_000);
+    setup.client.try_deposit_funds(&1_000).unwrap().unwrap();
+
+    setup.env.as_contract(&setup.contract_id, || {
+        let mut escrow = storage::get_escrow(&setup.env).unwrap();
+        escrow.reserved = 300;
+        storage::set_escrow(&setup.env, &escrow);
+
+        let milestone = Milestone {
+            issue_id: 99,
+            title: String::from_str(&setup.env, "Reserved milestone"),
+            reward: 300,
+            contributor: Some(Address::generate(&setup.env)),
+            status: MilestoneStatus::Active,
+            created_at: 100,
+            released_at: None,
+            actual_released: 0,
+        };
+        storage::set_milestone(&setup.env, 99, &milestone);
+    });
+
+    let balance = setup.client.get_balance();
+    assert_eq!(balance.available, 700);
+
+    setup.client.try_withdraw_funds(&700).unwrap().unwrap();
+
+    let result = setup.client.try_withdraw_funds(&1);
+    assert_eq!(
+        result.unwrap_err().unwrap(),
+        ContractError::WithdrawExceedsAvailable
+    );
+}
+
+#[test]
+#[should_panic(expected = "Unauthorized function call for address")]
+fn test_withdraw_requires_maintainer() {
+    let setup = setup_funding_env(500);
+    setup.client.try_deposit_funds(&500).unwrap().unwrap();
+
+    setup.env.set_auths(&[]);
+    setup.client.withdraw_funds(&100);
 }
