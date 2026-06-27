@@ -1,97 +1,91 @@
-import React from 'react';
-import { ShieldCheck, Link2, Mail, Bug } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
+import AnimatedLogo from './AnimatedLogo';
+
+const footerLinks = [
+  {
+    label: 'Docs',
+    href: '/docs',
+    external: false,
+  },
+  {
+    label: 'Security',
+    href: 'https://docs.trustlessoss.io/security',
+    external: true,
+  },
+  {
+    label: 'Issues',
+    href: 'https://github.com/Trustless-OSS/Trustless-OSS/issues',
+    external: true,
+  },
+  {
+    label: 'Support',
+    href: 'mailto:support@trustlessoss.io',
+    external: true,
+  },
+];
 
 export default function Footer() {
   return (
-    <footer className="border-t-[4px] border-slate-950 bg-white py-12 px-6 font-mono text-xs font-bold uppercase relative z-10 text-slate-950">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-        {/* Column 1: Branding */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <img src="/favicon.ico" alt="Trustless Logo" className="w-10 h-10 object-contain" />
-            <div className="flex flex-col leading-none">
-              <span className="text-base tracking-widest">
-                TRUSTLESS <span className="text-blue-600">OSS</span>
-              </span>
-              <span className="text-[0.65rem] text-slate-500 tracking-wider">
-                ON-CHAIN ESCROW PROTOCOL
-              </span>
+    <footer className="relative z-10 border-t-[4px] border-slate-950 bg-slate-50 px-3 py-5 sm:px-4 md:px-5">
+      <div className="flex w-full flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <AnimatedLogo size="sm" />
+              <div className="min-w-0">
+                <div className="title-brutal text-2xl tracking-tighter text-slate-950">
+                  TRUSTLESS <span className="text-blue-600">OSS</span>
+                </div>
+              </div>
             </div>
           </div>
-          <p className="text-slate-500 text-[0.65rem] leading-relaxed mt-2 max-w-[250px]">
-            © {new Date().getFullYear()} TRUSTLESS OSS PROTOCOL INC. ALL ESCROWS AUTOMATED VIA
-            SMART-CONTRACT DEPLOYMENT.
-          </p>
-        </div>
 
-        {/* Column 2: Resources */}
-        <div className="flex flex-col gap-4">
-          <h3 className="text-slate-500 tracking-widest mb-2">// RESOURCES</h3>
-          <a
-            href="https://docs.trustlessoss.io/security"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:text-blue-600 transition-colors group w-fit"
-          >
-            <ShieldCheck className="w-4 h-4 text-green-500 group-hover:text-blue-600 transition-colors" />
-            Security Audit Report
-          </a>
-          <a
-            href="https://stellar.expert/explorer/public"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:text-blue-600 transition-colors group w-fit"
-          >
-            <Link2 className="w-4 h-4 text-orange-500 group-hover:text-blue-600 transition-colors" />
-            Contract Explorers
-          </a>
-        </div>
+          <div className="flex flex-wrap items-center gap-3 font-mono text-[0.72rem] font-bold uppercase tracking-[0.16em] text-slate-700">
+            {footerLinks.map((link) =>
+              link.external ? (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target={link.href.startsWith('mailto:') ? undefined : '_blank'}
+                  rel={link.href.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+                  className="inline-flex items-center gap-1.5 border-2 border-slate-950 bg-white px-3 py-2 transition-colors hover:bg-slate-950 hover:text-white"
+                >
+                  <span>{link.label}</span>
+                  {!link.href.startsWith('mailto:') && <ArrowUpRight className="h-3.5 w-3.5" />}
+                </a>
+              ) : (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="inline-flex items-center gap-1.5 border-2 border-slate-950 bg-white px-3 py-2 transition-colors hover:bg-slate-950 hover:text-white"
+                >
+                  <span>{link.label}</span>
+                </Link>
+              )
+            )}
 
-        {/* Column 3: System Status */}
-        <div className="flex flex-col gap-4">
-          <h3 className="text-slate-500 tracking-widest mb-2">// SYSTEM STATUS</h3>
-          <div className="flex items-start gap-3">
-            <div className="relative flex h-3 w-3 mt-0.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-green-600 font-black tracking-widest">SYS_OK</span>
-              <span className="text-slate-500 tracking-wider text-[0.65rem]">
-                v1.0.0 [OPERATIONAL]
+            <div className="inline-flex items-center gap-2 border-2 border-slate-950 bg-blue-600 px-3 py-2 text-white">
+              <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-80" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </span>
+              <span>Operational</span>
             </div>
           </div>
         </div>
 
-        {/* Column 4: Support & Contact */}
-        <div className="flex flex-col gap-4">
-          <h3 className="text-slate-500 tracking-widest mb-2">// SUPPORT & CONTACT</h3>
-          <a
-            href="mailto:support@trustlessoss.io"
-            className="flex items-center gap-2 hover:text-blue-600 transition-colors group w-fit"
-          >
-            <Mail className="w-4 h-4 text-blue-500 group-hover:text-blue-600 transition-colors" />
-            support@trustlessoss.io
-          </a>
-          <a
-            href="https://github.com/Trustless-OSS/Trustless-OSS/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:text-blue-600 transition-colors group w-fit"
-          >
-            <Bug className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
-            GitBounty Bug Tracker
-          </a>
-          <div className="mt-4 pt-4 border-t border-slate-200 border-dashed w-full text-slate-500 text-[0.65rem] tracking-widest">
-            DEVELOPED_BY:{' '}
+        <div className="flex flex-col gap-2 border-t-2 border-dashed border-slate-300 pt-3 font-mono text-[0.68rem] font-bold uppercase tracking-[0.14em] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} Trustless OSS</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>Built for automated contributor payouts</span>
             <a
               href="https://github.com/ryzen-xp"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-950 hover:text-blue-600 underline underline-offset-4 decoration-2"
+              className="text-slate-700 transition-colors hover:text-blue-600"
             >
-              RYZEN-XP
+              Ryzen-XP
             </a>
           </div>
         </div>

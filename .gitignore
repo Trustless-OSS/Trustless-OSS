@@ -30,3 +30,5 @@ Thumbs.db
 
 # Test Snapshots
 test_snapshot/
+
+.codex

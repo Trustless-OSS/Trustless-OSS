@@ -1,5 +1,7 @@
 'use client';
 
+import AnimatedLogo from './AnimatedLogo';
+
 export default function LoadingLogo({
   size = 'md',
   message = 'LOADING_SYSTEM...',
@@ -28,30 +30,7 @@ export default function LoadingLogo({
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
-      <div className="relative">
-        {/* Animated Shadow Layer */}
-        {!isTiny && (
-          <div
-            className={`absolute inset-0 bg-blue-600 border-4 border-slate-950 animate-pulse-brutal`}
-            style={{ transform: 'translate(8px, 8px)' }}
-          />
-        )}
-
-        {/* Main Logo Box */}
-        <div
-          className={`${sizeClasses[size]} bg-slate-950 text-white font-black flex items-center justify-center ${isTiny ? 'border-2' : 'border-4'} border-slate-950 relative z-10 animate-bounce-slow`}
-        >
-          T
-        </div>
-
-        {/* Orbiting Elements */}
-        {!isTiny && (
-          <>
-            <div className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-slate-950 animate-spin duration-1000" />
-            <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-600 border-2 border-slate-950 animate-ping" />
-          </>
-        )}
-      </div>
+      <AnimatedLogo size={size} showOrbiters={!isTiny} />
 
       {!isTiny && (
         <div className="flex flex-col items-center gap-2">
@@ -76,21 +55,9 @@ export default function LoadingLogo({
             transform: translateX(100%);
           }
         }
-        @keyframes bounce-slow {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
         .animate-scan-loading {
           width: 60%;
           animation: scan-loading 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 2s ease-in-out infinite;
         }
       `}</style>
     </div>
