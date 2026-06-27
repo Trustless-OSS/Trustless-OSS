@@ -1,6 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { ArrowUpRight, CircleDollarSign, Info, Orbit } from 'lucide-react';
+import { ArrowUpRight, Info } from 'lucide-react';
 
 interface HeroSectionProps {
   user?: User | null;
@@ -9,21 +10,17 @@ interface HeroSectionProps {
 const networkPills = [
   {
     label: 'USDC',
-    detail: 'USD_COIN',
+    detail: 'SUPPORTED_ASSET',
     className: 'bg-blue-50 text-blue-700 border-blue-200',
-    icon: CircleDollarSign,
+    iconSrc: '/usd-coin-usdc-logo.svg',
+    iconAlt: 'USDC logo',
   },
   {
-    label: 'XLM',
-    detail: 'STELLAR',
-    className: 'bg-violet-50 text-violet-700 border-violet-200',
-    icon: Orbit,
-  },
-  {
-    label: 'STELLAR_NETWORK',
-    detail: 'LIVE',
+    label: 'STELLAR',
+    detail: 'SOURCE_CHAIN',
     className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    icon: Orbit,
+    iconSrc: '/stellar-xlm-logo.svg',
+    iconAlt: 'Stellar logo',
   },
 ];
 
@@ -56,12 +53,12 @@ export default function HeroSection({ user }: HeroSectionProps) {
           </h1>
 
           <div className="animate-hero-in hero-stagger-3 mb-8 flex flex-wrap gap-3">
-            {networkPills.map(({ label, detail, className, icon: Icon }) => (
+            {networkPills.map(({ label, detail, className, iconSrc, iconAlt }) => (
               <span
                 key={label}
                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[0.7rem] font-black uppercase shadow-sm ${className}`}
               >
-                <Icon size={14} strokeWidth={2.5} aria-hidden="true" />
+                <Image src={iconSrc} alt={iconAlt} width={16} height={16} className="h-4 w-4" />
                 <span>{detail}</span>
                 <span aria-hidden="true">({label})</span>
               </span>
@@ -69,9 +66,9 @@ export default function HeroSection({ user }: HeroSectionProps) {
           </div>
 
           <p className="animate-hero-in hero-stagger-4 mb-10 max-w-2xl font-mono text-base font-bold leading-8 text-slate-700 md:text-lg">
-            A repository-linked milestone release mechanism for GitHub issues. Lock USDC/XLM
-            smart-pools into audited escrows, then release funds automatically after verified pull
-            request merge events.
+            A repository-linked milestone release mechanism for GitHub issues. Lock Stellar USDC
+            into audited escrows, then release funds automatically after verified pull request merge
+            events.
           </p>
 
           <div className="animate-hero-in hero-stagger-5 flex flex-col gap-5 sm:flex-row">
