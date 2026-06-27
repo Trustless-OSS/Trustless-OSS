@@ -80,8 +80,41 @@ impl TrustlessOssContract {
     }
 
     /// Withdraws unreserved USDC funds back to the maintainer.
-    pub fn withdraw_funds(_env: Env, _amount: i128) -> Result<(), ContractError> {
-        unimplemented!()
+    pub fn withdraw_funds(env: Env, amount: i128) -> Result<(), ContractError> {
+        let mut escrow = storage::get_escrow(&env)?;
+        auth::require_maintainer(&env, &escrow);
+        auth::require_active(&env, &escrow);
+
+        if amount <= 0 {
+            panic_with_error!(&env, ContractError::ZeroAmount);
+        }
+
+        let available = escrow
+            .total_deposited
+            .checked_sub(escrow.reserved)
+            .unwrap_or(0)
+            .checked_sub(escrow.total_released)
+            .unwrap_or(0);
+
+        if amount > available {
+            panic_with_error!(&env, ContractError::WithdrawExceedsAvailable);
+        }
+
+        let token_client = token::Client::new(&env, &escrow.token);
+        token_client.transfer(&env.current_contract_address(), &escrow.maintainer, &amount);
+
+        escrow.total_deposited -= amount;
+        storage::set_escrow(&env, &escrow);
+
+        let new_available = escrow
+            .total_deposited
+            .checked_sub(escrow.reserved)
+            .unwrap_or(0)
+            .checked_sub(escrow.total_released)
+            .unwrap_or(0);
+        events::emit_funds_withdrawn(&env, amount, new_available);
+
+        Ok(())
     }
 
     /// Creates a new pending milestone, reserving the specified reward amount.
