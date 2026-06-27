@@ -1,5 +1,8 @@
-import { Queue, QueueEvents } from 'bullmq';
+import { Queue, QueueEvents, Worker } from 'bullmq';
 import { redisClient } from './redis.js';
+import { logger } from './logger.js';
+
+const log = logger.child({ module: 'queue' });
 
 /* ------------------------------------------------------------------ */
 /* Queues Initialization                                              */
@@ -14,10 +17,10 @@ export const webhooksQueue = new Queue('webhooks', {
       delay: 1000,
     },
     removeOnComplete: {
-      age: 300, // 5 min
+      age: 300,
     },
     removeOnFail: {
-      age: 86400, // 24h
+      age: 86400,
     },
   },
 });
@@ -31,10 +34,10 @@ export const escrowOperationsQueue = new Queue('escrow-operations', {
       delay: 2000,
     },
     removeOnComplete: {
-      age: 300, // 5 min
+      age: 300,
     },
     removeOnFail: {
-      age: 86400, // 24h
+      age: 86400,
     },
   },
 });
@@ -48,13 +51,15 @@ export const syncQueue = new Queue('sync', {
       delay: 5000,
     },
     removeOnComplete: {
-      age: 300, // 5 min
+      age: 300,
     },
     removeOnFail: {
-      age: 86400, // 24h
+      age: 86400,
     },
   },
 });
+
+const allQueues = [webhooksQueue, escrowOperationsQueue, syncQueue];
 
 /* ------------------------------------------------------------------ */
 /* Queue Events Logging                                               */
@@ -64,19 +69,19 @@ const setupLogging = (queueName: string) => {
   const queueEvents = new QueueEvents(queueName, { connection: redisClient as any });
 
   queueEvents.on('added', ({ jobId }) => {
-    console.log(`[Queue:${queueName}] 📥 Job added (ID: ${jobId})`);
+    log.debug({ queueName, jobId }, 'job added');
   });
 
   queueEvents.on('active', ({ jobId }) => {
-    console.log(`[Queue:${queueName}] ⚙️ Job started (ID: ${jobId})`);
+    log.debug({ queueName, jobId }, 'job started');
   });
 
   queueEvents.on('completed', ({ jobId }) => {
-    console.log(`[Queue:${queueName}] ✅ Job completed (ID: ${jobId})`);
+    log.debug({ queueName, jobId }, 'job completed');
   });
 
   queueEvents.on('failed', ({ jobId, failedReason }) => {
-    console.error(`[Queue:${queueName}] ❌ Job failed (ID: ${jobId})`, failedReason);
+    log.error({ queueName, jobId, failedReason }, 'job failed');
   });
 };
 
@@ -84,5 +89,49 @@ export const initializeQueues = () => {
   setupLogging('webhooks');
   setupLogging('escrow-operations');
   setupLogging('sync');
-  console.log('[Queue] BullMQ queues initialized successfully');
+  log.info('BullMQ queues initialized successfully');
 };
+
+/**
+ * Drain active workers and close queue connections.
+ * Waits up to timeoutMs for workers to finish active jobs.
+ */
+export async function drainQueues(workers: Worker[], timeoutMs = 120_000): Promise<void> {
+  log.info({ workerCount: workers.length, timeoutMs }, 'Draining job queue workers');
+
+  const closeWorkers = Promise.all(
+    workers.map(async (worker) => {
+      try {
+        await worker.close();
+      } catch (err) {
+        log.error({ err, queue: worker.name }, 'Error closing worker');
+      }
+    })
+  );
+
+  const timeout = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      log.warn({ timeoutMs }, 'Queue drain timed out — proceeding with shutdown');
+      resolve();
+    }, timeoutMs);
+  });
+
+  await Promise.race([closeWorkers, timeout]);
+
+  log.info('Closing queue connections');
+  await Promise.all(
+    allQueues.map(async (queue) => {
+      try {
+        await queue.close();
+      } catch (err) {
+        log.error({ err, queue: queue.name }, 'Error closing queue');
+      }
+    })
+  );
+
+  log.info('Queue drain complete');
+}
+
+export async function closeQueues(): Promise<void> {
+  await Promise.all(allQueues.map((queue) => queue.close()));
+}
