@@ -1,6 +1,7 @@
 import { App } from '@octokit/app';
-import { supabase } from '../supabase.js';
+import { cache, CACHE_KEYS, CACHE_TTLS } from '../cache.js';
 import { logger } from '../logger.js';
+import { getRepoByGithubId } from './repos.js';
 
 const log = logger.child({ module: 'github-auth' });
 
@@ -11,6 +12,13 @@ const log = logger.child({ module: 'github-auth' });
  */
 export async function getInstallationToken(githubRepoId: number): Promise<string | null> {
   log.debug({ githubRepoId }, 'getInstallationToken started');
+
+  const tokenCacheKey = CACHE_KEYS.ghToken(githubRepoId);
+  const cachedToken = await cache.get<string>(tokenCacheKey);
+  if (cachedToken) {
+    log.debug({ githubRepoId }, 'installation token cache hit');
+    return cachedToken;
+  }
 
   const appId = process.env.GITHUB_APP_ID;
   const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
@@ -29,56 +37,35 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
     return null;
   }
 
-  // 1. Fetch the repo from our database
-  const { data: repo, error: dbError } = await supabase
-    .from('repos')
-    .select('github_installation_id, full_name')
-    .eq('github_repo_id', githubRepoId)
-    .single();
-
-  if (dbError) {
-    log.error({ err: dbError, githubRepoId }, 'DB error fetching repo for installation token');
-    return null;
-  }
+  const repo = await getRepoByGithubId(githubRepoId);
   if (!repo) {
     log.error({ githubRepoId }, 'no repo found in DB for installation token');
     return null;
   }
 
-  // 2. Parse private key — handle all common Vercel storage formats:
-  //    a) PEM with literal \n  (most common in Vercel env vars)
-  //    b) PEM already with real newlines
-  //    c) Base64-encoded PEM
   let normalizedKey = privateKey.trim();
 
-  // Strip surrounding quotes if any (some Vercel configs add them)
   if (normalizedKey.startsWith('"') && normalizedKey.endsWith('"')) {
     normalizedKey = normalizedKey.slice(1, -1);
   }
 
   let finalKey: string;
   if (normalizedKey.includes('-----BEGIN')) {
-    // Already a full PEM string — unescape any literal \n sequences
     finalKey = normalizedKey.replace(/\\n/g, '\n');
   } else {
-    // The env var holds the raw base64 body of the PEM (no headers/footers).
-    // DO NOT base64-decode it — the decoded bytes would be raw DER binary
-    // which JWT libraries reject. Instead, re-wrap it as a proper RSA PEM.
-    const b64Body = normalizedKey.replace(/\s/g, ''); // strip any stray whitespace
+    const b64Body = normalizedKey.replace(/\s/g, '');
     const wrapped = b64Body.match(/.{1,64}/g)?.join('\n') ?? b64Body;
     finalKey = `-----BEGIN RSA PRIVATE KEY-----\n${wrapped}\n-----END RSA PRIVATE KEY-----`;
   }
 
-  // 3. Initialise the Octokit App (signs JWTs with the private key)
   let app: App;
   try {
     app = new App({ appId: numericAppId, privateKey: finalKey });
-  } catch (initErr: any) {
+  } catch (initErr: unknown) {
     log.error({ err: initErr }, 'failed to initialise Octokit App');
     return null;
   }
 
-  // 4. Resolve installation ID (auto-repair if missing)
   let installationId = repo.github_installation_id ? Number(repo.github_installation_id) : null;
 
   if (!installationId) {
@@ -103,30 +90,44 @@ export async function getInstallationToken(githubRepoId: number): Promise<string
       installationId = installation.id;
       log.info({ repo: repo.full_name, installationId }, 'auto-repair succeeded');
 
-      // Persist for next time
+      const { supabase } = await import('../supabase.js');
       await supabase
         .from('repos')
         .update({ github_installation_id: installationId })
         .eq('github_repo_id', githubRepoId);
-    } catch (apiErr: any) {
-      const status = apiErr.status ?? apiErr.response?.status ?? 'unknown';
-      const ghMsg = apiErr.response?.data?.message ?? apiErr.message;
+
+      const { invalidateRepoCache } = await import('./repos.js');
+      await invalidateRepoCache(repo.id, githubRepoId);
+    } catch (apiErr: unknown) {
+      const err = apiErr as {
+        status?: number;
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
+      const status = err.status ?? err.response?.status ?? 'unknown';
+      const ghMsg = err.response?.data?.message ?? err.message;
       log.error({ err: apiErr, status, repo: repo.full_name }, `auto-repair failed: ${ghMsg}`);
       return null;
     }
   }
 
-  // 5. Exchange installation ID for a short-lived access token
   try {
     const auth = await app.octokit.request(
       'POST /app/installations/{installation_id}/access_tokens',
       { installation_id: installationId }
     );
+    const token = auth.data.token;
     log.debug({ repo: repo.full_name }, 'installation token generated');
-    return auth.data.token;
-  } catch (tokenErr: any) {
-    const status = tokenErr.status ?? tokenErr.response?.status ?? 'unknown';
-    const ghMsg = tokenErr.response?.data?.message ?? tokenErr.message;
+    await cache.set(tokenCacheKey, token, CACHE_TTLS.GH_TOKEN);
+    return token;
+  } catch (tokenErr: unknown) {
+    const err = tokenErr as {
+      status?: number;
+      response?: { status?: number; data?: { message?: string } };
+      message?: string;
+    };
+    const status = err.status ?? err.response?.status ?? 'unknown';
+    const ghMsg = err.response?.data?.message ?? err.message;
     log.error({ err: tokenErr, status, repo: repo.full_name }, `token exchange failed: ${ghMsg}`);
     return null;
   }
