@@ -60,8 +60,23 @@ impl TrustlessOssContract {
     }
 
     /// Deposits USDC into the contract to fund upcoming milestones.
-    pub fn deposit_funds(_env: Env, _amount: i128) -> Result<(), ContractError> {
-        unimplemented!()
+    pub fn deposit_funds(env: Env, amount: i128) -> Result<(), ContractError> {
+        let mut escrow = storage::get_escrow(&env)?;
+        auth::require_maintainer(&env, &escrow);
+        auth::require_active(&env, &escrow);
+
+        if amount <= 0 {
+            panic_with_error!(&env, ContractError::ZeroAmount);
+        }
+
+        let token_client = token::Client::new(&env, &escrow.token);
+        token_client.transfer(&escrow.maintainer, &env.current_contract_address(), &amount);
+
+        escrow.total_deposited += amount;
+        storage::set_escrow(&env, &escrow);
+        events::emit_funds_deposited(&env, amount, escrow.total_deposited);
+
+        Ok(())
     }
 
     /// Withdraws unreserved USDC funds back to the maintainer.
