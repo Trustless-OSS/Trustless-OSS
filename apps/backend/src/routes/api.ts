@@ -3,6 +3,12 @@ import { readBody, json } from '../router.js';
 import { supabase } from '../lib/supabase.js';
 import { logger } from '../lib/logger.js';
 import { webhooksQueue, escrowOperationsQueue, syncQueue } from '../lib/queue.js';
+import { getRepoById, getRepoByGithubId, invalidateRepoCache } from '../lib/github/repos.js';
+import {
+  getContributorByGithubId,
+  invalidateContributorCache,
+} from '../lib/github/contributors.js';
+import { isShuttingDown } from '../lib/lifecycle.js';
 
 const log = logger.child({ module: 'api' });
 import { pushMilestoneOnChain } from '../lib/trustless-work/milestone.js';
@@ -119,6 +125,7 @@ export async function connectRepoHandler(req: IncomingMessage, res: ServerRespon
     json(res, { error: error.message }, 400);
     return;
   }
+  await invalidateRepoCache(data.id, data.github_repo_id);
   json(res, { repo: data });
 }
 
@@ -148,11 +155,7 @@ export async function createEscrowUnsignedHandler(
     maintainerWallet: string;
   };
 
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('id', body.repoId)
-    .single<Repo>();
+  const repo = await getRepoById(body.repoId);
   if (!repo) {
     json(res, { error: 'Repo not found' }, 404);
     return;
@@ -239,6 +242,7 @@ export async function submitDeployEscrowHandler(
       .from('repos')
       .update({ escrow_contract_id: result.contractId })
       .eq('id', body.repoId);
+    await invalidateRepoCache(body.repoId);
     json(res, { contractId: result.contractId });
   } catch (err: any) {
     json(res, { error: err.message }, 500);
@@ -271,11 +275,7 @@ export async function fundEscrowUnsignedHandler(
     return;
   }
 
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('id', body.repoId)
-    .single<Repo>();
+  const repo = await getRepoById(body.repoId);
   if (!repo?.escrow_contract_id) {
     json(res, { error: 'No escrow deployed for this repository' }, 400);
     return;
@@ -340,14 +340,11 @@ export async function submitFundEscrowHandler(
       body: JSON.stringify({ signedXdr: body.signedXdr }),
     });
 
-    const { data: repo } = await supabase
-      .from('repos')
-      .select('*')
-      .eq('id', body.repoId)
-      .single<Repo>();
+    const repo = await getRepoById(body.repoId);
     if (repo) {
       const newBalance = repo.escrow_balance + body.amount;
       await supabase.from('repos').update({ escrow_balance: newBalance }).eq('id', repo.id);
+      await invalidateRepoCache(repo.id, repo.github_repo_id);
       json(res, { ok: true, newBalance });
     } else {
       json(res, { ok: true });
@@ -388,17 +385,13 @@ export async function refundEscrowHandler(
   }
 
   // Fetch maintainer's stellar wallet
-  const { data: maintainer } = await supabase
-    .from('contributors')
-    .select('stellar_wallet')
-    .eq('github_user_id', githubId)
-    .single();
+  const maintainer = await getContributorByGithubId(githubId);
   if (!maintainer?.stellar_wallet) {
     json(res, { error: 'You must link your Stellar wallet before refunding' }, 400);
     return;
   }
 
-  const { data: repo } = await supabase.from('repos').select('*').eq('id', repoId).single<Repo>();
+  const repo = await getRepoById(repoId);
   if (!repo || !repo.escrow_contract_id) {
     json(res, { error: 'Repo or escrow not found' }, 404);
     return;
@@ -572,6 +565,7 @@ export async function refundEscrowHandler(
     }
 
     await supabase.from('repos').update({ escrow_balance: 0 }).eq('id', repoId);
+    await invalidateRepoCache(repoId, repo.github_repo_id);
     json(res, { refundedAmount: totalRefunded, cancelledIssues: cancelledCount });
   } catch (err: any) {
     log.error({ err, repoId }, 'refund failed');
@@ -598,11 +592,7 @@ export async function closeEscrowUnsignedHandler(
     maintainerWallet: string;
   };
 
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('*')
-    .eq('id', body.repoId)
-    .single<Repo>();
+  const repo = await getRepoById(body.repoId);
   if (!repo?.escrow_contract_id) {
     json(res, { error: 'No escrow deployed' }, 400);
     return;
@@ -679,6 +669,7 @@ export async function submitCloseHandler(req: IncomingMessage, res: ServerRespon
       .from('repos')
       .update({ escrow_contract_id: null, escrow_balance: 0 })
       .eq('id', body.repoId);
+    await invalidateRepoCache(body.repoId);
     json(res, { ok: true });
   } catch (err: any) {
     json(res, { error: err.message }, 500);
@@ -831,11 +822,7 @@ export async function pushMilestoneHandler(
   const githubUserId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
 
   // 1. Find internal repo ID
-  const { data: repo } = await supabase
-    .from('repos')
-    .select('id, full_name, github_repo_id, escrow_contract_id')
-    .eq('github_repo_id', body.githubRepoId)
-    .single<Repo>();
+  const repo = await getRepoByGithubId(body.githubRepoId);
 
   if (!repo) {
     json(res, { error: 'Repo not found' }, 404);
@@ -862,6 +849,7 @@ export async function pushMilestoneHandler(
     },
     { onConflict: 'github_user_id' }
   );
+  await invalidateContributorCache(githubUserId);
 
   // Look up the issue
 
@@ -933,6 +921,7 @@ export async function saveWalletHandler(req: IncomingMessage, res: ServerRespons
     json(res, { error: error.message }, 400);
     return;
   }
+  await invalidateContributorCache(githubUserId);
   json(res, { ok: true });
 }
 
@@ -1022,6 +1011,7 @@ export async function updateRepoRewardsHandler(
     json(res, { error: error.message }, 400);
     return;
   }
+  await invalidateRepoCache(data.id, data.github_repo_id);
   json(res, { repo: data });
 }
 
@@ -1142,6 +1132,19 @@ export async function retryIssueHandler(
 /* GET /api/health                                                      */
 /* ------------------------------------------------------------------ */
 export async function healthHandler(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (isShuttingDown()) {
+    json(
+      res,
+      {
+        status: 'shutting_down',
+        timestamp: new Date().toISOString(),
+        message: 'Server is shutting down',
+      },
+      503
+    );
+    return;
+  }
+
   const health: any = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -1251,7 +1254,7 @@ export async function deleteRepoHandler(
     return;
   }
 
-  const { data: repo } = await supabase.from('repos').select('*').eq('id', repoId).single<Repo>();
+  const repo = await getRepoById(repoId);
   if (!repo) {
     json(res, { error: 'Repo not found' }, 404);
     return;
@@ -1342,6 +1345,7 @@ export async function deleteRepoHandler(
     return;
   }
 
+  await invalidateRepoCache(repoId, repo.github_repo_id);
   log.info({ repo: repo.full_name, repoId }, 'repo deleted');
   json(res, { ok: true });
 }
