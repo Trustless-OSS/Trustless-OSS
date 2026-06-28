@@ -1,0 +1,134 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  # Enforce PR title follows Conventional Commits format
+  # e.g. feat: add wallet connect, fix: webhook signature bug
+  pr-title-check:
+    name: PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            doesn't match the required format. The subject must not start with
+            an uppercase character.
+
+  # Validate no secrets or sensitive values are committed
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  # Validate that the PR links to an issue or has a description
+  pr-description-check:
+    name: PR Description Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure PR has description
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+
+            if (body.trim().length < 20) {
+              core.setFailed(
+                'PR description is too short. Please describe what this PR does and why.'
+              );
+            }
+
+            // Warn (but don't block) if no issue is linked
+            const hasIssueRef = /closes?\s+#\d+|fixes?\s+#\d+|resolves?\s+#\d+/i.test(body);
+            if (!hasIssueRef) {
+              core.warning('No linked issue found. Consider linking an issue with "Closes #N".');
+            }
+
+  # Block PRs that touch sensitive files without a specific label
+  sensitive-files-check:
+    name: Sensitive Files Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for sensitive file changes
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const sensitivePatterns = [
+              /\.env$/,
+              /\.env\.(?!example)/,
+              /secrets/i,
+              /private[_-]?key/i,
+            ];
+
+            const sensitiveFiles = files
+              .map(f => f.filename)
+              .filter(name => sensitivePatterns.some(p => p.test(name)));
+
+            if (sensitiveFiles.length > 0) {
+              core.setFailed(
+                `PR modifies potentially sensitive files:\n${sensitiveFiles.join('\n')}\n\nPlease review carefully.`
+              );
+            }
+
+  # Enforce that all status checks pass before this summary check passes
+  # Used as the single required check in branch protection rules
+  all-checks-pass:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [pr-title-check, pr-description-check, sensitive-files-check]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.pr-title-check.result }}" != "success" ] || \
+             [ "${{ needs.pr-description-check.result }}" != "success" ] || \
+             [ "${{ needs.sensitive-files-check.result }}" != "success" ]; then
+            echo "One or more required checks failed."
+            exit 1
+          fi
+          echo "All required checks passed!"

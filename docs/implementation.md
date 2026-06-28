@@ -1,4 +1,5 @@
 # OSS Bounty — Full Implementation Details
+
 > Everything needed to build the app from scratch
 
 ---
@@ -145,6 +146,7 @@ create table assignments (
 ## 4. GitHub App Setup
 
 ### Required Permissions
+
 ```
 Repository permissions:
 - Issues: Read & Write        (read labels, write comments)
@@ -159,86 +161,90 @@ Subscribe to events:
 
 ### Webhook Events to Handle
 
-| Event | Action | What to do |
-|---|---|---|
-| `issues` | `labeled` | Parse labels, create DB milestone |
-| `issues` | `assigned` | Check wallet, push on-chain or send link |
-| `issues` | `unassigned` | Cancel active milestone |
-| `pull_request` | `closed` + `merged: true` | Approve + release funds |
-| `pull_request` | `closed` + `merged: false` | Do nothing |
+| Event          | Action                     | What to do                               |
+| -------------- | -------------------------- | ---------------------------------------- |
+| `issues`       | `labeled`                  | Parse labels, create DB milestone        |
+| `issues`       | `assigned`                 | Check wallet, push on-chain or send link |
+| `issues`       | `unassigned`               | Cancel active milestone                  |
+| `pull_request` | `closed` + `merged: true`  | Approve + release funds                  |
+| `pull_request` | `closed` + `merged: false` | Do nothing                               |
 
 ---
 
 ## 5. Core Code
 
 ### 5.1 Webhook Handler
+
 `app/api/webhooks/github/route.ts`
 
 ```typescript
-import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
-import { handleIssueLabeled, handleIssueAssigned, handlePRMerged } from '@/lib/github/webhook'
+import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { handleIssueLabeled, handleIssueAssigned, handlePRMerged } from '@/lib/github/webhook';
 
 export async function POST(req: NextRequest) {
-  const body = await req.text()
-  const sig = req.headers.get('x-hub-signature-256') ?? ''
-  const event = req.headers.get('x-github-event') ?? ''
+  const body = await req.text();
+  const sig = req.headers.get('x-hub-signature-256') ?? '';
+  const event = req.headers.get('x-github-event') ?? '';
 
   // Verify webhook signature
-  const expected = 'sha256=' + crypto
-    .createHmac('sha256', process.env.GITHUB_WEBHOOK_SECRET!)
-    .update(body)
-    .digest('hex')
+  const expected =
+    'sha256=' +
+    crypto.createHmac('sha256', process.env.GITHUB_WEBHOOK_SECRET!).update(body).digest('hex');
 
   if (sig !== expected) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const payload = JSON.parse(body)
+  const payload = JSON.parse(body);
 
   if (event === 'issues' && payload.action === 'labeled') {
-    await handleIssueLabeled(payload)
+    await handleIssueLabeled(payload);
   }
 
   if (event === 'issues' && payload.action === 'assigned') {
-    await handleIssueAssigned(payload)
+    await handleIssueAssigned(payload);
   }
 
   if (event === 'pull_request' && payload.action === 'closed' && payload.pull_request.merged) {
-    await handlePRMerged(payload)
+    await handlePRMerged(payload);
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true });
 }
 ```
 
 ---
 
 ### 5.2 Label Parser
+
 `lib/github/labels.ts`
 
 ```typescript
 export interface ParsedLabels {
-  isRewarded: boolean
-  difficulty: 'low' | 'medium' | 'high' | null
-  bonusAmount: number
+  isRewarded: boolean;
+  difficulty: 'low' | 'medium' | 'high' | null;
+  bonusAmount: number;
 }
 
 export function parseLabels(labels: { name: string }[]): ParsedLabels {
-  const names = labels.map(l => l.name.toLowerCase())
+  const names = labels.map((l) => l.name.toLowerCase());
 
-  const isRewarded = names.includes('rewarded')
-  
-  const difficulty = names.includes('high') ? 'high'
-    : names.includes('medium') ? 'medium'
-    : names.includes('low') ? 'low'
-    : null
+  const isRewarded = names.includes('rewarded');
+
+  const difficulty = names.includes('high')
+    ? 'high'
+    : names.includes('medium')
+      ? 'medium'
+      : names.includes('low')
+        ? 'low'
+        : null;
 
   // Parse bonus:50 label
-  const bonusLabel = names.find(n => n.startsWith('bonus:'))
-  const bonusAmount = bonusLabel ? parseFloat(bonusLabel.split(':')[1]) || 0 : 0
+  const bonusLabel = names.find((n) => n.startsWith('bonus:'));
+  const bonusAmount = bonusLabel ? parseFloat(bonusLabel.split(':')[1]) || 0 : 0;
 
-  return { isRewarded, difficulty, bonusAmount }
+  return { isRewarded, difficulty, bonusAmount };
 }
 
 export function getRewardAmount(
@@ -246,41 +252,46 @@ export function getRewardAmount(
   bonusAmount: number,
   repoDefaults: { reward_low: number; reward_medium: number; reward_high: number }
 ): number {
-  const base = difficulty === 'high' ? repoDefaults.reward_high
-    : difficulty === 'medium' ? repoDefaults.reward_medium
-    : difficulty === 'low' ? repoDefaults.reward_low
-    : 0
+  const base =
+    difficulty === 'high'
+      ? repoDefaults.reward_high
+      : difficulty === 'medium'
+        ? repoDefaults.reward_medium
+        : difficulty === 'low'
+          ? repoDefaults.reward_low
+          : 0;
 
-  return base + bonusAmount
+  return base + bonusAmount;
 }
 ```
 
 ---
 
 ### 5.3 Webhook Handlers
+
 `lib/github/webhook.ts`
 
 ```typescript
-import { createClient } from '@/lib/supabase/server'
-import { parseLabels, getRewardAmount } from './labels'
-import { postComment } from './comments'
-import { pushMilestoneOnChain, releaseEscrowMilestone } from '@/lib/trustless-work/milestone'
+import { createClient } from '@/lib/supabase/server';
+import { parseLabels, getRewardAmount } from './labels';
+import { postComment } from './comments';
+import { pushMilestoneOnChain, releaseEscrowMilestone } from '@/lib/trustless-work/milestone';
 
 export async function handleIssueLabeled(payload: any) {
-  const supabase = createClient()
-  const { repository, issue } = payload
+  const supabase = createClient();
+  const { repository, issue } = payload;
 
   // Find repo in DB
   const { data: repo } = await supabase
     .from('repos')
     .select('*')
     .eq('github_repo_id', repository.id)
-    .single()
+    .single();
 
-  if (!repo || !repo.escrow_contract_id) return
+  if (!repo || !repo.escrow_contract_id) return;
 
-  const parsed = parseLabels(issue.labels)
-  if (!parsed.isRewarded || !parsed.difficulty) return
+  const parsed = parseLabels(issue.labels);
+  if (!parsed.isRewarded || !parsed.difficulty) return;
 
   // Check if milestone already exists for this issue
   const { data: existing } = await supabase
@@ -288,17 +299,20 @@ export async function handleIssueLabeled(payload: any) {
     .select('id')
     .eq('repo_id', repo.id)
     .eq('github_issue_id', issue.id)
-    .single()
+    .single();
 
-  if (existing) return // already processed
+  if (existing) return; // already processed
 
-  const rewardAmount = getRewardAmount(parsed.difficulty, parsed.bonusAmount, repo)
+  const rewardAmount = getRewardAmount(parsed.difficulty, parsed.bonusAmount, repo);
 
   // Solvency check
   if (repo.escrow_balance < rewardAmount) {
-    await postComment(repository.full_name, issue.number,
-      `⚠️ Insufficient escrow balance (${repo.escrow_balance} USDC). Need ${rewardAmount} USDC. [Top up here](${process.env.NEXT_PUBLIC_APP_URL}/dashboard)`)
-    return
+    await postComment(
+      repository.full_name,
+      issue.number,
+      `⚠️ Insufficient escrow balance (${repo.escrow_balance} USDC). Need ${rewardAmount} USDC. [Top up here](${process.env.NEXT_PUBLIC_APP_URL}/dashboard)`
+    );
+    return;
   }
 
   // Create milestone in DB
@@ -310,152 +324,171 @@ export async function handleIssueLabeled(payload: any) {
     reward_amount: rewardAmount,
     difficulty_label: parsed.difficulty,
     bonus_amount: parsed.bonusAmount,
-    status: 'pending'
-  })
+    status: 'pending',
+  });
 
   // Reserve balance
-  await supabase.from('repos')
+  await supabase
+    .from('repos')
     .update({ escrow_balance: repo.escrow_balance - rewardAmount })
-    .eq('id', repo.id)
+    .eq('id', repo.id);
 }
 
 export async function handleIssueAssigned(payload: any) {
-  const supabase = createClient()
-  const { repository, issue, assignee } = payload
+  const supabase = createClient();
+  const { repository, issue, assignee } = payload;
 
   const { data: repo } = await supabase
-    .from('repos').select('*')
-    .eq('github_repo_id', repository.id).single()
+    .from('repos')
+    .select('*')
+    .eq('github_repo_id', repository.id)
+    .single();
 
-  if (!repo) return
+  if (!repo) return;
 
   const { data: issueRecord } = await supabase
-    .from('issues').select('*')
+    .from('issues')
+    .select('*')
     .eq('repo_id', repo.id)
-    .eq('github_issue_id', issue.id).single()
+    .eq('github_issue_id', issue.id)
+    .single();
 
-  if (!issueRecord || issueRecord.status !== 'pending') return
+  if (!issueRecord || issueRecord.status !== 'pending') return;
 
   // Find or create contributor
   let { data: contributor } = await supabase
     .from('contributors')
     .select('*')
     .eq('github_user_id', assignee.id)
-    .single()
+    .single();
 
   if (!contributor) {
     const { data: newContributor } = await supabase
       .from('contributors')
       .insert({ github_user_id: assignee.id, github_username: assignee.login })
-      .select().single()
-    contributor = newContributor
+      .select()
+      .single();
+    contributor = newContributor;
   }
 
   // Create assignment
   await supabase.from('assignments').insert({
     issue_id: issueRecord.id,
-    contributor_id: contributor.id
-  })
+    contributor_id: contributor.id,
+  });
 
   if (contributor?.stellar_wallet) {
     // Push milestone on-chain immediately
-    await pushMilestoneOnChain(repo, issueRecord, contributor.stellar_wallet)
+    await pushMilestoneOnChain(repo, issueRecord, contributor.stellar_wallet);
   } else {
     // Ask for wallet via issue comment
-    const connectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/connect?issue=${issue.id}&repo=${repository.id}`
-    await postComment(repository.full_name, issue.number,
-      `👋 Hey @${assignee.login}! You've been assigned a bounty of **${issueRecord.reward_amount} USDC**.\n\nConnect your Stellar wallet to claim it: [Click here](${connectUrl})`)
+    const connectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/connect?issue=${issue.id}&repo=${repository.id}`;
+    await postComment(
+      repository.full_name,
+      issue.number,
+      `👋 Hey @${assignee.login}! You've been assigned a bounty of **${issueRecord.reward_amount} USDC**.\n\nConnect your Stellar wallet to claim it: [Click here](${connectUrl})`
+    );
   }
 }
 
 export async function handlePRMerged(payload: any) {
-  const supabase = createClient()
-  const { repository, pull_request } = payload
+  const supabase = createClient();
+  const { repository, pull_request } = payload;
 
   // Find linked issue from PR body (e.g. "Closes #42" or "Fixes #42")
-  const issueNumber = extractIssueNumber(pull_request.body)
-  if (!issueNumber) return
+  const issueNumber = extractIssueNumber(pull_request.body);
+  if (!issueNumber) return;
 
   const { data: repo } = await supabase
-    .from('repos').select('*')
-    .eq('github_repo_id', repository.id).single()
+    .from('repos')
+    .select('*')
+    .eq('github_repo_id', repository.id)
+    .single();
 
-  if (!repo) return
+  if (!repo) return;
 
   const { data: issueRecord } = await supabase
-    .from('issues').select('*')
+    .from('issues')
+    .select('*')
     .eq('repo_id', repo.id)
-    .eq('github_issue_number', issueNumber).single()
+    .eq('github_issue_number', issueNumber)
+    .single();
 
-  if (!issueRecord || issueRecord.status !== 'active') return
+  if (!issueRecord || issueRecord.status !== 'active') return;
 
   const { data: assignment } = await supabase
-    .from('assignments').select('*, contributors(*)')
-    .eq('issue_id', issueRecord.id).single()
+    .from('assignments')
+    .select('*, contributors(*)')
+    .eq('issue_id', issueRecord.id)
+    .single();
 
-  if (!assignment) return
+  if (!assignment) return;
 
   // Update PR info
-  await supabase.from('assignments').update({
-    pr_number: pull_request.number,
-    pr_merged_at: new Date().toISOString()
-  }).eq('id', assignment.id)
+  await supabase
+    .from('assignments')
+    .update({
+      pr_number: pull_request.number,
+      pr_merged_at: new Date().toISOString(),
+    })
+    .eq('id', assignment.id);
 
   // Approve + release via Trustless Work
-  const released = await releaseEscrowMilestone(repo, issueRecord)
+  const released = await releaseEscrowMilestone(repo, issueRecord);
 
   if (released) {
-    await supabase.from('assignments')
+    await supabase
+      .from('assignments')
       .update({ payout_status: 'released' })
-      .eq('id', assignment.id)
+      .eq('id', assignment.id);
 
-    await supabase.from('issues')
-      .update({ status: 'completed' })
-      .eq('id', issueRecord.id)
+    await supabase.from('issues').update({ status: 'completed' }).eq('id', issueRecord.id);
 
-    await postComment(repository.full_name, issueNumber,
-      `✅ Bounty of **${issueRecord.reward_amount} USDC** released to @${assignment.contributors.github_username}!`)
+    await postComment(
+      repository.full_name,
+      issueNumber,
+      `✅ Bounty of **${issueRecord.reward_amount} USDC** released to @${assignment.contributors.github_username}!`
+    );
   }
 }
 
 function extractIssueNumber(body: string): number | null {
-  if (!body) return null
-  const match = body.match(/(?:closes|fixes|resolves)\s+#(\d+)/i)
-  return match ? parseInt(match[1]) : null
+  if (!body) return null;
+  const match = body.match(/(?:closes|fixes|resolves)\s+#(\d+)/i);
+  return match ? parseInt(match[1]) : null;
 }
 ```
 
 ---
 
 ### 5.4 Trustless Work Client
+
 `lib/trustless-work/client.ts`
 
 ```typescript
-import axios from 'axios'
+import axios from 'axios';
 
 export const twClient = axios.create({
   baseURL: process.env.TRUSTLESS_WORK_BASE_URL,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': process.env.TRUSTLESS_WORK_API_KEY!
-  }
-})
+    'x-api-key': process.env.TRUSTLESS_WORK_API_KEY!,
+  },
+});
 ```
 
 ---
 
 ### 5.5 Escrow Operations
+
 `lib/trustless-work/escrow.ts`
 
 ```typescript
-import { twClient } from './client'
-import { signAndSendTransaction } from '@/lib/stellar/signer'
+import { twClient } from './client';
+import { signAndSendTransaction } from '@/lib/stellar/signer';
 
-export async function createRepoEscrow(params: {
-  maintainerWallet: string
-  repoName: string
-}) {
+export async function createRepoEscrow(params: { maintainerWallet: string; repoName: string }) {
   const response = await twClient.post('/escrow/multi-release/deploy', {
     signer: params.maintainerWallet,
     engagementId: `repo-${Date.now()}`,
@@ -467,41 +500,38 @@ export async function createRepoEscrow(params: {
       platformAddress: process.env.PLATFORM_STELLAR_PUBLIC_KEY,
       releaseSigner: process.env.PLATFORM_STELLAR_PUBLIC_KEY,
       disputeResolver: params.maintainerWallet,
-      receiver: process.env.PLATFORM_STELLAR_PUBLIC_KEY  // placeholder
+      receiver: process.env.PLATFORM_STELLAR_PUBLIC_KEY, // placeholder
     },
     platformFee: 0,
     milestones: [],
     trustline: {
-      address: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5' // testnet USDC
-    }
-  })
+      address: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5', // testnet USDC
+    },
+  });
 
-  const { unsignedTransaction } = response.data
-  return await signAndSendTransaction(unsignedTransaction)
+  const { unsignedTransaction } = response.data;
+  return await signAndSendTransaction(unsignedTransaction);
 }
 ```
 
 ---
 
 ### 5.6 Milestone Operations
+
 `lib/trustless-work/milestone.ts`
 
 ```typescript
-import { twClient } from './client'
-import { signAndSendTransaction } from '@/lib/stellar/signer'
-import { createClient } from '@/lib/supabase/server'
+import { twClient } from './client';
+import { signAndSendTransaction } from '@/lib/stellar/signer';
+import { createClient } from '@/lib/supabase/server';
 
-export async function pushMilestoneOnChain(
-  repo: any,
-  issue: any,
-  contributorWallet: string
-) {
-  const supabase = createClient()
+export async function pushMilestoneOnChain(repo: any, issue: any, contributorWallet: string) {
+  const supabase = createClient();
 
   // Get current escrow to find next milestone index
-  const escrowData = await twClient.get(`/escrow/${repo.escrow_contract_id}`)
-  const currentMilestones = escrowData.data.milestones ?? []
-  const milestoneIndex = currentMilestones.length
+  const escrowData = await twClient.get(`/escrow/${repo.escrow_contract_id}`);
+  const currentMilestones = escrowData.data.milestones ?? [];
+  const milestoneIndex = currentMilestones.length;
 
   // Add milestone to escrow
   const response = await twClient.put('/escrow/multi-release/update-escrow', {
@@ -516,20 +546,23 @@ export async function pushMilestoneOnChain(
           amount: issue.reward_amount,
           status: 'Pending',
           flags: { approved: false, released: false, disputed: false },
-          receiver: contributorWallet
-        }
-      ]
-    }
-  })
+          receiver: contributorWallet,
+        },
+      ],
+    },
+  });
 
-  const { unsignedTransaction } = response.data
-  await signAndSendTransaction(unsignedTransaction)
+  const { unsignedTransaction } = response.data;
+  await signAndSendTransaction(unsignedTransaction);
 
   // Update issue in DB
-  await supabase.from('issues').update({
-    milestone_index: milestoneIndex,
-    status: 'active'
-  }).eq('id', issue.id)
+  await supabase
+    .from('issues')
+    .update({
+      milestone_index: milestoneIndex,
+      status: 'active',
+    })
+    .eq('id', issue.id);
 }
 
 export async function releaseEscrowMilestone(repo: any, issue: any) {
@@ -538,22 +571,22 @@ export async function releaseEscrowMilestone(repo: any, issue: any) {
     const approveRes = await twClient.post('/escrow/multi-release/approve-milestone', {
       signer: process.env.PLATFORM_STELLAR_PUBLIC_KEY,
       contractId: repo.escrow_contract_id,
-      milestoneIndex: issue.milestone_index
-    })
-    await signAndSendTransaction(approveRes.data.unsignedTransaction)
+      milestoneIndex: issue.milestone_index,
+    });
+    await signAndSendTransaction(approveRes.data.unsignedTransaction);
 
     // Release milestone
     const releaseRes = await twClient.post('/escrow/multi-release/release-milestone', {
       signer: process.env.PLATFORM_STELLAR_PUBLIC_KEY,
       contractId: repo.escrow_contract_id,
-      milestoneIndex: issue.milestone_index
-    })
-    await signAndSendTransaction(releaseRes.data.unsignedTransaction)
+      milestoneIndex: issue.milestone_index,
+    });
+    await signAndSendTransaction(releaseRes.data.unsignedTransaction);
 
-    return true
+    return true;
   } catch (err) {
-    console.error('Release failed:', err)
-    return false
+    console.error('Release failed:', err);
+    return false;
   }
 }
 ```
@@ -561,56 +594,56 @@ export async function releaseEscrowMilestone(repo: any, issue: any) {
 ---
 
 ### 5.7 Stellar Signer
+
 `lib/stellar/signer.ts`
 
 ```typescript
-import { Keypair, TransactionBuilder, Networks } from '@stellar/stellar-sdk'
-import { twClient } from '@/lib/trustless-work/client'
+import { Keypair, TransactionBuilder, Networks } from '@stellar/stellar-sdk';
+import { twClient } from '@/lib/trustless-work/client';
 
 export async function signAndSendTransaction(unsignedXdr: string) {
-  const keypair = Keypair.fromSecret(process.env.PLATFORM_STELLAR_SECRET_KEY!)
-  const network = process.env.STELLAR_NETWORK === 'mainnet'
-    ? Networks.PUBLIC
-    : Networks.TESTNET
+  const keypair = Keypair.fromSecret(process.env.PLATFORM_STELLAR_SECRET_KEY!);
+  const network = process.env.STELLAR_NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
 
-  const tx = TransactionBuilder.fromXDR(unsignedXdr, network)
-  tx.sign(keypair)
-  const signedXdr = tx.toXDR()
+  const tx = TransactionBuilder.fromXDR(unsignedXdr, network);
+  tx.sign(keypair);
+  const signedXdr = tx.toXDR();
 
   const result = await twClient.post('/helper/send-transaction', {
-    signedXdr
-  })
+    signedXdr,
+  });
 
-  return result.data
+  return result.data;
 }
 ```
 
 ---
 
 ### 5.8 GitHub Comments Bot
+
 `lib/github/comments.ts`
 
 ```typescript
-import { App } from '@octokit/app'
+import { App } from '@octokit/app';
 
 const app = new App({
   appId: process.env.GITHUB_APP_ID!,
-  privateKey: Buffer.from(process.env.GITHUB_APP_PRIVATE_KEY!, 'base64').toString('utf-8')
-})
+  privateKey: Buffer.from(process.env.GITHUB_APP_PRIVATE_KEY!, 'base64').toString('utf-8'),
+});
 
 export async function postComment(fullName: string, issueNumber: number, body: string) {
-  const [owner, repo] = fullName.split('/')
-  const octokit = await app.getInstallationOctokit(await getInstallationId(fullName))
-  await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body })
+  const [owner, repo] = fullName.split('/');
+  const octokit = await app.getInstallationOctokit(await getInstallationId(fullName));
+  await octokit.rest.issues.createComment({ owner, repo, issue_number: issueNumber, body });
 }
 
 async function getInstallationId(fullName: string): Promise<number> {
-  const [owner, repo] = fullName.split('/')
+  const [owner, repo] = fullName.split('/');
   for await (const { installation } of app.eachInstallation.iterator()) {
     // Match by repo — simplified; in prod query installations API
-    return installation.id
+    return installation.id;
   }
-  throw new Error('Installation not found')
+  throw new Error('Installation not found');
 }
 ```
 
@@ -619,37 +652,41 @@ async function getInstallationId(fullName: string): Promise<number> {
 ## 6. API Routes
 
 ### Create Escrow
+
 `app/api/escrow/create/route.ts`
 
 ```typescript
-import { NextRequest, NextResponse } from 'next/server'
-import { createRepoEscrow } from '@/lib/trustless-work/escrow'
-import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { createRepoEscrow } from '@/lib/trustless-work/escrow';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient()
-  const { repoId, maintainerWallet } = await req.json()
+  const supabase = createClient();
+  const { repoId, maintainerWallet } = await req.json();
 
-  const { data: repo } = await supabase
-    .from('repos').select('*').eq('id', repoId).single()
+  const { data: repo } = await supabase.from('repos').select('*').eq('id', repoId).single();
 
-  if (!repo) return NextResponse.json({ error: 'Repo not found' }, { status: 404 })
+  if (!repo) return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
 
   const result = await createRepoEscrow({
     maintainerWallet,
-    repoName: repo.full_name
-  })
+    repoName: repo.full_name,
+  });
 
   // Store contract ID
-  await supabase.from('repos').update({
-    escrow_contract_id: result.contractId
-  }).eq('id', repoId)
+  await supabase
+    .from('repos')
+    .update({
+      escrow_contract_id: result.contractId,
+    })
+    .eq('id', repoId);
 
-  return NextResponse.json({ contractId: result.contractId })
+  return NextResponse.json({ contractId: result.contractId });
 }
 ```
 
 ### Contributor Wallet Connect
+
 `app/connect/page.tsx`
 
 ```typescript
@@ -713,12 +750,12 @@ export default function ConnectPage({
 
 ### Pages Needed (minimal)
 
-| Route | Purpose |
-|---|---|
-| `/` | Landing + login button |
-| `/dashboard` | Repos list, escrow balance, issues table |
+| Route                 | Purpose                                        |
+| --------------------- | ---------------------------------------------- |
+| `/`                   | Landing + login button                         |
+| `/dashboard`          | Repos list, escrow balance, issues table       |
 | `/dashboard/[repoId]` | Repo detail: milestones, statuses, Viewer link |
-| `/connect` | Contributor wallet connect |
+| `/connect`            | Contributor wallet connect                     |
 
 ### Dashboard Data to Show
 
@@ -738,12 +775,14 @@ Issues:
 ## 8. Testnet Setup
 
 ### Get Testnet USDC
+
 1. Create Stellar testnet wallet: https://stellar.expert/explorer/testnet
 2. Fund with XLM: https://laboratory.stellar.org/#account-creator
 3. Add USDC trustline (testnet issuer: `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`)
 4. Get testnet USDC from Trustless Work team or use their faucet
 
 ### Local Webhook Testing
+
 ```bash
 # Install ngrok
 npm install -g ngrok
@@ -789,14 +828,14 @@ vercel
 
 ## 11. Trustless Work API Endpoints Used
 
-| Action | Method | Endpoint |
-|---|---|---|
-| Create escrow | POST | `/escrow/multi-release/deploy` |
-| Update escrow (add milestone) | PUT | `/escrow/multi-release/update-escrow` |
-| Approve milestone | POST | `/escrow/multi-release/approve-milestone` |
-| Release milestone | POST | `/escrow/multi-release/release-milestone` |
-| Send signed transaction | POST | `/helper/send-transaction` |
-| Get escrow state | GET | `/escrow/:contractId` |
+| Action                        | Method | Endpoint                                  |
+| ----------------------------- | ------ | ----------------------------------------- |
+| Create escrow                 | POST   | `/escrow/multi-release/deploy`            |
+| Update escrow (add milestone) | PUT    | `/escrow/multi-release/update-escrow`     |
+| Approve milestone             | POST   | `/escrow/multi-release/approve-milestone` |
+| Release milestone             | POST   | `/escrow/multi-release/release-milestone` |
+| Send signed transaction       | POST   | `/helper/send-transaction`                |
+| Get escrow state              | GET    | `/escrow/:contractId`                     |
 
 ---
 

@@ -1,0 +1,53 @@
+{
+  "name": "trustless-oss",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:backend": "turbo dev --filter=@trustless-oss/backend",
+    "dev:frontend": "turbo dev --filter=@trustless-oss/frontend",
+    "build": "turbo build",
+    "build:backend": "turbo build --filter=@trustless-oss/backend",
+    "build:frontend": "turbo build --filter=@trustless-oss/frontend",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "typecheck": "turbo typecheck",
+    "fmt": "prettier --write \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "fmt:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore",
+    "validate": "turbo typecheck lint && pnpm fmt:check",
+    "clean": "turbo clean && rm -rf .turbo",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0"
+  },
+  "lint-staged": {
+    "apps/backend/src/**/*.ts": [
+      "prettier --write",
+      "pnpm --filter @trustless-oss/backend exec eslint --fix"
+    ],
+    "apps/frontend/**/*.{ts,tsx}": [
+      "prettier --write",
+      "pnpm --filter @trustless-oss/frontend exec eslint --fix"
+    ],
+    "**/*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "overrides": {
+      "protobufjs": ">=7.5.6",
+      "postcss": ">=8.5.10",
+      "uuid": ">=11.1.1",
+      "ws": ">=8.21.0",
+      "undici": ">=7.28.0"
+    }
+  }
+}

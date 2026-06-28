@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Trustless OSS</h1>
-  <p><strong>Live demo:</strong> <a href="https://trustless-oss-web.vercel.app/">https://trustless-oss-web.vercel.app/</a></p>
+  <p><strong>Live demo:</strong> <a href="https://trustless-oss.vercel.app/">https://trustless-oss-web.vercel.app/</a></p>
 </div>
 
 ## What this project is
@@ -54,6 +54,7 @@ flowchart LR
 ### Custom bounty flow
 
 If `custom` is applied, the maintainer must comment:
+
 - `@Trustless-OSS 150`
 
 If the amount is missing, the bot will ask for it.
@@ -62,30 +63,30 @@ If the amount is missing, the bot will ask for it.
 
 #### Maintainer commands
 
-| Command | Purpose |
-|---|---|
-| `@Trustless-OSS /pay <percentage>` | Save a partial payout split before merge |
-| `@Trustless-OSS /split <percentage>` | Alias for `/pay`, set contributor share |
-| `@Trustless-OSS /work <percentage>` | Alias for `/pay`, set contribution share |
+| Command                                        | Purpose                                             |
+| ---------------------------------------------- | --------------------------------------------------- |
+| `@Trustless-OSS /pay <percentage>`             | Save a partial payout split before merge            |
+| `@Trustless-OSS /split <percentage>`           | Alias for `/pay`, set contributor share             |
+| `@Trustless-OSS /work <percentage>`            | Alias for `/pay`, set contribution share            |
 | `@Trustless-OSS /work-completion <percentage>` | Save a work-completion percentage for split payouts |
-| `@Trustless-OSS /reject` | Reject the work and refund the escrow |
-| `@Trustless-OSS /rejected` | Same as `/reject` |
-| `@Trustless-OSS /no` | Same as `/reject`, dispute and refund the bounty |
-| `@Trustless-OSS /retry` | Retry a failed payout or release transaction |
+| `@Trustless-OSS /reject`                       | Reject the work and refund the escrow               |
+| `@Trustless-OSS /rejected`                     | Same as `/reject`                                   |
+| `@Trustless-OSS /no`                           | Same as `/reject`, dispute and refund the bounty    |
+| `@Trustless-OSS /retry`                        | Retry a failed payout or release transaction        |
 
 #### Contributor commands
 
-| Command | Purpose |
-|---|---|
-| `@Trustless-OSS /wallet` | Request the wallet connect link |
-| `@Trustless-OSS /address` | Request the wallet connect link |
-| `@Trustless-OSS /connect` | Request the wallet connect link |
+| Command                          | Purpose                           |
+| -------------------------------- | --------------------------------- |
+| `@Trustless-OSS /wallet`         | Request the wallet connect link   |
+| `@Trustless-OSS /address`        | Request the wallet connect link   |
+| `@Trustless-OSS /connect`        | Request the wallet connect link   |
 | `@Trustless-OSS /change-address` | Request a new wallet connect link |
 
 #### General command
 
-| Command | Purpose |
-|---|---|
+| Command                | Purpose                               |
+| ---------------------- | ------------------------------------- |
 | `@Trustless-OSS /help` | Show available bot commands and usage |
 
 > Note: The project does not use `bonus:50` label in code. The active custom flow is `custom` + `@Trustless-OSS <amount>`.
@@ -93,6 +94,7 @@ If the amount is missing, the bot will ask for it.
 ## Issue linking requirement
 
 For automatic payout, a merged PR must reference the issue in its body using keywords like:
+
 - `closes #123`
 - `fixes #123`
 - `resolves #123`
@@ -127,64 +129,67 @@ If the maintainer wallet is not connected, the app asks to connect it before ref
 
 ## Project setup (full docs)
 
+### Prerequisites
+
+- Node.js ≥ 20
+- pnpm ≥ 10 — [install here](https://pnpm.io/installation)
+
+### Root installation
+
+```bash
+pnpm install
+```
+
 ### Backend setup
 
 ```bash
-cd backend
+cd apps/backend
 cp .env.example .env
-npm install
-npm run dev
+pnpm dev
 ```
-
-Available backend scripts:
-- `npm run dev` — development server
-- `npm run build` — compile TypeScript
-- `npm start` — start compiled server
-- `npm run migrate` — run migration script
-- `npm run proxy` — webhook proxy helper
 
 ### Frontend setup
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd apps/frontend
+cp .env.example .env
+pnpm dev
 ```
 
-Available frontend scripts:
-- `npm run dev` — start Next.js local app
-- `npm run build` — build production app
-- `npm start` — run production server
+### Running from root
 
-### Backend environment variables
+```bash
+pnpm dev          # all servers
+pnpm build        # all apps
+pnpm lint         # all apps
+pnpm typecheck    # all apps
+pnpm validate     # typecheck + lint + format
+```
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `GITHUB_APP_ID`
-- `GITHUB_APP_PRIVATE_KEY`
-- `GITHUB_WEBHOOK_SECRET`
-- `TRUSTLESS_WORK_API_KEY`
-- `TRUSTLESS_WORK_BASE_URL`
-- `PLATFORM_STELLAR_SECRET_KEY`
-- `PLATFORM_STELLAR_PUBLIC_KEY`
-- `STELLAR_NETWORK`
-- `APP_URL`
-- `WEBHOOK_URL` (optional override)
+### Environment variables
 
-### Frontend environment variables
+Each app has its own `.env.example`:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_BACKEND_URL`
+- Backend: `apps/backend/.env.example` — server credentials
+- Frontend: `apps/frontend/.env.example` — client-side only
+
+### Documentation
+
+- Backend: `apps/backend/README.md`
+- Frontend: `apps/frontend/README.md`
+- Database: `apps/backend/migrations/README.md`
+- General: `docs/README.md`
 
 ### GitHub App requirements
 
 Required events:
+
 - `issues`
 - `issue_comment`
 - `pull_request`
 
 Permissions:
+
 - Issues: Read & Write
 - Pull requests: Read
 - Metadata: Read

@@ -1,43 +1,46 @@
 # OSS Bounty — Hackathon Plan
+
 > Trustless, milestone-based rewards for OSS contributors via GitHub + Trustless Work
 
 ---
 
 ## Product Summary
 
-| Field | Detail |
-|---|---|
-| **Name** | GitBounty (or pick yours) |
-| **Problem** | OSS maintainers can't reliably pay contributors without trust or manual overhead |
-| **Parties** | Maintainer (depositor/approver) + Contributor (receiver) |
-| **Unlock condition** | PR merged → webhook → auto-approve + release |
-| **Dispute resolver** | Maintainer (v1 limitation, acknowledged) |
+| Field                | Detail                                                                           |
+| -------------------- | -------------------------------------------------------------------------------- |
+| **Name**             | GitBounty (or pick yours)                                                        |
+| **Problem**          | OSS maintainers can't reliably pay contributors without trust or manual overhead |
+| **Parties**          | Maintainer (depositor/approver) + Contributor (receiver)                         |
+| **Unlock condition** | PR merged → webhook → auto-approve + release                                     |
+| **Dispute resolver** | Maintainer (v1 limitation, acknowledged)                                         |
 
 ---
 
 ## Tech Stack
 
-| Layer | Tool |
-|---|---|
-| Frontend | Next.js 14 (App Router) |
-| Backend | Next.js API Routes |
-| Database | Supabase (PostgreSQL + Auth) |
-| Auth | Supabase GitHub OAuth |
-| Blockchain | Trustless Work REST API |
-| Wallet | Stellar (platform wallet as releaseSigner) |
-| Webhooks | GitHub App |
+| Layer      | Tool                                       |
+| ---------- | ------------------------------------------ |
+| Frontend   | Next.js 14 (App Router)                    |
+| Backend    | Next.js API Routes                         |
+| Database   | Supabase (PostgreSQL + Auth)               |
+| Auth       | Supabase GitHub OAuth                      |
+| Blockchain | Trustless Work REST API                    |
+| Wallet     | Stellar (platform wallet as releaseSigner) |
+| Webhooks   | GitHub App                                 |
 
 ---
 
 ## Data Models
 
 ### `repos`
+
 ```
 id, github_repo_id, full_name, owner_github_id,
 escrow_contract_id, escrow_balance, created_at
 ```
 
 ### `issues`
+
 ```
 id, repo_id, github_issue_id, title,
 reward_amount, difficulty_label, bonus_amount,
@@ -46,12 +49,14 @@ created_at
 ```
 
 ### `contributors`
+
 ```
 id, github_user_id, github_username,
 stellar_wallet, created_at
 ```
 
 ### `assignments`
+
 ```
 id, issue_id, contributor_id,
 assigned_at, pr_number, pr_merged_at,
@@ -150,11 +155,11 @@ sequenceDiagram
 
 ## Label → Amount Logic
 
-| Label | Base Amount |
-|---|---|
-| `low` | 25 USDC |
-| `medium` | 75 USDC |
-| `high` | 150 USDC |
+| Label    | Base Amount                     |
+| -------- | ------------------------------- |
+| `low`    | 25 USDC                         |
+| `medium` | 75 USDC                         |
+| `high`   | 150 USDC                        |
 | `custom` | custom amount set by maintainer |
 
 Maintainer can override defaults in repo settings on your platform.
@@ -164,6 +169,7 @@ Maintainer can override defaults in repo settings on your platform.
 ## Build Phases
 
 ### Day 0 — Pre-Hackathon (May 12, today)
+
 - [ ] Request Trustless Work API key
 - [ ] Set up Stellar testnet wallet (platform wallet)
 - [ ] Create Supabase project + schema
@@ -176,6 +182,7 @@ Maintainer can override defaults in repo settings on your platform.
 ---
 
 ### Day 1 — May 13 (Foundation)
+
 **Goal: Auth + Repo setup + Escrow creation working**
 
 - [ ] GitHub OAuth login (maintainer + contributor)
@@ -189,6 +196,7 @@ Maintainer can override defaults in repo settings on your platform.
 ---
 
 ### Day 2 — May 14 (Core Logic)
+
 **Goal: Webhook pipeline + on-chain milestone creation**
 
 - [ ] GitHub webhook receiver (verify signature)
@@ -204,6 +212,7 @@ Maintainer can override defaults in repo settings on your platform.
 ---
 
 ### Day 3 — May 15 (Polish + Demo Prep)
+
 **Goal: UI polish, edge cases, demo script**
 
 - [ ] Maintainer dashboard: repo escrow balance, issues, milestone statuses
@@ -220,14 +229,14 @@ Maintainer can override defaults in repo settings on your platform.
 
 ## Edge Cases to Handle
 
-| Scenario | Handling |
-|---|---|
-| PR closed, not merged | Do nothing. Milestone stays active |
-| Issue unassigned | Cancel on-chain milestone, return reserved balance |
-| Two PRs for same issue | Only merged PR triggers release |
-| Contributor never submits wallet | Milestone stays DB-only, funds stay in escrow |
-| Escrow underfunded | Block milestone creation, comment on issue |
-| Maintainer goes inactive | V1: no timeout. Acknowledge in demo |
+| Scenario                         | Handling                                           |
+| -------------------------------- | -------------------------------------------------- |
+| PR closed, not merged            | Do nothing. Milestone stays active                 |
+| Issue unassigned                 | Cancel on-chain milestone, return reserved balance |
+| Two PRs for same issue           | Only merged PR triggers release                    |
+| Contributor never submits wallet | Milestone stays DB-only, funds stay in escrow      |
+| Escrow underfunded               | Block milestone creation, comment on issue         |
+| Maintainer goes inactive         | V1: no timeout. Acknowledge in demo                |
 
 ---
 
@@ -259,10 +268,10 @@ Maintainer can override defaults in repo settings on your platform.
 
 ## Judging Criteria Checklist
 
-| Criteria | Your Answer |
-|---|---|
-| What trust problem? | Maintainers can't pay contributors without trust |
-| Who are the parties? | Maintainer (depositor) + Contributor (receiver) |
-| What unlocks funds? | PR merged → webhook → auto-release |
-| Who resolves disputes? | Maintainer (v1), acknowledged limitation |
-| Live escrow in Viewer? | Yes — show contract_id per repo |
+| Criteria               | Your Answer                                      |
+| ---------------------- | ------------------------------------------------ |
+| What trust problem?    | Maintainers can't pay contributors without trust |
+| Who are the parties?   | Maintainer (depositor) + Contributor (receiver)  |
+| What unlocks funds?    | PR merged → webhook → auto-release               |
+| Who resolves disputes? | Maintainer (v1), acknowledged limitation         |
+| Live escrow in Viewer? | Yes — show contract_id per repo                  |
