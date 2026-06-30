@@ -817,6 +817,8 @@ export async function pushMilestoneHandler(
     githubIssueId: number;
     githubRepoId: number;
     wallet: string;
+    payoutChain?: string;
+    payoutAddress?: string;
   };
 
   const githubUserId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
@@ -840,12 +842,17 @@ export async function pushMilestoneHandler(
     return;
   }
 
+  const payoutChain = body.payoutChain ?? 'stellar';
+  const payoutAddress = body.payoutAddress ?? body.wallet;
+
   // Save wallet to contributor
   await supabase.from('contributors').upsert(
     {
       github_user_id: githubUserId,
       github_username: user.user_metadata?.user_name ?? '',
-      stellar_wallet: body.wallet,
+      stellar_wallet: payoutChain === 'stellar' ? payoutAddress : null,
+      payout_chain: payoutChain,
+      payout_address: payoutAddress,
     },
     { onConflict: 'github_user_id' }
   );
@@ -865,7 +872,7 @@ export async function pushMilestoneHandler(
     return;
   }
 
-  await pushMilestoneOnChain(repo, issue, body.wallet);
+  await pushMilestoneOnChain(repo, issue, payoutAddress, payoutChain);
 
   // Post comment to GitHub
   try {
@@ -904,15 +911,24 @@ export async function saveWalletHandler(req: IncomingMessage, res: ServerRespons
     return;
   }
 
-  const body = JSON.parse((await readBody(req)).toString()) as { wallet: string };
+  const body = JSON.parse((await readBody(req)).toString()) as {
+    wallet: string;
+    payoutChain?: string;
+    payoutAddress?: string;
+  };
 
   const githubUserId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
+
+  const payoutChain = body.payoutChain ?? 'stellar';
+  const payoutAddress = body.payoutAddress ?? body.wallet;
 
   const { error } = await supabase.from('contributors').upsert(
     {
       github_user_id: githubUserId,
       github_username: user.user_metadata?.user_name ?? '',
-      stellar_wallet: body.wallet,
+      stellar_wallet: payoutChain === 'stellar' ? payoutAddress : null,
+      payout_chain: payoutChain,
+      payout_address: payoutAddress,
     },
     { onConflict: 'github_user_id' }
   );
@@ -1071,11 +1087,14 @@ export async function retryIssueHandler(
 
   // Step 1: If pending, try to push milestone
   if (currentIssue.status === 'pending') {
-    if (!assignment.contributors?.stellar_wallet) {
+    const contributor = assignment.contributors;
+    if (!contributor?.payout_address && !contributor?.stellar_wallet) {
       json(res, { error: 'Contributor has not connected a wallet yet' }, 400);
       return;
     }
-    await pushMilestoneOnChain(issue.repos, currentIssue, assignment.contributors.stellar_wallet);
+    const payoutAddress = contributor.payout_address ?? contributor.stellar_wallet!;
+    const payoutChain = contributor.payout_chain ?? 'stellar';
+    await pushMilestoneOnChain(issue.repos, currentIssue, payoutAddress, payoutChain);
     json(res, { ok: true, step: 'pushed', status: 'active' });
     return;
   }

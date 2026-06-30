@@ -522,7 +522,8 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
 
     // Try to push if pending
     if (existing.status === 'pending') {
-      if (!assignment.contributors?.stellar_wallet) {
+      const contributor = assignment.contributors;
+      if (!contributor?.payout_address && !contributor?.stellar_wallet) {
         await postComment(
           repository.full_name,
           issue.number,
@@ -531,7 +532,9 @@ export async function handleIssueCommentCreated(payload: Record<string, unknown>
         return;
       }
       try {
-        await pushMilestoneOnChain(repo, existing, assignment.contributors.stellar_wallet);
+        const payoutAddress = contributor.payout_address ?? contributor.stellar_wallet!;
+        const payoutChain = contributor.payout_chain ?? 'stellar';
+        await pushMilestoneOnChain(repo, existing, payoutAddress, payoutChain);
         existing.status = 'active';
         const { data: updatedIssue } = await supabase
           .from('issues')
@@ -760,9 +763,11 @@ export async function handleIssueAssigned(payload: Record<string, unknown>): Pro
       { onConflict: 'issue_id' }
     );
 
-  if (contributor.stellar_wallet) {
+  const payoutAddress = contributor.payout_address ?? contributor.stellar_wallet;
+  if (payoutAddress) {
     // Push milestone on-chain immediately
-    await pushMilestoneOnChain(repo, issueRecord, contributor.stellar_wallet);
+    const payoutChain = contributor.payout_chain ?? 'stellar';
+    await pushMilestoneOnChain(repo, issueRecord, payoutAddress, payoutChain);
     await postComment(
       repository.full_name,
       issue.number,
@@ -963,7 +968,8 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
 
   // If issue is still pending, push milestone first (needs a wallet)
   if (issueRecord.status === 'pending') {
-    if (!assignment.contributors?.stellar_wallet) {
+    const contributor = assignment.contributors;
+    if (!contributor?.payout_address && !contributor?.stellar_wallet) {
       log.warn(
         { issue: issueNumber },
         'PR merged but contributor has no wallet — skipping release'
@@ -971,7 +977,9 @@ export async function handlePRMerged(payload: Record<string, unknown>): Promise<
       return;
     }
     log.info({ issue: issueNumber }, 'PR merged but issue is pending — pushing milestone first');
-    await pushMilestoneOnChain(repo, issueRecord, assignment.contributors.stellar_wallet);
+    const payoutAddress = contributor.payout_address ?? contributor.stellar_wallet!;
+    const payoutChain = contributor.payout_chain ?? 'stellar';
+    await pushMilestoneOnChain(repo, issueRecord, payoutAddress, payoutChain);
     // Refresh
     const { data: updatedIssue } = await supabase
       .from('issues')

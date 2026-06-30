@@ -1,4 +1,13 @@
-use soroban_sdk::{contracttype, Address, String};
+use soroban_sdk::{contracttype, Address, BytesN, String};
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq)]
+pub struct PayoutTarget {
+    pub payout_type: u32, // 0 = Stellar address, 1 = CCTP
+    pub stellar_address: Option<Address>,
+    pub destination_domain: u32,
+    pub recipient: BytesN<32>,
+}
 
 #[contracttype]
 #[derive(Clone, Debug, PartialEq)]
@@ -15,7 +24,7 @@ pub struct Milestone {
     pub issue_id: u64,
     pub title: String,
     pub reward: i128, // in stroops (1 USDC = 10_000_000)
-    pub contributor: Option<Address>,
+    pub contributor: PayoutTarget,
     pub status: MilestoneStatus,
     pub created_at: u64, // ledger timestamp
     pub released_at: Option<u64>,
