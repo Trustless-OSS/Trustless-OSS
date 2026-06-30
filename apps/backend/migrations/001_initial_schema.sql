@@ -100,3 +100,7 @@ create index if not exists idx_issues_repo            on issues(repo_id);
 create index if not exists idx_issues_github_id       on issues(github_issue_id);
 create index if not exists idx_assignments_issue      on assignments(issue_id);
 create index if not exists idx_contributors_github_id on contributors(github_user_id);
+
+-- Payout CCTP Columns
+ALTER TABLE contributors ADD COLUMN IF NOT EXISTS payout_chain text default 'stellar';
+ALTER TABLE contributors ADD COLUMN IF NOT EXISTS payout_address text;

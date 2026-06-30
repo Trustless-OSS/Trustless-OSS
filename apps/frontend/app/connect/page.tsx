@@ -27,6 +27,10 @@ function ConnectForm() {
   const [countdown, setCountdown] = useState(3);
   const [redirectUrl, setRedirectUrl] = useState('');
 
+  // New payout target state
+  const [payoutChain, setPayoutChain] = useState('stellar');
+  const [customAddress, setCustomAddress] = useState('');
+
   useEffect(() => {
     async function checkAccess() {
       if (!issueId || !repoId) {
@@ -73,6 +77,14 @@ function ConnectForm() {
     }
   }, [done, redirectUrl, countdown]);
 
+  function isValidEvmAddress(address: string): boolean {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  }
+
+  function isValidSolanaAddress(address: string): boolean {
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+  }
+
   async function handleConnect() {
     setLoading(true);
     setError('');
@@ -103,6 +115,8 @@ function ConnectForm() {
           githubIssueId: Number(issueId),
           githubRepoId: Number(repoId),
           wallet: address,
+          payoutChain: 'stellar',
+          payoutAddress: address,
         }),
       });
 
@@ -122,6 +136,72 @@ function ConnectForm() {
     } catch (e: any) {
       handleError(e, 'Connect Wallet');
       setError(e.message || 'Failed to connect wallet');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCustomConnect() {
+    setLoading(true);
+    setError('');
+
+    // Validations
+    if (payoutChain === 'base' || payoutChain === 'ethereum') {
+      if (!isValidEvmAddress(customAddress)) {
+        setError('Invalid EVM address structure. Must start with 0x and have 40 hex characters.');
+        setLoading(false);
+        return;
+      }
+    } else if (payoutChain === 'solana') {
+      if (!isValidSolanaAddress(customAddress)) {
+        setError('Invalid Solana address structure. Must be base58 encoded.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = `/login?next=/connect?issue=${issueId}&repo=${repoId}`;
+        return;
+      }
+
+      const res = await fetch(`${BACKEND}/api/milestones/push`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          githubIssueId: Number(issueId),
+          githubRepoId: Number(repoId),
+          wallet: customAddress,
+          payoutChain: payoutChain,
+          payoutAddress: customAddress,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? 'Failed to link payout address');
+      }
+
+      const { repoFullName, issueNumber } = await res.json();
+      setRedirectUrl(`https://github.com/${repoFullName}/issues/${issueNumber}`);
+
+      notifySuccess(
+        'Payout Target Linked',
+        'Your cross-chain payout destination has been successfully registered.'
+      );
+      setDone(true);
+    } catch (e: any) {
+      handleError(e, 'Link Payout Target');
+      setError(e.message || 'Failed to link payout address');
     } finally {
       setLoading(false);
     }
@@ -188,11 +268,61 @@ function ConnectForm() {
             INITIALIZE_PAYOUT
           </h1>
 
-          <div className="terminal-block text-left text-sm mb-8 mt-6">
-            <span className="text-slate-500">// Connect Stellar wallet to receive USDC</span>
-            <br />
-            <span className="text-slate-500">// Funds will be released upon PR merge</span>
+          <div className="mb-6 mt-6">
+            <label className="block text-xs font-mono font-bold uppercase text-slate-900 mb-2">
+              SELECT_PAYOUT_NETWORK
+            </label>
+            <select
+              value={payoutChain}
+              onChange={(e) => {
+                setPayoutChain(e.target.value);
+                setCustomAddress('');
+                setError('');
+              }}
+              className="w-full bg-white border-4 border-slate-950 px-3 py-2 font-mono font-bold text-sm uppercase shadow-[2px_2px_0_0_#000] focus:translate-x-0.5 focus:translate-y-0.5 focus:shadow-[1px_1px_0_0_#000] outline-none"
+            >
+              <option value="stellar">Stellar (Direct USDC)</option>
+              <option value="base">Base (Circle CCTP)</option>
+              <option value="ethereum">Ethereum (Circle CCTP)</option>
+              <option value="solana">Solana (Circle CCTP)</option>
+            </select>
           </div>
+
+          <div className="terminal-block text-left text-sm mb-6">
+            {payoutChain === 'stellar' && (
+              <>
+                <span className="text-slate-500">// Connect Stellar wallet to receive USDC</span>
+                <br />
+                <span className="text-slate-500">// Funds will be released upon PR merge</span>
+              </>
+            )}
+            {payoutChain !== 'stellar' && (
+              <>
+                <span className="text-slate-500">
+                  // Enter target address on {payoutChain.toUpperCase()}
+                </span>
+                <br />
+                <span className="text-slate-500">
+                  // USDC is burned on Stellar and minted on destination via CCTP
+                </span>
+              </>
+            )}
+          </div>
+
+          {payoutChain !== 'stellar' && (
+            <div className="mb-6">
+              <label className="block text-xs font-mono font-bold uppercase text-slate-900 mb-2">
+                {payoutChain.toUpperCase()}_RECIPIENT_ADDRESS
+              </label>
+              <input
+                type="text"
+                placeholder={payoutChain === 'solana' ? 'Solana Address' : '0x... Address'}
+                value={customAddress}
+                onChange={(e) => setCustomAddress(e.target.value)}
+                className="w-full bg-white border-4 border-slate-950 px-3 py-3 font-mono text-sm shadow-[2px_2px_0_0_#000] outline-none"
+              />
+            </div>
+          )}
 
           {error && (
             <div className="mb-8 p-4 bg-red-100 border-[4px] border-slate-950 shadow-[4px_4px_0_0_#ef4444] text-red-600 font-bold font-mono text-sm uppercase">
@@ -200,32 +330,59 @@ function ConnectForm() {
             </div>
           )}
 
-          <button
-            id="connect-wallet-btn"
-            onClick={handleConnect}
-            disabled={loading}
-            className="brutal-button w-full py-4 text-lg flex items-center justify-center gap-3"
-          >
-            {loading ? (
-              <>
-                <LoadingLogo size="tiny" variant="circle" />
-                <span>CONNECTING...</span>
-              </>
-            ) : (
-              'CONNECT_WALLET'
-            )}
-          </button>
+          {payoutChain === 'stellar' ? (
+            <button
+              id="connect-wallet-btn"
+              onClick={handleConnect}
+              disabled={loading}
+              className="brutal-button w-full py-4 text-lg flex items-center justify-center gap-3"
+            >
+              {loading ? (
+                <>
+                  <LoadingLogo size="tiny" variant="circle" />
+                  <span>CONNECTING...</span>
+                </>
+              ) : (
+                'CONNECT_WALLET'
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleCustomConnect}
+              disabled={loading || !customAddress}
+              className="brutal-button w-full py-4 text-lg flex items-center justify-center gap-3 animate-pulse"
+            >
+              {loading ? (
+                <>
+                  <LoadingLogo size="tiny" variant="circle" />
+                  <span>LINKING...</span>
+                </>
+              ) : (
+                'LINK_PAYOUT_ADDRESS'
+              )}
+            </button>
+          )}
 
           <div className="mt-8 pt-6 border-t-[4px] border-slate-950 border-dashed text-center">
             <p className="text-xs text-slate-600 font-mono font-bold uppercase">
               Don't have a wallet?{' '}
               <a
-                href="https://lobstr.co"
+                href={
+                  payoutChain === 'solana'
+                    ? 'https://phantom.app/'
+                    : payoutChain === 'stellar'
+                      ? 'https://lobstr.co'
+                      : 'https://metamask.io/'
+                }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:bg-blue-600 hover:text-white transition-colors border-b-2 border-blue-600"
               >
-                GET_LOBSTR
+                {payoutChain === 'solana'
+                  ? 'GET_PHANTOM'
+                  : payoutChain === 'stellar'
+                    ? 'GET_LOBSTR'
+                    : 'GET_METAMASK'}
               </a>
             </p>
           </div>

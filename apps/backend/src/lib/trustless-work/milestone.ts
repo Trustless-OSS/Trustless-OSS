@@ -6,10 +6,38 @@ import { logger } from '../logger.js';
 
 const log = logger.child({ module: 'milestone' });
 
+function decodeBase58(str: string): Buffer {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const ALPHABET_MAP: Record<string, number> = {};
+  for (let i = 0; i < ALPHABET.length; i++) {
+    ALPHABET_MAP[ALPHABET.charAt(i)] = i;
+  }
+  const bytes = [0];
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charAt(i);
+    if (!(c in ALPHABET_MAP)) throw new Error('Non-base58 character');
+    let carry = ALPHABET_MAP[c];
+    for (let j = 0; j < bytes.length; j++) {
+      carry += bytes[j] * 58;
+      bytes[j] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry >>= 8;
+    }
+  }
+  for (let i = 0; i < str.length && str.charAt(i) === '1'; i++) {
+    bytes.push(0);
+  }
+  return Buffer.from(bytes.reverse());
+}
+
 export async function pushMilestoneOnChain(
   repo: Repo,
   issue: Issue,
-  contributorWallet: string
+  payoutAddress: string,
+  payoutChain: string = 'stellar'
 ): Promise<void> {
   const platformKey = process.env.PLATFORM_STELLAR_PUBLIC_KEY!;
 
@@ -30,13 +58,52 @@ export async function pushMilestoneOnChain(
   let milestoneIndex = issue.milestone_index;
   const newMilestones = [...currentMilestones];
 
+  let receiver: any;
+  if (payoutChain === 'stellar') {
+    receiver = {
+      payout_type: 0,
+      stellar_address: payoutAddress,
+      destination_domain: 0,
+      recipient: '0000000000000000000000000000000000000000000000000000000000000000',
+    };
+  } else {
+    let destinationDomain = 0;
+    if (payoutChain === 'base') {
+      destinationDomain = 6;
+    } else if (payoutChain === 'ethereum') {
+      destinationDomain = 0;
+    } else if (payoutChain === 'solana') {
+      destinationDomain = 5;
+    }
+
+    let recipientHex = '';
+    try {
+      if (payoutChain === 'solana') {
+        recipientHex = decodeBase58(payoutAddress).toString('hex').padStart(64, '0');
+      } else {
+        const clean = payoutAddress.startsWith('0x') ? payoutAddress.slice(2) : payoutAddress;
+        recipientHex = clean.toLowerCase().padStart(64, '0');
+      }
+    } catch (e) {
+      log.error({ err: e }, 'Failed to decode payout address');
+      throw e;
+    }
+
+    receiver = {
+      payout_type: 1,
+      stellar_address: null,
+      destination_domain: destinationDomain,
+      recipient: recipientHex,
+    };
+  }
+
   const milestoneData = {
     description: `Issue #${issue.github_issue_number}: ${issue.title}`,
     amount: Number(issue.reward_amount),
     status: 'pending',
     evidence: '',
     flags: { approved: false, released: false, disputed: false, resolved: false },
-    receiver: contributorWallet,
+    receiver,
   };
 
   if (milestoneIndex !== null && milestoneIndex < currentMilestones.length) {

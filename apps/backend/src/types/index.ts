@@ -22,6 +22,8 @@ export interface Contributor {
   github_user_id: number;
   github_username: string;
   stellar_wallet: string | null;
+  payout_chain: string | null;
+  payout_address: string | null;
   created_at: string;
 }
 
