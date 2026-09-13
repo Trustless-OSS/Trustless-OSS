@@ -66,19 +66,40 @@ describe('ProfileSettings', () => {
     expect(screen.getByLabelText('Profile completeness')).toBeInTheDocument();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
     expect(screen.getByText('Verified through GitHub sign-in.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save profile' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
     expect(screen.queryByText('You have unsaved profile changes.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Dashboard' })).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Last name'), { target: { value: '' } });
 
     expect(screen.getByRole('heading', { name: 'Ada' })).toBeInTheDocument();
     expect(screen.queryByText('You have unsaved profile changes.')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save profile' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Discard' })).toHaveAttribute(
       'data-variant',
       'destructive'
     );
+  });
+
+  it('accepts social usernames without requiring full profile links', () => {
+    render(<ProfileSettings user={buildUser()} />);
+
+    fireEvent.change(screen.getByLabelText('Telegram'), {
+      target: { value: 'https://t.me/ada_lovelace' },
+    });
+    fireEvent.change(screen.getByLabelText('Discord'), {
+      target: { value: '@ada.dev' },
+    });
+    fireEvent.change(screen.getByLabelText('Twitter / X'), {
+      target: { value: 'https://x.com/ada' },
+    });
+
+    expect(screen.getByLabelText('Telegram')).toHaveValue('ada_lovelace');
+    expect(screen.getByLabelText('Discord')).toHaveValue('ada.dev');
+    expect(screen.getByLabelText('Twitter / X')).toHaveValue('ada');
   });
 
   it('adds a skill chip on Enter and does not duplicate it', () => {

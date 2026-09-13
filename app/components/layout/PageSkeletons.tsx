@@ -13,7 +13,7 @@ export function NavbarSkeleton() {
           <Skeleton className="h-14 w-14 rounded-2xl" />
           <Skeleton className="h-6 w-40" />
         </div>
-        <Skeleton className="h-9 w-24 rounded-full" />
+        <Skeleton className="h-9 w-24 rounded-md" />
       </div>
     </div>
   );
@@ -27,17 +27,17 @@ export function HomePageSkeleton() {
       <main className="relative flex w-full flex-1 flex-col px-3 pt-7 pb-16 sm:px-5 md:px-6 lg:px-7 lg:pt-14">
         <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,1.08fr)_minmax(390px,0.72fr)]">
           <div className="max-w-5xl space-y-6">
-            <Skeleton className="h-8 w-64 rounded-full" />
+            <Skeleton className="h-8 w-64 rounded-md" />
             <Skeleton className="h-16 w-full max-w-xl sm:h-20" />
             <Skeleton className="h-16 w-4/5 max-w-lg sm:h-20" />
             <Skeleton className="h-20 w-full max-w-2xl" />
             <div className="flex gap-3">
-              <Skeleton className="h-9 w-20 rounded-full" />
-              <Skeleton className="h-9 w-28 rounded-full" />
+              <Skeleton className="h-9 w-20 rounded-md" />
+              <Skeleton className="h-9 w-28 rounded-md" />
             </div>
             <div className="flex gap-3 pt-2">
-              <Skeleton className="h-12 w-40 rounded-full" />
-              <Skeleton className="h-12 w-36 rounded-full" />
+              <Skeleton className="h-12 w-40 rounded-md" />
+              <Skeleton className="h-12 w-36 rounded-md" />
             </div>
           </div>
           <Card className="hidden rounded-3xl py-0 lg:block">
@@ -90,9 +90,9 @@ export function DashboardPageSkeleton() {
           <Skeleton className="h-12 w-56 sm:h-14" />
         </div>
         <div className="flex w-full gap-3 sm:w-auto">
-          <Skeleton className="h-12 w-full rounded-full sm:w-44" />
-          <Skeleton className="h-12 w-full rounded-full sm:w-40" />
-          <Skeleton className="h-12 w-full rounded-full sm:w-36" />
+          <Skeleton className="h-12 w-full rounded-md sm:w-44" />
+          <Skeleton className="h-12 w-full rounded-md sm:w-40" />
+          <Skeleton className="h-12 w-full rounded-md sm:w-36" />
         </div>
       </div>
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -112,7 +112,7 @@ export function DashboardPageSkeleton() {
                 <Skeleton className="h-3 w-28" />
                 <Skeleton className="h-8 w-16" />
               </div>
-              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-10 w-10 rounded-md" />
             </CardHeader>
           </Card>
           <Card className="rounded-3xl">
@@ -121,7 +121,7 @@ export function DashboardPageSkeleton() {
                 <Skeleton className="h-3 w-28" />
                 <Skeleton className="h-8 w-16" />
               </div>
-              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-10 w-10 rounded-md" />
             </CardHeader>
           </Card>
         </div>
@@ -168,7 +168,7 @@ export function TransactionsPageSkeleton() {
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-12 w-64 sm:h-14" />
         </div>
-        <Skeleton className="h-12 w-full rounded-full sm:w-44" />
+        <Skeleton className="h-12 w-full rounded-md sm:w-44" />
       </div>
       <Card className="rounded-3xl">
         <CardHeader className="space-y-3">
@@ -196,21 +196,21 @@ export function ContributorsPageSkeleton() {
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-12 w-64 sm:h-14" />
         </div>
-        <Skeleton className="h-12 w-full rounded-full sm:w-44" />
+        <Skeleton className="h-12 w-full rounded-md sm:w-44" />
       </div>
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
           <Card key={index} className="rounded-3xl">
             <CardHeader className="space-y-4">
-              <Skeleton className="h-9 w-9 rounded-full" />
+              <Skeleton className="h-9 w-9 rounded-md" />
               <div className="flex items-center gap-3">
-                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-10 w-10 rounded-md" />
                 <Skeleton className="h-5 w-28" />
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <Skeleton className="h-8 w-32" />
-              <Skeleton className="h-6 w-40 rounded-full" />
+              <Skeleton className="h-6 w-40 rounded-md" />
             </CardContent>
           </Card>
         ))}
@@ -238,8 +238,8 @@ export function ReposPageSkeleton() {
       <div className="mb-8 flex flex-col justify-between gap-4 md:mb-14 md:flex-row md:items-end md:gap-7">
         <Skeleton className="h-12 w-64 sm:h-14" />
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
-          <Skeleton className="h-11 min-w-0 flex-1 rounded-full sm:w-44 sm:flex-none" />
+          <Skeleton className="h-11 w-11 shrink-0 rounded-md" />
+          <Skeleton className="h-11 min-w-0 flex-1 rounded-md sm:w-44 sm:flex-none" />
         </div>
       </div>
       <div className="mb-8 flex flex-col gap-3 sm:flex-row">
@@ -257,13 +257,13 @@ export function ReposPageSkeleton() {
                   <Skeleton className="h-5 w-36" />
                 </div>
               </div>
-              <Skeleton className="h-5 w-16 rounded-full" />
+              <Skeleton className="h-5 w-16 rounded-md" />
             </CardHeader>
             <CardContent className="space-y-3">
-              <Skeleton className="h-5 w-28 rounded-full" />
+              <Skeleton className="h-5 w-28 rounded-md" />
               <Skeleton className="h-5 w-full" />
               <Skeleton className="h-5 w-full" />
-              <Skeleton className="h-10 w-full rounded-full" />
+              <Skeleton className="h-10 w-full rounded-md" />
             </CardContent>
           </Card>
         ))}
@@ -283,8 +283,8 @@ export function RepoDetailSkeleton() {
           <Skeleton className="h-4 w-48" />
         </div>
         <div className="flex gap-2">
-          <Skeleton className="h-10 w-36 rounded-full" />
-          <Skeleton className="h-10 w-28 rounded-full" />
+          <Skeleton className="h-10 w-36 rounded-md" />
+          <Skeleton className="h-10 w-28 rounded-md" />
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -387,7 +387,7 @@ export function AuthCardSkeleton({ label = 'Loading' }: { label?: string }) {
           <Skeleton className="h-12 w-full" />
         </CardHeader>
         <CardContent className="space-y-4">
-          <Skeleton className="h-12 w-full rounded-full" />
+          <Skeleton className="h-12 w-full rounded-md" />
           <Skeleton className="mx-auto h-3 w-48" />
         </CardContent>
       </Card>
@@ -403,7 +403,7 @@ export function FormFieldsSkeleton() {
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-10 w-full rounded-lg" />
       <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-12 w-full rounded-full" />
+      <Skeleton className="h-12 w-full rounded-md" />
     </div>
   );
 }

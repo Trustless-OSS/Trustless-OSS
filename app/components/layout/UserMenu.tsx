@@ -28,10 +28,10 @@ export default function UserMenu({ user }: { user: User }) {
             <Button
               variant="outline"
               aria-label={`Open settings for ${name}`}
-              className="h-9 gap-1.5 rounded-full border-border bg-card px-1.5 text-foreground shadow-sm hover:border-primary/40 hover:shadow-md sm:pr-2.5"
+              className="h-9 gap-1.5 rounded-md border-border bg-card px-1.5 text-foreground shadow-sm hover:border-primary/40 hover:shadow-md sm:pr-2.5"
             >
               <span className="relative hidden sm:inline-flex">
-                <Avatar className="size-7 sm:size-8">
+                <Avatar className="size-6 sm:size-7">
                   {avatar ? (
                     <AvatarImage src={avatar} alt="" className="object-cover object-center" />
                   ) : null}
@@ -40,10 +40,10 @@ export default function UserMenu({ user }: { user: User }) {
                   </AvatarFallback>
                 </Avatar>
                 <span
-                  className="absolute -right-0.5 -bottom-0.5 flex size-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-card"
+                  className="absolute -right-0.5 -bottom-0.5 flex size-3 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-card"
                   aria-hidden="true"
                 >
-                  <Check className="size-2.5" strokeWidth={3} />
+                  <Check className="size-2" strokeWidth={3} />
                 </span>
               </span>
               <span className="hidden max-w-[7.5rem] truncate text-sm font-medium sm:inline">

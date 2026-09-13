@@ -81,7 +81,7 @@ export default function HeroSection({ user }: HeroSectionProps) {
         <div className="relative z-10 max-w-5xl">
           <Badge
             variant="outline"
-            className="animate-hero-in hero-stagger-1 mb-6 h-auto max-w-full gap-2 rounded-full bg-card/80 px-3 py-2 text-[0.72rem] font-semibold tracking-[0.08em] uppercase sm:mb-7 sm:gap-3 sm:px-4"
+            className="animate-hero-in hero-stagger-1 mb-6 h-auto max-w-full gap-2 rounded-md bg-card/80 px-3 py-2 text-[0.72rem] font-semibold tracking-[0.08em] uppercase sm:mb-7 sm:gap-3 sm:px-4"
           >
             <SiGithub className="h-4 w-4 text-foreground" aria-hidden="true" />
             GitHub-native contributor payments
@@ -108,7 +108,7 @@ export default function HeroSection({ user }: HeroSectionProps) {
               <Badge
                 key={label}
                 variant="secondary"
-                className="h-auto gap-2 rounded-full px-3.5 py-2 text-[0.72rem] font-semibold"
+                className="h-auto gap-2 rounded-md px-3.5 py-2 text-[0.72rem] font-semibold"
               >
                 <Image src={iconSrc} alt={iconAlt} width={18} height={18} className="h-4 w-4" />
                 {label}

@@ -63,7 +63,7 @@ export default function Footer() {
           </p>
           <nav className="mt-4 flex items-center gap-2" aria-label="Footer social links">
             {socialLinks.map(({ label, href, icon: Icon }) => (
-              <Button key={label} variant="outline" size="icon" className="rounded-full" asChild>
+              <Button key={label} variant="outline" size="icon" className="rounded-md" asChild>
                 <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label}>
                   <Icon className="h-4 w-4" aria-hidden="true" />
                 </a>

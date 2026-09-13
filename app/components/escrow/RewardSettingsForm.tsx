@@ -212,7 +212,7 @@ export default function RewardSettingsForm({
               <div className="flex items-center justify-between gap-2">
                 <Label
                   htmlFor={isEditing ? `reward-${tier.key}` : undefined}
-                  className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                  className="text-sm font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                 >
                   {tier.label}
                 </Label>
@@ -232,7 +232,7 @@ export default function RewardSettingsForm({
                 ) : null}
               </div>
 
-              <div className="mt-2 flex h-8 items-center gap-2">
+              <div className="mt-1.5 flex h-8 items-center gap-2">
                 {isEditing ? (
                   <Input
                     ref={inputRef}
@@ -254,9 +254,7 @@ export default function RewardSettingsForm({
                     {value}
                   </span>
                 )}
-                <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
-                  USDC
-                </span>
+                <span className="shrink-0 text-xs font-semibold text-muted-foreground">USDC</span>
               </div>
             </div>
           );

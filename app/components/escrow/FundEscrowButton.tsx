@@ -241,7 +241,7 @@ export default function FundEscrowButton({
                 type="button"
                 disabled={loading}
                 aria-label="Close fund dialog"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+                className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
               >
                 <X className="size-4" strokeWidth={2.5} aria-hidden="true" />
               </button>
@@ -311,7 +311,7 @@ export default function FundEscrowButton({
                     setAmount(String(value));
                     setError('');
                   }}
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-primary/40 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
+                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-primary/40 hover:text-primary disabled:pointer-events-none disabled:opacity-50"
                 >
                   +{value}
                 </button>

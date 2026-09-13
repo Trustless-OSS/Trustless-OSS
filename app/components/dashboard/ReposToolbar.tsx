@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, CircleDashed, Clock3, ListFilter, Search, Sparkles, Type } from 'lucide-react';
+import {
+  CheckCircle2,
+  CircleDashed,
+  Clock3,
+  ListFilter,
+  Search,
+  Sparkles,
+  Type,
+} from 'lucide-react';
 import { DEFAULT_REPO_SORT, repoPageHref, type RepoSort } from '@/lib/repo-filters';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,7 +91,7 @@ export default function ReposToolbar({ query, sort }: { query: string; sort: Rep
   return (
     <div
       role="search"
-      className="flex h-10 w-44 shrink-0 items-center overflow-hidden rounded-full border border-border bg-card shadow-sm sm:w-52"
+      className="flex h-10 w-44 shrink-0 items-center overflow-hidden rounded-md border border-border bg-card shadow-sm sm:w-52"
     >
       <Label htmlFor="repo-search" className="sr-only">
         Search repositories
@@ -113,7 +121,7 @@ export default function ReposToolbar({ query, sort }: { query: string; sort: Rep
             aria-label="Filter repositories"
             title={activeFilter.label}
             className={cn(
-              'mr-1 size-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground',
+              'mr-1 size-8 shrink-0 rounded-md text-muted-foreground hover:text-foreground',
               isFiltered && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
             )}
           >
@@ -131,7 +139,7 @@ export default function ReposToolbar({ query, sort }: { query: string; sort: Rep
                 <DropdownMenuRadioItem
                   key={option.value}
                   value={option.value}
-                  className="cursor-pointer rounded-xl px-2 py-2.5 pr-8"
+                  className="cursor-pointer rounded-md px-2 py-2.5 pr-8"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -153,7 +161,7 @@ export default function ReposToolbar({ query, sort }: { query: string; sort: Rep
               <DropdownMenuSeparator className="my-2" />
               <button
                 type="button"
-                className="flex w-full cursor-pointer items-center justify-center rounded-xl px-2 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="flex w-full cursor-pointer items-center justify-center rounded-md px-2 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 onClick={() => applySort(DEFAULT_REPO_SORT)}
               >
                 Clear filter

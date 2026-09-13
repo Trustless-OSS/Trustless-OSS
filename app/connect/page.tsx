@@ -396,7 +396,7 @@ export default function ConnectPage() {
             variant="ghost"
             size="sm"
             onClick={() => router.back()}
-            className="absolute top-4 right-4 z-20 h-9 w-9 rounded-full px-0"
+            className="absolute top-4 right-4 z-20 h-9 w-9 rounded-md px-0"
             aria-label="Go back"
           >
             <X size={18} strokeWidth={2.25} />
