@@ -254,9 +254,7 @@ export default function RewardSettingsForm({
                     {value}
                   </span>
                 )}
-                <span className="shrink-0 text-sm font-semibold text-muted-foreground">
-                  USDC
-                </span>
+                <span className="shrink-0 text-sm font-semibold text-muted-foreground">USDC</span>
               </div>
             </div>
           );

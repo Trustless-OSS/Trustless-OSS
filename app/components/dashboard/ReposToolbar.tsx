@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, CircleDashed, Clock3, ListFilter, Search, Sparkles, Type } from 'lucide-react';
+import {
+  CheckCircle2,
+  CircleDashed,
+  Clock3,
+  ListFilter,
+  Search,
+  Sparkles,
+  Type,
+} from 'lucide-react';
 import { DEFAULT_REPO_SORT, repoPageHref, type RepoSort } from '@/lib/repo-filters';
 import { Button } from '@/components/ui/button';
 import {

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
-  ArrowLeft,
   Check,
   Copy,
   ExternalLink,
@@ -16,7 +15,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
-import { SiGithub } from 'react-icons/si';
+import { SiDiscord, SiGithub, SiTelegram, SiX } from 'react-icons/si';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
@@ -39,24 +38,69 @@ import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 
 type ProfileForm = {
-  displayName: string;
+  firstName: string;
+  lastName: string;
   bio: string;
   location: string;
   website: string;
   skills: string;
+  telegram: string;
+  discord: string;
+  twitter: string;
   stellarAddress: string;
 };
+
+function splitDisplayName(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return { firstName: '', lastName: '' };
+  const space = trimmed.indexOf(' ');
+  if (space === -1) return { firstName: trimmed, lastName: '' };
+  return {
+    firstName: trimmed.slice(0, space).trim(),
+    lastName: trimmed.slice(space + 1).trim(),
+  };
+}
+
+function fullName(form: Pick<ProfileForm, 'firstName' | 'lastName'>) {
+  return `${form.firstName} ${form.lastName}`.trim();
+}
+
+/** Keep only a username — strip @, URLs, and path junk. */
+function normalizeUsername(value: string) {
+  let next = value.trim();
+  if (!next) return '';
+  next = next.replace(/^https?:\/\//i, '');
+  next = next.replace(/^(www\.)?/i, '');
+  next = next.replace(
+    /^(t\.me|telegram\.me|x\.com|twitter\.com|discord\.com\/users|discord\.gg)\//i,
+    ''
+  );
+  next = next.replace(/^@/, '');
+  next = next.split(/[/?\s]/)[0] ?? '';
+  return next.trim();
+}
 
 function profileFromUser(user: User): ProfileForm {
   const metadata = user.user_metadata ?? {};
   const githubName = metadata.user_name ?? user.email?.split('@')[0] ?? '';
+  const fromMeta = {
+    firstName: String(metadata.first_name ?? ''),
+    lastName: String(metadata.last_name ?? ''),
+  };
+  const fallback = splitDisplayName(
+    String(metadata.display_name ?? metadata.full_name ?? githubName)
+  );
 
   return {
-    displayName: String(metadata.display_name ?? metadata.full_name ?? githubName),
+    firstName: fromMeta.firstName || fallback.firstName,
+    lastName: fromMeta.lastName || fallback.lastName,
     bio: String(metadata.bio ?? ''),
     location: String(metadata.location ?? ''),
     website: String(metadata.website ?? ''),
     skills: String(metadata.skills ?? ''),
+    telegram: normalizeUsername(String(metadata.telegram ?? '')),
+    discord: normalizeUsername(String(metadata.discord ?? '')),
+    twitter: normalizeUsername(String(metadata.twitter ?? '')),
     stellarAddress: String(metadata.stellar_address ?? ''),
   };
 }
@@ -75,7 +119,7 @@ function parseSkills(skills: string) {
 
 function profileCompleteness(form: ProfileForm, email: string) {
   const checks = [
-    form.displayName,
+    fullName(form),
     form.bio,
     form.location,
     form.website,
@@ -122,9 +166,14 @@ export default function ProfileSettings({ user }: { user: User }) {
   const completeness = useMemo(() => profileCompleteness(form, githubEmail), [form, githubEmail]);
   const dirty = useMemo(() => !formsEqual(form, saved), [form, saved]);
   const portfolio = websiteHref(form.website);
+  const displayName = fullName(form) || githubName;
 
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateUsername(key: 'telegram' | 'discord' | 'twitter', value: string) {
+    update(key, normalizeUsername(value));
   }
 
   function addSkill(raw = skillDraft) {
@@ -149,18 +198,29 @@ export default function ProfileSettings({ user }: { user: User }) {
 
   async function persist(next: ProfileForm) {
     const supabase = createClient();
+    const name = fullName(next);
     const { error } = await supabase.auth.updateUser({
       data: {
-        display_name: next.displayName.trim(),
+        first_name: next.firstName.trim(),
+        last_name: next.lastName.trim(),
+        display_name: name,
         bio: next.bio.trim(),
         location: next.location.trim(),
         website: next.website.trim(),
         skills: next.skills.trim(),
+        telegram: normalizeUsername(next.telegram),
+        discord: normalizeUsername(next.discord),
+        twitter: normalizeUsername(next.twitter),
         stellar_address: next.stellarAddress.trim(),
       },
     });
     if (error) throw error;
-    setSaved(next);
+    setSaved({
+      ...next,
+      telegram: normalizeUsername(next.telegram),
+      discord: normalizeUsername(next.discord),
+      twitter: normalizeUsername(next.twitter),
+    });
   }
 
   async function handleSave() {
@@ -233,10 +293,6 @@ export default function ProfileSettings({ user }: { user: User }) {
     <div className="w-full space-y-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <Button href="/dashboard" variant="ghost" size="sm" className="mb-2 -ml-2 px-2">
-            <ArrowLeft className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-            Dashboard
-          </Button>
           <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Account</p>
           <h1 className="font-display mt-2 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
             Profile
@@ -283,9 +339,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                     />
                   </div>
                   <div className="min-w-0 pb-1">
-                    <h2 className="truncate text-2xl font-bold tracking-tight">
-                      {form.displayName || githubName}
-                    </h2>
+                    <h2 className="truncate text-2xl font-bold tracking-tight">{displayName}</h2>
                     <a
                       href={`https://github.com/${githubName}`}
                       target="_blank"
@@ -489,22 +543,24 @@ export default function ProfileSettings({ user }: { user: User }) {
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="display-name">Display name</Label>
+              <Label htmlFor="first-name">First name</Label>
               <Input
-                id="display-name"
-                value={form.displayName}
-                onChange={(event) => update('displayName', event.target.value)}
-                autoComplete="name"
+                id="first-name"
+                value={form.firstName}
+                onChange={(event) => update('firstName', event.target.value)}
+                autoComplete="given-name"
+                placeholder="Ada"
                 className="h-10"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="last-name">Last name</Label>
               <Input
-                id="location"
-                value={form.location}
-                onChange={(event) => update('location', event.target.value)}
-                placeholder="City, country"
+                id="last-name"
+                value={form.lastName}
+                onChange={(event) => update('lastName', event.target.value)}
+                autoComplete="family-name"
+                placeholder="Lovelace"
                 className="h-10"
               />
             </div>
@@ -587,6 +643,80 @@ export default function ProfileSettings({ user }: { user: User }) {
                 ) : null}
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="telegram">Telegram</Label>
+              <div className="relative">
+                <SiTelegram
+                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span className="pointer-events-none absolute top-1/2 left-9 -translate-y-1/2 text-sm text-muted-foreground">
+                  @
+                </span>
+                <Input
+                  id="telegram"
+                  value={form.telegram}
+                  onChange={(event) => updateUsername('telegram', event.target.value)}
+                  placeholder="username"
+                  autoComplete="off"
+                  className="h-10 pl-14"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="discord">Discord</Label>
+              <div className="relative">
+                <SiDiscord
+                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="discord"
+                  value={form.discord}
+                  onChange={(event) => updateUsername('discord', event.target.value)}
+                  placeholder="username"
+                  autoComplete="off"
+                  className="h-10 pl-10"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="twitter">Twitter / X</Label>
+              <div className="relative">
+                <SiX
+                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <span className="pointer-events-none absolute top-1/2 left-9 -translate-y-1/2 text-sm text-muted-foreground">
+                  @
+                </span>
+                <Input
+                  id="twitter"
+                  value={form.twitter}
+                  onChange={(event) => updateUsername('twitter', event.target.value)}
+                  placeholder="username"
+                  autoComplete="off"
+                  className="h-10 pl-14"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="location">Location</Label>
+              <div className="relative">
+                <MapPin
+                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  id="location"
+                  value={form.location}
+                  onChange={(event) => update('location', event.target.value)}
+                  placeholder="City, country, or timezone"
+                  autoComplete="address-level2"
+                  className="h-10 pl-10"
+                />
+              </div>
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="skills">Skills</Label>
               <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-lg border border-input px-2.5 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30">
@@ -639,8 +769,8 @@ export default function ProfileSettings({ user }: { user: User }) {
               />
             </div>
           </CardContent>
-          {dirty ? (
-            <CardFooter className="justify-end gap-2 rounded-b-3xl">
+          <CardFooter className="justify-end gap-2 rounded-b-3xl">
+            {dirty ? (
               <Button
                 variant="danger"
                 onClick={() => {
@@ -651,21 +781,25 @@ export default function ProfileSettings({ user }: { user: User }) {
               >
                 Discard
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? (
-                  <>
-                    <LoadingLogo size="tiny" variant="circle" />
-                    Saving
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                    Save profile
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          ) : null}
+            ) : null}
+            <Button
+              onClick={handleSave}
+              disabled={!dirty || saving}
+              className={!dirty ? 'opacity-50' : undefined}
+            >
+              {saving ? (
+                <>
+                  <LoadingLogo size="tiny" variant="circle" />
+                  Saving
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                  Save profile
+                </>
+              )}
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     </div>
