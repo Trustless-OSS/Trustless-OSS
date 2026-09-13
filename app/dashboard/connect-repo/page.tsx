@@ -75,7 +75,7 @@ export default function ConnectRepoPage() {
             variant="outline"
             size="sm"
             onClick={handleBack}
-            className="absolute top-4 left-4 z-20 h-10 w-10 rounded-full px-0"
+            className="absolute top-4 left-4 z-20 h-10 w-10 rounded-md px-0"
             aria-label="Go back"
           >
             <ArrowLeft size={20} strokeWidth={3} aria-hidden="true" />

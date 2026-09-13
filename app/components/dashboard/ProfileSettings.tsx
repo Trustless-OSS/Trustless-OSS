@@ -594,7 +594,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                   <Badge
                     key={skill}
                     variant="secondary"
-                    className="h-7 gap-1 rounded-full px-2.5 font-medium"
+                    className="h-7 gap-1 rounded-md px-2.5 font-medium"
                   >
                     {skill}
                     <button

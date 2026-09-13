@@ -228,7 +228,7 @@ export default function RefundFundButton({
                 type="button"
                 disabled={loading}
                 aria-label="Close withdraw dialog"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+                className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
               >
                 <X className="size-4" strokeWidth={2.5} aria-hidden="true" />
               </button>

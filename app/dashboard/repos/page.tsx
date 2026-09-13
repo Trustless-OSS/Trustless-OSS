@@ -152,7 +152,7 @@ export default async function ReposPage({ searchParams }: ReposProps) {
             <Button
               href="/dashboard/connect-repo"
               size="md"
-              className="h-10 shrink-0 rounded-full bg-emerald-500 px-4 text-sm whitespace-nowrap text-white shadow-sm hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+              className="h-10 shrink-0 rounded-md bg-emerald-500 px-4 text-sm whitespace-nowrap text-white shadow-sm hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
               Add repository

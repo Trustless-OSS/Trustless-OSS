@@ -24,9 +24,9 @@ const variantClass: Record<Variant, string> = {
 };
 
 const sizeClass: Record<Size, string> = {
-  sm: 'h-9 rounded-full px-3.5 text-sm',
-  md: 'h-10 rounded-full px-5 text-sm',
-  lg: 'h-12 rounded-full px-6 text-base',
+  sm: 'h-9 rounded-md px-3.5 text-sm',
+  md: 'h-10 rounded-md px-5 text-sm',
+  lg: 'h-12 rounded-md px-6 text-base',
 };
 
 type ButtonBase = {

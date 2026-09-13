@@ -10,7 +10,7 @@ import NotificationBell from '@/app/components/layout/NotificationBell';
 import UserMenu from '@/app/components/layout/UserMenu';
 
 const iconBtn =
-  'size-9 shrink-0 rounded-xl border-border bg-card text-foreground shadow-sm hover:border-primary/40 hover:shadow-md';
+  'size-9 shrink-0 rounded-md border-border bg-card text-foreground shadow-sm hover:border-primary/40 hover:shadow-md';
 
 export default function AccountBar({ user }: { user: User }) {
   const [mounted, setMounted] = useState(false);

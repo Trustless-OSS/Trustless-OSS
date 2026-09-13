@@ -205,14 +205,14 @@ export default function RewardSettingsForm({
             <div
               key={tier.key}
               className={cn(
-                'flex min-h-[4.75rem] flex-col justify-between rounded-2xl border-l-4 px-4 py-3 ring-1 ring-border/50',
+                'flex min-h-[6rem] flex-col justify-between rounded-2xl border-l-4 px-5 py-4 ring-1 ring-border/50',
                 tier.accent
               )}
             >
               <div className="flex items-center justify-between gap-2">
                 <Label
                   htmlFor={isEditing ? `reward-${tier.key}` : undefined}
-                  className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                  className="text-base font-semibold tracking-[0.1em] text-muted-foreground uppercase"
                 >
                   {tier.label}
                 </Label>
@@ -232,7 +232,7 @@ export default function RewardSettingsForm({
                 ) : null}
               </div>
 
-              <div className="mt-2 flex h-8 items-center gap-2">
+              <div className="mt-2 flex h-11 items-center gap-2.5">
                 {isEditing ? (
                   <Input
                     ref={inputRef}
@@ -244,17 +244,17 @@ export default function RewardSettingsForm({
                     value={draft}
                     disabled={saving}
                     aria-label={`${tier.label} reward in USDC`}
-                    className="h-8 border-0 bg-transparent px-0 font-mono text-xl font-black shadow-none focus-visible:border-0 focus-visible:ring-0 md:text-xl"
+                    className="h-11 border-0 bg-transparent px-0 font-mono text-3xl font-black shadow-none focus-visible:border-0 focus-visible:ring-0 md:text-3xl"
                     onChange={(event) => setDraft(event.target.value)}
                     onBlur={() => handleBlur(tier.key)}
                     onKeyDown={handleKeyDown}
                   />
                 ) : (
-                  <span className="font-mono text-xl font-black tracking-tight text-foreground tabular-nums">
+                  <span className="font-mono text-3xl font-black tracking-tight text-foreground tabular-nums">
                     {value}
                   </span>
                 )}
-                <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
+                <span className="shrink-0 text-sm font-semibold text-muted-foreground">
                   USDC
                 </span>
               </div>

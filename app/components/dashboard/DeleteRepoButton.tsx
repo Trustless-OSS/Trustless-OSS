@@ -95,7 +95,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
                     onClick={closeModal}
                     disabled={loading}
                     aria-label="Close delete dialog"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition hover:border-red-200 hover:text-red-600 disabled:opacity-50"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition hover:border-red-200 hover:text-red-600 disabled:opacity-50"
                   >
                     <X className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
                   </button>

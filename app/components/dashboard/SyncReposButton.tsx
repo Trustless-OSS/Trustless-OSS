@@ -76,7 +76,7 @@ export default function SyncReposButton({
       aria-busy={syncing}
       aria-label="Sync"
       title="Sync"
-      className="h-10 w-10 shrink-0 rounded-xl px-0 text-muted-foreground shadow-none"
+      className="h-10 w-10 shrink-0 rounded-md px-0 text-muted-foreground shadow-none"
     >
       <RefreshCw
         className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`}
