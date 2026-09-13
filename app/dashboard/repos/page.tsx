@@ -1,16 +1,15 @@
-import { ArrowLeft, GitBranch, Plus, RefreshCw } from 'lucide-react';
+import { GitBranch, Plus, RefreshCw, SearchX } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import RepositoryEscrowCard from '@/app/components/escrow/RepositoryEscrowCard';
 import ReposPagination, { REPO_PAGE_SIZE } from '@/app/components/dashboard/ReposPagination';
 import ReposToolbar from '@/app/components/dashboard/ReposToolbar';
 import SyncReposButton from '@/app/components/dashboard/SyncReposButton';
+import ReposLoadErrorToast from '@/app/components/dashboard/ReposLoadErrorToast';
 import { paginateItems } from '@/lib/paginate';
 import { filterAndSortRepos, parseRepoQuery, parseRepoSort } from '@/lib/repo-filters';
 import Button from '@/app/components/ui/Button';
 import type { Repo } from '@/app/types';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
@@ -131,6 +130,8 @@ export default async function ReposPage({ searchParams }: ReposProps) {
 
   return (
     <div className="w-full">
+      {reposError ? <ReposLoadErrorToast message={reposError} /> : null}
+
       <header className="mb-6 md:mb-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -161,47 +162,52 @@ export default async function ReposPage({ searchParams }: ReposProps) {
         </div>
       </header>
 
-      {reposError && (
-        <Alert variant="destructive" className="mb-8 rounded-2xl">
-          <AlertTitle>Failed to load repositories</AlertTitle>
-          <AlertDescription>{reposError}</AlertDescription>
-        </Alert>
-      )}
-
       {repos.length === 0 ? (
-        <Card className="mx-auto max-w-4xl rounded-3xl py-12 text-center">
-          <CardHeader className="items-center">
-            <div className="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <GitBranch className="h-7 w-7" strokeWidth={2.5} aria-hidden="true" />
-            </div>
-            <CardTitle className="text-2xl font-extrabold">No repositories yet</CardTitle>
-            <CardDescription className="mx-auto max-w-2xl">
-              There are no repositories connected to your account. Connect a GitHub repository to
-              enable rewards and manage contributor payouts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button href="/dashboard" variant="outline" className="px-4 py-2 text-sm">
-              <ArrowLeft className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-              Back to dashboard
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/80 bg-muted/40 px-6 py-16 text-center">
+          <div className="flex size-11 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-primary/15">
+            <GitBranch className="size-5" strokeWidth={2.25} aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              {reposError ? 'Repositories unavailable' : 'No repositories yet'}
+            </h2>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              {reposError
+                ? 'We could not reach the API. Try syncing again in a moment, or connect a repository when the service is back.'
+                : 'Connect a GitHub repository to fund escrows, set reward tiers, and pay contributors when PRs merge.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <Button
+              href="/dashboard/connect-repo"
+              size="sm"
+              className="rounded-md bg-emerald-500 px-3.5 text-white hover:bg-emerald-600"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+              Add repository
             </Button>
-            {isSyncing && (
-              <p className="mt-4 inline-flex items-center justify-center gap-2 font-mono text-xs text-primary">
-                <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Checking for repositories...
-              </p>
-            )}
-          </CardContent>
-        </Card>
+          </div>
+          {isSyncing ? (
+            <p className="inline-flex items-center gap-2 text-xs font-medium text-primary">
+              <RefreshCw className="size-3.5 animate-spin" aria-hidden="true" />
+              Checking for repositories…
+            </p>
+          ) : null}
+        </div>
       ) : filtered.length === 0 ? (
-        <Card className="rounded-3xl py-12 text-center">
-          <CardHeader className="items-center">
-            <CardTitle className="text-2xl font-extrabold">No matching repositories</CardTitle>
-            <CardDescription>
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/40 px-6 py-14 text-center">
+          <div className="flex size-11 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-border">
+            <SearchX className="size-5" strokeWidth={2.25} aria-hidden="true" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              No matching repositories
+            </h2>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
               Nothing matches that search or filter. Try another name or choose a different option.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+            </p>
+          </div>
+        </div>
       ) : (
         <>
           <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">

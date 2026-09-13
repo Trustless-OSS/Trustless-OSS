@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { ExternalLink } from 'lucide-react';
+import { SiGithub } from 'react-icons/si';
 import { createClient } from '@/lib/supabase/server';
 import DeployEscrowButton from '@/app/components/escrow/DeployEscrowButton';
 import FundEscrowButton from '@/app/components/escrow/FundEscrowButton';
@@ -148,10 +149,16 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                 variant="outline"
                 size="sm"
                 aria-label={`Open ${repo.full_name} on GitHub`}
-                className="gap-1.5"
+                className="h-7 gap-1.5 rounded-md border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
               >
-                <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
+                <SiGithub className="size-3.5 text-muted-foreground" aria-hidden="true" />
                 GitHub
+                <ExternalLink
+                  size={12}
+                  strokeWidth={2.25}
+                  className="text-muted-foreground"
+                  aria-hidden="true"
+                />
               </Button>
             </div>
             {repo.escrow_contract_id ? (
