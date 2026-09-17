@@ -250,8 +250,6 @@ export default function InstallationSuccessHandler() {
     return () => {
       cancelled = true;
     };
-    // Sync is keyed off the install callback query + current path.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return null;
