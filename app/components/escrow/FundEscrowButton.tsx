@@ -32,7 +32,6 @@ function formatUsdc(value: number) {
 
 const QUICK_AMOUNTS = [25, 50, 100] as const;
 
-// [ryzen-xp] : refresh repo balance from submit-fund newBalance after deposit
 export default function FundEscrowButton({
   repoId,
   token,

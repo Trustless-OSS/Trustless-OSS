@@ -232,7 +232,6 @@ export function ContributorsPageSkeleton() {
 }
 
 export function ReposCardSkeletonGrid({ count = 15 }: { count?: number }) {
-  // [ryzen-xp] : page-sized repo card skeletons for background install sync
   return (
     <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite">
       {Array.from({ length: count }).map((_, index) => (

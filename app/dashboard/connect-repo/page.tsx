@@ -8,7 +8,6 @@ import { fetchBackendHealth } from '@/lib/health';
 import Button from '@/app/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/card';
 
-// [ryzen-xp] : same-tab GitHub App install (no popup)
 export default function ConnectRepoPage() {
   const router = useRouter();
 

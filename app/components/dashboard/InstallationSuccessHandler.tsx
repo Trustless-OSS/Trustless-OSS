@@ -143,7 +143,6 @@ async function fetchWithRetry(
   throw new Error(lastError);
 }
 
-// [ryzen-xp] : background install sync in REPO_PAGE_SIZE batches, no blocking modal
 export default function InstallationSuccessHandler() {
   const router = useRouter();
   const pathname = usePathname();
