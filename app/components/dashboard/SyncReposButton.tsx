@@ -7,7 +7,6 @@ import { handleError, notifySuccess } from '@/lib/notifications';
 import { backendUrl } from '@/lib/backend';
 import Button from '@/app/components/ui/Button';
 
-
 async function readError(response: Response, fallback: string) {
   const text = await response.text();
   try {

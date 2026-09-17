@@ -57,8 +57,7 @@ export default function FundEscrowButton({
   const isAmountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const showAmountError = submitAttempted && !isAmountValid;
   const currentBalanceValue = currentBalance ?? 0;
-  const nextBalance =
-    confirmedBalance ?? currentBalanceValue + (isAmountValid ? parsedAmount : 0);
+  const nextBalance = confirmedBalance ?? currentBalanceValue + (isAmountValid ? parsedAmount : 0);
   const amountLocked = loading || phase === 'success' || phase === 'error';
 
   const progressValue =
