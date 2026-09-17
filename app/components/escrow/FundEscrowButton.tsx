@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, ExternalLink, Plus, X } from 'lucide-react';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
@@ -31,6 +32,7 @@ function formatUsdc(value: number) {
 
 const QUICK_AMOUNTS = [25, 50, 100] as const;
 
+// [ryzen-xp] : refresh repo balance from submit-fund newBalance after deposit
 export default function FundEscrowButton({
   repoId,
   token,
@@ -42,6 +44,7 @@ export default function FundEscrowButton({
   repoName?: string;
   currentBalance?: number;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,12 +52,14 @@ export default function FundEscrowButton({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [phase, setPhase] = useState<ModalPhase>('amount');
   const [transactionHash, setTransactionHash] = useState('');
+  const [confirmedBalance, setConfirmedBalance] = useState<number | null>(null);
 
   const parsedAmount = Number(amount);
   const isAmountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const showAmountError = submitAttempted && !isAmountValid;
   const currentBalanceValue = currentBalance ?? 0;
-  const nextBalance = currentBalanceValue + (isAmountValid ? parsedAmount : 0);
+  const nextBalance =
+    confirmedBalance ?? currentBalanceValue + (isAmountValid ? parsedAmount : 0);
   const amountLocked = loading || phase === 'success' || phase === 'error';
 
   const progressValue =
@@ -76,7 +81,7 @@ export default function FundEscrowButton({
       : phase === 'sign'
         ? 'Sign the transaction in your wallet'
         : phase === 'processing'
-          ? 'Submitting to Stellar…'
+          ? 'Confirming deposit and syncing balance…'
           : phase === 'success'
             ? 'Deposit confirmed'
             : phase === 'error'
@@ -88,6 +93,7 @@ export default function FundEscrowButton({
     setSubmitAttempted(false);
     setPhase('amount');
     setTransactionHash('');
+    setConfirmedBalance(null);
     setError('');
     setLoading(false);
   }
@@ -105,7 +111,7 @@ export default function FundEscrowButton({
 
   function handleCloseAndRefresh() {
     setOpen(false);
-    window.location.reload();
+    router.refresh();
   }
 
   async function handleFund() {
@@ -192,8 +198,13 @@ export default function FundEscrowButton({
       const result = await res2.json();
       const nextHash =
         result?.transactionHash || result?.hash || result?.txHash || result?.txid || '';
+      const reportedBalance = Number(result?.newBalance ?? result?.new_balance);
+      if (Number.isFinite(reportedBalance)) {
+        setConfirmedBalance(reportedBalance);
+      }
       setTransactionHash(nextHash);
       setPhase('success');
+      router.refresh();
     } catch (err: unknown) {
       setOpen(true);
       setPhase('error');

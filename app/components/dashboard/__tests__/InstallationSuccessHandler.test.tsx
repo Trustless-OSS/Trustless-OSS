@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import InstallationSuccessHandler from '../InstallationSuccessHandler';
 import { GITHUB_INSTALL_CHANNEL, GITHUB_INSTALL_SUCCESS } from '@/lib/github-install';
@@ -6,7 +6,17 @@ import { GITHUB_INSTALL_CHANNEL, GITHUB_INSTALL_SUCCESS } from '@/lib/github-ins
 const getSession = vi.fn();
 const handleError = vi.fn();
 const notifySuccess = vi.fn();
-const close = vi.fn();
+const replace = vi.fn();
+const refresh = vi.fn();
+const usePathname = vi.fn(() => '/dashboard/repos');
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    replace,
+    refresh,
+  }),
+  usePathname: () => usePathname(),
+}));
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
@@ -21,23 +31,23 @@ vi.mock('@/lib/notifications', () => ({
   notifySuccess: (...args: unknown[]) => notifySuccess(...args),
 }));
 
-function setLocationSearch(search: string) {
-  window.history.pushState({}, '', `/dashboard/repos${search}`);
+function setLocation(path: string) {
+  window.history.pushState({}, '', path);
 }
 
 afterEach(() => {
   cleanup();
-  close.mockReset();
   getSession.mockReset();
   handleError.mockReset();
   notifySuccess.mockReset();
+  replace.mockReset();
+  refresh.mockReset();
+  usePathname.mockReturnValue('/dashboard/repos');
   vi.unstubAllGlobals();
-  vi.useRealTimers();
-  setLocationSearch('');
+  setLocation('/dashboard/repos');
 });
 
 beforeEach(() => {
-  vi.stubGlobal('close', close);
   getSession.mockResolvedValue({
     data: { session: { access_token: 'token' } },
   });
@@ -45,13 +55,25 @@ beforeEach(() => {
 
 describe('InstallationSuccessHandler', () => {
   it('does nothing when GitHub did not return an installation id', () => {
-    setLocationSearch('');
-    render(<InstallationSuccessHandler />);
-    expect(screen.queryByText('Finishing GitHub installation')).not.toBeInTheDocument();
+    setLocation('/dashboard/repos');
+    const { container } = render(<InstallationSuccessHandler />);
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it('syncs, notifies the opener window, and tries to close the popup', async () => {
-    setLocationSearch('?installation_id=153860735&setup_action=install');
+  it('redirects install callbacks to the repos page without a loading card', () => {
+    usePathname.mockReturnValue('/dashboard');
+    setLocation('/dashboard?installation_id=153860735&setup_action=install');
+
+    const { container } = render(<InstallationSuccessHandler />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(replace).toHaveBeenCalledWith(
+      '/dashboard/repos?installation_id=153860735&setup_action=install'
+    );
+  });
+
+  it('syncs selected repos in page-sized batches in the background', async () => {
+    setLocation('/dashboard/repos?installation_id=153860735&setup_action=install');
     const received = new Promise((resolve) => {
       const listener = new BroadcastChannel(GITHUB_INSTALL_CHANNEL);
       listener.addEventListener('message', (event) => {
@@ -60,28 +82,57 @@ describe('InstallationSuccessHandler', () => {
       });
     });
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'ok' }),
-      text: async () => '',
-    });
+    const repositories = Array.from({ length: 16 }, (_, index) => ({
+      githubRepoId: index + 1,
+      fullName: `ryzen-xp/repo-${index + 1}`,
+    }));
 
-    render(<InstallationSuccessHandler />);
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'ok' }),
+        text: async () => '',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ repositories }),
+        text: async () => '',
+      })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ synced: 15 }),
+        text: async () => '',
+      });
 
-    expect(await screen.findByText('Finishing GitHub installation')).toBeInTheDocument();
+    const { container } = render(<InstallationSuccessHandler />);
+    expect(container).toBeEmptyDOMElement();
+
     await expect(received).resolves.toBe(GITHUB_INSTALL_SUCCESS);
     await waitFor(() => {
-      expect(notifySuccess).toHaveBeenCalled();
+      expect(notifySuccess).toHaveBeenCalledWith(
+        'Repositories connected',
+        'Synced 16 repositories from GitHub.'
+      );
     });
-    await waitFor(() => {
-      expect(close).toHaveBeenCalled();
+
+    const syncCalls = vi
+      .mocked(global.fetch)
+      .mock.calls.filter(([url]) => String(url).includes('/api/repos/sync-installation'));
+    expect(syncCalls).toHaveLength(2);
+    expect(JSON.parse(String(syncCalls[0][1]?.body))).toEqual({
+      installationId: 153860735,
+      githubRepoIds: repositories.slice(0, 15).map((repo) => repo.githubRepoId),
     });
-    expect(screen.getByRole('button', { name: 'Close this window' })).toBeInTheDocument();
+    expect(JSON.parse(String(syncCalls[1][1]?.body))).toEqual({
+      installationId: 153860735,
+      githubRepoIds: [16],
+    });
+    expect(refresh).toHaveBeenCalled();
   });
 
-  it('shows a close action when sync fails', async () => {
-    vi.useFakeTimers();
-    setLocationSearch('?installation_id=153860735&setup_action=install');
+  it('reports errors without a blocking modal', async () => {
+    setLocation('/dashboard/repos?installation_id=153860735&setup_action=install');
     global.fetch = vi
       .fn()
       .mockResolvedValueOnce({
@@ -91,23 +142,21 @@ describe('InstallationSuccessHandler', () => {
       })
       .mockResolvedValue({
         ok: false,
-        status: 500,
+        status: 400,
         text: async () => 'sync exploded',
+        json: async () => ({}),
       });
 
-    render(<InstallationSuccessHandler />);
+    const { container } = render(<InstallationSuccessHandler />);
+    expect(container).toBeEmptyDOMElement();
 
-    await act(async () => {
-      await vi.runAllTimersAsync();
+    await waitFor(() => {
+      expect(handleError).toHaveBeenCalled();
     });
-
-    expect(screen.getByText('Could not finish installation')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Close this window' })).toBeInTheDocument();
-    expect(close).not.toHaveBeenCalled();
   });
 
   it('fails fast when the API reports Redis is down', async () => {
-    setLocationSearch('?installation_id=153860735&setup_action=install');
+    setLocation('/dashboard/repos?installation_id=153860735&setup_action=install');
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
@@ -122,8 +171,12 @@ describe('InstallationSuccessHandler', () => {
 
     render(<InstallationSuccessHandler />);
 
-    expect(await screen.findByText('Could not finish installation')).toBeInTheDocument();
-    expect(screen.getByText(/Redis is unavailable/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(handleError).toHaveBeenCalledWith(
+        expect.stringMatching(/Redis is unavailable/),
+        'Connect repository'
+      );
+    });
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

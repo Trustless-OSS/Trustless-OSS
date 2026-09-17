@@ -3,6 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import FundEscrowButton from '../FundEscrowButton';
 import * as walletKit from '@/lib/wallet-kit';
 
+const refresh = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    refresh,
+  }),
+}));
+
 vi.mock('@/lib/wallet-kit', () => ({
   getWalletKit: vi.fn(),
   withTimeout: async (promise: Promise<unknown>) => promise,

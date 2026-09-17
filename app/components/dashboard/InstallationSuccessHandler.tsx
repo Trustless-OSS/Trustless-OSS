@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { handleError, notifySuccess } from '@/lib/notifications';
 import { backendUrl, remoteBackendUrl } from '@/lib/backend';
@@ -9,17 +9,18 @@ import { isPersistentDependencyFailure, waitForBackendReady } from '@/lib/health
 import {
   GITHUB_INSTALL_FAILED,
   GITHUB_INSTALL_SUCCESS,
-  GITHUB_INSTALL_WINDOW_NAME,
   notifyGitHubInstallParent,
 } from '@/lib/github-install';
-import Button from '@/app/components/ui/Button';
+import { REPO_PAGE_SIZE } from '@/app/components/dashboard/ReposPagination';
 
-const MAX_SYNC_ATTEMPTS = 5;
-const RETRY_DELAY_MS = 1500;
-const COLD_START_RETRY_DELAY_MS = 4000;
-const CLOSE_RETRY_MS = 400;
+const MAX_SYNC_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 800;
+const COLD_START_RETRY_DELAY_MS = 2000;
 
-type OverlayStatus = 'hidden' | 'syncing' | 'success' | 'error';
+type InstallationRepo = {
+  githubRepoId: number;
+  fullName: string;
+};
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,13 +75,78 @@ function clearInstallationQuery() {
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
-function closeInstallWindow() {
-  window.close();
+function parseInstallationRepos(payload: unknown): InstallationRepo[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const repositories = (payload as { repositories?: unknown }).repositories;
+  if (!Array.isArray(repositories)) return [];
+
+  return repositories.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const row = entry as Record<string, unknown>;
+    const githubRepoId = Number(row.githubRepoId ?? row.github_repo_id);
+    const fullName = typeof row.fullName === 'string' ? row.fullName : row.full_name;
+    if (!Number.isInteger(githubRepoId) || githubRepoId <= 0 || typeof fullName !== 'string') {
+      return [];
+    }
+    return [{ githubRepoId, fullName }];
+  });
 }
 
+async function authorizedFetch(
+  path: string,
+  accessToken: string,
+  init?: RequestInit
+): Promise<Response> {
+  return fetch(backendUrl(path), {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      ...(init?.headers ?? {}),
+    },
+  });
+}
+
+async function fetchWithRetry(
+  path: string,
+  accessToken: string,
+  init?: RequestInit
+): Promise<Response> {
+  let lastError = 'Installation sync failed.';
+
+  for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
+    let response: Response;
+    try {
+      response = await authorizedFetch(path, accessToken, init);
+    } catch (error: unknown) {
+      throw new Error(formatNetworkError(error), { cause: error });
+    }
+
+    if (response.ok) {
+      return response;
+    }
+
+    lastError = formatSyncError(response.status, await response.text());
+    const retryDelay = isTransientStatus(response.status)
+      ? COLD_START_RETRY_DELAY_MS
+      : RETRY_DELAY_MS;
+    if (
+      attempt < MAX_SYNC_ATTEMPTS &&
+      (isTransientStatus(response.status) || response.status >= 500)
+    ) {
+      await sleep(retryDelay);
+      continue;
+    }
+    break;
+  }
+
+  throw new Error(lastError);
+}
+
+// [ryzen-xp] : background install sync in REPO_PAGE_SIZE batches, no blocking modal
 export default function InstallationSuccessHandler() {
-  const [status, setStatus] = useState<OverlayStatus>('hidden');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -91,16 +157,19 @@ export default function InstallationSuccessHandler() {
     const numericInstallationId = Number(installationId);
     if (!Number.isInteger(numericInstallationId) || numericInstallationId <= 0) {
       const message = 'GitHub did not return a valid installation id.';
-      setStatus('error');
-      setErrorMessage(message);
-      if (window.name !== GITHUB_INSTALL_WINDOW_NAME) {
-        handleError(message, 'Connect repository');
-      }
+      handleError(message, 'Connect repository');
       notifyGitHubInstallParent({ type: GITHUB_INSTALL_FAILED, message });
+      clearInstallationQuery();
       return;
     }
 
-    setStatus('syncing');
+    const onReposPage = pathname === '/dashboard/repos' || pathname.startsWith('/dashboard/repos/');
+    if (!onReposPage) {
+      const next = new URLSearchParams(params);
+      router.replace(`/dashboard/repos?${next.toString()}`);
+      return;
+    }
+
     let cancelled = false;
 
     const syncInstallation = async () => {
@@ -113,7 +182,7 @@ export default function InstallationSuccessHandler() {
         throw new Error('Sign in again, then retry connecting the repository.');
       }
 
-      const health = await waitForBackendReady();
+      const health = await waitForBackendReady(15_000);
       if (health.status !== 'ok') {
         if (isPersistentDependencyFailure(health)) {
           throw new Error(
@@ -125,100 +194,65 @@ export default function InstallationSuccessHandler() {
         );
       }
 
-      let lastError = 'Installation sync failed.';
+      const listResponse = await fetchWithRetry(
+        `/api/repos/installation-repos?installationId=${numericInstallationId}`,
+        session.access_token
+      );
+      const repositories = parseInstallationRepos(await listResponse.json());
 
-      for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt += 1) {
-        let response: Response;
-        try {
-          response = await fetch(backendUrl('/api/repos/sync-installation'), {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              installationId: numericInstallationId,
-            }),
-          });
-        } catch (error: unknown) {
-          throw new Error(formatNetworkError(error), { cause: error });
-        }
+      if (cancelled) return;
 
-        if (response.ok) {
-          if (cancelled) return;
-
-          notifySuccess('Repository connected', 'GitHub App installation synced.');
-          notifyGitHubInstallParent(GITHUB_INSTALL_SUCCESS);
-          clearInstallationQuery();
-          setStatus('success');
-          window.setTimeout(closeInstallWindow, CLOSE_RETRY_MS);
-          return;
-        }
-
-        lastError = formatSyncError(response.status, await response.text());
-        const retryDelay = isTransientStatus(response.status)
-          ? COLD_START_RETRY_DELAY_MS
-          : RETRY_DELAY_MS;
-        if (
-          attempt < MAX_SYNC_ATTEMPTS &&
-          (isTransientStatus(response.status) || response.status >= 500)
-        ) {
-          await sleep(retryDelay);
-          continue;
-        }
-        break;
+      if (repositories.length === 0) {
+        notifySuccess('GitHub App connected', 'No public repositories were selected.');
+        notifyGitHubInstallParent(GITHUB_INSTALL_SUCCESS);
+        clearInstallationQuery();
+        router.refresh();
+        return;
       }
 
-      throw new Error(lastError);
+      for (let offset = 0; offset < repositories.length; offset += REPO_PAGE_SIZE) {
+        if (cancelled) return;
+
+        const batch = repositories.slice(offset, offset + REPO_PAGE_SIZE);
+        await fetchWithRetry('/api/repos/sync-installation', session.access_token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            installationId: numericInstallationId,
+            githubRepoIds: batch.map((repo) => repo.githubRepoId),
+          }),
+        });
+
+        if (cancelled) return;
+        router.refresh();
+      }
+
+      if (cancelled) return;
+
+      notifySuccess(
+        'Repositories connected',
+        `Synced ${repositories.length} repositor${repositories.length === 1 ? 'y' : 'ies'} from GitHub.`
+      );
+      notifyGitHubInstallParent(GITHUB_INSTALL_SUCCESS);
+      clearInstallationQuery();
+      router.refresh();
     };
 
     void syncInstallation().catch((error: unknown) => {
       if (cancelled) return;
       const message = error instanceof Error ? error.message : 'Installation sync failed.';
-      setStatus('error');
-      setErrorMessage(message);
-      if (window.name !== GITHUB_INSTALL_WINDOW_NAME) {
-        handleError(message, 'Connect repository');
-      }
+      handleError(message, 'Connect repository');
       notifyGitHubInstallParent({ type: GITHUB_INSTALL_FAILED, message });
       clearInstallationQuery();
+      router.refresh();
     });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+    // Sync is keyed off the install callback query + current path.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
-  if (status === 'hidden') return null;
-
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
-      <div className="dashboard-surface w-full max-w-md px-6 py-8 text-center sm:px-8">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white">
-          <RefreshCw
-            className={`h-6 w-6 ${status === 'syncing' ? 'animate-spin' : ''}`}
-            strokeWidth={2.5}
-            aria-hidden="true"
-          />
-        </span>
-        <h2 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-foreground">
-          {status === 'syncing' && 'Finishing GitHub installation'}
-          {status === 'success' && 'GitHub App connected'}
-          {status === 'error' && 'Could not finish installation'}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          {status === 'syncing' &&
-            'Syncing repositories from GitHub. This window should close automatically.'}
-          {status === 'success' &&
-            'You can close this window and continue in the original Trustless OSS tab.'}
-          {status === 'error' && (errorMessage ?? 'GitHub installed the app, but sync failed.')}
-        </p>
-        {status !== 'syncing' && (
-          <Button type="button" className="mt-6 w-full" onClick={closeInstallWindow}>
-            Close this window
-          </Button>
-        )}
-      </div>
-    </div>
-  );
+  return null;
 }

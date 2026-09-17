@@ -5,6 +5,7 @@ import ReposPagination, { REPO_PAGE_SIZE } from '@/app/components/dashboard/Repo
 import ReposToolbar from '@/app/components/dashboard/ReposToolbar';
 import SyncReposButton from '@/app/components/dashboard/SyncReposButton';
 import ReposLoadErrorToast from '@/app/components/dashboard/ReposLoadErrorToast';
+import { ReposCardSkeletonGrid } from '@/app/components/layout/PageSkeletons';
 import { paginateItems } from '@/lib/paginate';
 import { filterAndSortRepos, parseRepoQuery, parseRepoSort } from '@/lib/repo-filters';
 import Button from '@/app/components/ui/Button';
@@ -21,14 +22,21 @@ function toNumber(value: unknown): number {
 type DashboardRepo = Repo & {
   created_at: string;
   github_installation_id?: number | null;
+  githubInstallationId?: number | null;
 };
 
 function normalizeRepo(data: unknown): DashboardRepo | null {
   if (!data || typeof data !== 'object') return null;
 
-  const repo = data as DashboardRepo;
+  const repo = data as DashboardRepo & Record<string, unknown>;
+  const rawInstallation =
+    repo.github_installation_id ?? repo.githubInstallationId ?? repo['github_installation_id'];
+  const installationId = Number(rawInstallation);
+
   return {
     ...repo,
+    github_installation_id:
+      Number.isInteger(installationId) && installationId > 0 ? installationId : null,
     escrow_balance: toNumber(repo.escrow_balance),
     xlm_balance: repo.xlm_balance === undefined ? undefined : toNumber(repo.xlm_balance),
     stellar_balance:
@@ -95,6 +103,15 @@ function pageFromSearchParams(searchParams?: { [key: string]: string | string[] 
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function installationIdFromSearchParams(searchParams?: {
+  [key: string]: string | string[] | undefined;
+}) {
+  const raw = searchParams?.installation_id;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 interface ReposProps {
   // Match Next's PageProps: searchParams is a Promise or undefined
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -119,14 +136,13 @@ export default async function ReposPage({ searchParams }: ReposProps) {
   const sort = parseRepoSort(paramsObj?.sort);
   const filtered = filterAndSortRepos(repos, query, sort);
   const paged = paginateItems(filtered, pageFromSearchParams(paramsObj), REPO_PAGE_SIZE);
+  const isInstallSyncing = installationIdFromSearchParams(paramsObj) != null;
 
   const isNew = (createdAt: string) => {
     const created = new Date(createdAt).getTime();
     const now = new Date().getTime();
     return now - created < 5 * 60 * 1000;
   };
-
-  const isSyncing = paramsObj?.syncing === 'true';
 
   return (
     <div className="w-full">
@@ -138,13 +154,18 @@ export default async function ReposPage({ searchParams }: ReposProps) {
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
               Repositories
             </h1>
-            {repos.length > 0 && (
+            {isInstallSyncing ? (
+              <p className="mt-1 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <RefreshCw className="size-3.5 animate-spin text-primary" aria-hidden="true" />
+                Syncing repositories in the background…
+              </p>
+            ) : repos.length > 0 ? (
               <p className="mt-1 text-sm font-medium text-muted-foreground">
                 {filtered.length === repos.length
                   ? `${repos.length} connected`
                   : `${filtered.length} of ${repos.length} shown`}
               </p>
-            )}
+            ) : null}
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -162,7 +183,9 @@ export default async function ReposPage({ searchParams }: ReposProps) {
         </div>
       </header>
 
-      {repos.length === 0 ? (
+      {isInstallSyncing && repos.length === 0 ? (
+        <ReposCardSkeletonGrid count={REPO_PAGE_SIZE} />
+      ) : repos.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/80 bg-muted/40 px-6 py-16 text-center">
           <div className="flex size-11 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-primary/15">
             <GitBranch className="size-5" strokeWidth={2.25} aria-hidden="true" />
@@ -187,12 +210,6 @@ export default async function ReposPage({ searchParams }: ReposProps) {
               Add repository
             </Button>
           </div>
-          {isSyncing ? (
-            <p className="inline-flex items-center gap-2 text-xs font-medium text-primary">
-              <RefreshCw className="size-3.5 animate-spin" aria-hidden="true" />
-              Checking for repositories…
-            </p>
-          ) : null}
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/40 px-6 py-14 text-center">

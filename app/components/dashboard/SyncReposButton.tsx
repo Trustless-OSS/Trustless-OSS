@@ -7,6 +7,8 @@ import { handleError, notifySuccess } from '@/lib/notifications';
 import { backendUrl } from '@/lib/backend';
 import Button from '@/app/components/ui/Button';
 
+// [ryzen-xp] : Resolve GitHub App installation ids from cookie when repos have none yet
+
 async function readError(response: Response, fallback: string) {
   const text = await response.text();
   try {
@@ -19,12 +21,77 @@ async function readError(response: Response, fallback: string) {
   return trimmed || fallback;
 }
 
-async function syncRepositories(token: string, installationIds: number[]) {
-  if (installationIds.length === 0) {
-    throw new Error('Connect a GitHub repository first, then sync again.');
+function readGhToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)gh_token=([^;]*)/);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+async function fetchInstallationIdsFromGitHub(): Promise<number[]> {
+  const ghToken = readGhToken();
+  if (!ghToken) {
+    throw new Error(
+      'Connect a GitHub repository first (Add repository), or sign out and sign in again so we can read your GitHub installations.'
+    );
   }
 
-  for (const installationId of installationIds) {
+  const response = await fetch('https://api.github.com/user/installations?per_page=100', {
+    headers: {
+      Authorization: `Bearer ${ghToken}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await readError(
+        response,
+        'Could not list GitHub App installations. Sign in again, then retry Sync.'
+      )
+    );
+  }
+
+  const payload = (await response.json()) as {
+    installations?: Array<{ id?: number; app_slug?: string }>;
+  };
+  const appSlug = (process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || '').toLowerCase();
+  const ids = [
+    ...new Set(
+      (payload.installations ?? [])
+        .filter((installation) => {
+          if (!appSlug) return true;
+          const slug = installation.app_slug?.toLowerCase();
+          return !slug || slug === appSlug;
+        })
+        .map((installation) => Number(installation.id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+    ),
+  ];
+
+  if (ids.length === 0) {
+    throw new Error(
+      'No GitHub App installation found for this account. Click Add repository and install the app on your repos.'
+    );
+  }
+
+  return ids;
+}
+
+async function resolveInstallationIds(knownIds: number[]): Promise<number[]> {
+  if (knownIds.length > 0) return knownIds;
+  return fetchInstallationIdsFromGitHub();
+}
+
+async function syncRepositories(token: string, installationIds: number[]) {
+  const ids = await resolveInstallationIds(installationIds);
+
+  for (const installationId of ids) {
     const response = await fetch(backendUrl('/api/repos/sync-installation'), {
       method: 'POST',
       headers: {
