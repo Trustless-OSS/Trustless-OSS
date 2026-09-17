@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import FundEscrowButton from '../FundEscrowButton';
 import * as walletKit from '@/lib/wallet-kit';
@@ -45,7 +45,7 @@ describe('FundEscrowButton', () => {
     expect(screen.getByText(/Enter an amount greater than 0/i)).toBeInTheDocument();
   });
 
-  it('shows a wallet-connection state while the funding request is in flight', () => {
+  it('closes the fund dialog while the wallet modal is open so it stays clickable', async () => {
     vi.mocked(walletKit.getWalletKit).mockResolvedValue({
       authModal: vi.fn(() => new Promise(() => undefined)),
       signTransaction: vi.fn(),
@@ -67,7 +67,10 @@ describe('FundEscrowButton', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 
-    expect(screen.getByText(/Connecting wallet/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /Processing/i })).toBeDisabled();
   });
 
   it('offers quick amount chips', () => {

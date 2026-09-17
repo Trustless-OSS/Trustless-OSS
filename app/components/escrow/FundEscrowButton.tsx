@@ -123,6 +123,9 @@ export default function FundEscrowButton({
     try {
       const kit = await getWalletKit();
 
+      // Radix dialog overlay (z-50) sits above Stellar Wallets Kit and blocks wallet UI clicks.
+      setOpen(false);
+
       const { address } = await withTimeout(
         kit.authModal(),
         WALLET_OPERATION_TIMEOUT_MS,
@@ -130,6 +133,7 @@ export default function FundEscrowButton({
       );
       if (!address) throw new Error('No public key returned');
 
+      setOpen(true);
       setPhase('sign');
 
       const res1 = await fetch(backendUrl('/api/escrow/fund-unsigned'), {
@@ -156,12 +160,15 @@ export default function FundEscrowButton({
 
       const { unsignedTransaction } = await res1.json();
 
-      setPhase('processing');
+      setOpen(false);
+      setPhase('sign');
       const { signedTxXdr } = await withTimeout(
         kit.signTransaction(unsignedTransaction),
         WALLET_OPERATION_TIMEOUT_MS,
         'Transaction signing timed out. Please close the wallet modal and try again.'
       );
+      setOpen(true);
+      setPhase('processing');
 
       const res2 = await fetch(backendUrl('/api/escrow/submit-fund'), {
         method: 'POST',
@@ -169,7 +176,12 @@ export default function FundEscrowButton({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ repoId, amount: parsedAmount, signedXdr: signedTxXdr }),
+        body: JSON.stringify({
+          repoId,
+          amount: parsedAmount,
+          funderWallet: address,
+          signedXdr: signedTxXdr,
+        }),
       });
 
       if (!res2.ok) {
@@ -183,6 +195,7 @@ export default function FundEscrowButton({
       setTransactionHash(nextHash);
       setPhase('success');
     } catch (err: unknown) {
+      setOpen(true);
       setPhase('error');
       setError(err instanceof Error ? err.message : 'Failed to fund');
     } finally {
