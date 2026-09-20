@@ -60,7 +60,7 @@ function ConnectForm() {
           return;
         }
 
-        const res = await fetch(backendUrl('/api/contributor/me'), {
+        const res = await fetch(backendUrl('/api/v1/contributor/me'), {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
 
@@ -121,7 +121,7 @@ function ConnectForm() {
       );
       if (!address) throw new Error('No public key returned');
 
-      const res = await fetch(backendUrl('/api/milestones/push'), {
+      const res = await fetch(backendUrl('/api/v1/milestones/push'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ function ConnectForm() {
         return;
       }
 
-      const res = await fetch(backendUrl('/api/milestones/push'), {
+      const res = await fetch(backendUrl('/api/v1/milestones/push'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

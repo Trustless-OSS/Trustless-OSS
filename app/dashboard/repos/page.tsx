@@ -49,7 +49,7 @@ function isDashboardRepo(repo: DashboardRepo | null): repo is DashboardRepo {
 }
 
 async function getRepos(token: string): Promise<{ repos: DashboardRepo[]; error: string | null }> {
-  const url = `${BACKEND}/api/repos`;
+  const url = `${BACKEND}/api/v1/repos`;
   try {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },

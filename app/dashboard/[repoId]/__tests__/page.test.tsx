@@ -84,7 +84,7 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string) => {
-        if (url.includes('/api/repos/repo-123/issues')) {
+        if (url.includes('/api/v1/repos/repo-123/issues')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ data: mockIssues }),
@@ -124,7 +124,7 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation((url: string) => {
-        if (url.includes('/api/repos/repo-123/issues')) {
+        if (url.includes('/api/v1/repos/repo-123/issues')) {
           return Promise.resolve({
             ok: true,
             json: async () => ({ data: mockIssues }),

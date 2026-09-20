@@ -40,8 +40,15 @@ function isTimeoutError(error: unknown) {
   return /operation was aborted|aborted due to timeout/i.test(errorText(error));
 }
 
+function normalizeBackendPath(path: string[]) {
+  if (path[0] !== 'api') return path;
+  if (path[1] === 'v1') return path;
+  return ['api', 'v1', ...path.slice(1)];
+}
+
 function proxyTimeoutMs(path: string[], method: string) {
-  if (method === 'POST' && path.join('/') === 'api/repos/sync-installation') {
+  const nextPath = normalizeBackendPath(path);
+  if (method === 'POST' && nextPath.join('/') === 'api/v1/repos/sync-installation') {
     return SYNC_PROXY_TIMEOUT_MS;
   }
   return PROXY_TIMEOUT_MS;
@@ -57,7 +64,8 @@ function isRetryableNetworkError(error: unknown, method: string) {
 }
 
 async function proxy(request: NextRequest, path: string[]): Promise<Response> {
-  const target = `${remoteBackendUrl()}/${path.join('/')}${request.nextUrl.search}`;
+  const normalizedPath = normalizeBackendPath(path);
+  const target = `${remoteBackendUrl()}/${normalizedPath.join('/')}${request.nextUrl.search}`;
   const headers = new Headers();
   request.headers.forEach((value, key) => {
     if (!HOP_BY_HOP.has(key.toLowerCase())) {
@@ -122,7 +130,8 @@ async function handler(request: NextRequest, context: { params: Promise<{ path: 
   if (!path?.length) {
     return NextResponse.json({ error: 'Missing backend path' }, { status: 400 });
   }
-  return proxy(request, path);
+  const normalizedPath = normalizeBackendPath(path);
+  return proxy(request, normalizedPath);
 }
 
 export const GET = handler;

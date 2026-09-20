@@ -67,7 +67,7 @@ function repoDisplayName(fullName: string): string {
 
 async function getRepo(repoId: string, token: string): Promise<Repo | null> {
   try {
-    const res = await fetch(`${BACKEND}/api/repos/${repoId}`, {
+    const res = await fetch(`${BACKEND}/api/v1/repos/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -82,7 +82,7 @@ async function getRepo(repoId: string, token: string): Promise<Repo | null> {
 
 async function getIssues(repoId: string, token: string) {
   try {
-    const res = await fetch(`${BACKEND}/api/repos/${repoId}/issues`, {
+    const res = await fetch(`${BACKEND}/api/v1/repos/${repoId}/issues`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -143,23 +143,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
               <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
                 {repoDisplayName(repo.full_name)}
               </h1>
-              <Button
-                href={`https://github.com/${repo.full_name}`}
-                external
-                variant="outline"
-                size="sm"
-                aria-label={`Open ${repo.full_name} on GitHub`}
-                className="h-7 gap-1.5 rounded-md border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
-              >
-                <SiGithub className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                GitHub
-                <ExternalLink
-                  size={12}
-                  strokeWidth={2.25}
-                  className="text-muted-foreground"
-                  aria-hidden="true"
-                />
-              </Button>
+
             </div>
             {repo.escrow_contract_id ? (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -176,6 +160,24 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                 >
                   <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
                   Inspect
+                </Button>
+
+                <Button
+                  href={`https://github.com/${repo.full_name}`}
+                  external
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Open ${repo.full_name} on GitHub`}
+                  className="h-7 gap-1.5 rounded-md border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
+                >
+                  <SiGithub className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  GitHub
+                  <ExternalLink
+                    size={12}
+                    strokeWidth={2.25}
+                    className="text-muted-foreground"
+                    aria-hidden="true"
+                  />
                 </Button>
               </div>
             ) : (
@@ -194,7 +196,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                 </p>
                 <p className="text-2xl font-black tracking-tight text-foreground">
                   {repo.escrow_balance.toFixed(2)}{' '}
-                  <span className="text-sm font-semibold text-muted-foreground">USDC</span>
+                  <span className="text-sm  font-semibold text-muted-foreground">USDC</span>
                 </p>
               </div>
               {isRepoMaintainer && (
@@ -252,7 +254,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
               <span className="font-semibold text-foreground">low</span>,{' '}
               <span className="font-semibold text-foreground">medium</span>, or{' '}
               <span className="font-semibold text-foreground">high</span>, or comment{' '}
-              <span className="font-semibold text-foreground">@Trustless-OSS 50</span> on an issue.
+              <span className="font-semibold text-foreground">@toss /50</span> on an issue.
             </p>
           </div>
         ) : (
@@ -260,11 +262,11 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
             <Table>
               <TableHeader>
                 <TableRow className="text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                  <TableHead className="px-5">Target</TableHead>
-                  <TableHead className="px-5">Class</TableHead>
-                  <TableHead className="px-5">Bounty</TableHead>
+                  <TableHead className="px-5">Issue</TableHead>
+                  <TableHead className="px-5">Level</TableHead>
+                  <TableHead className="px-5">Amount</TableHead>
                   <TableHead className="px-5">State</TableHead>
-                  <TableHead className="px-5">Actor</TableHead>
+                  <TableHead className="px-5">Assiged</TableHead>
                   <TableHead className="px-5">Exec</TableHead>
                 </TableRow>
               </TableHeader>
@@ -329,12 +331,12 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               status={issue.status}
                               payoutStatus={
                                 assignment &&
-                                typeof assignment === 'object' &&
-                                'payout_status' in assignment
+                                  typeof assignment === 'object' &&
+                                  'payout_status' in assignment
                                   ? String(
-                                      (assignment as { payout_status?: string }).payout_status ??
-                                        'pending'
-                                    )
+                                    (assignment as { payout_status?: string }).payout_status ??
+                                    'pending'
+                                  )
                                   : 'pending'
                               }
                             />

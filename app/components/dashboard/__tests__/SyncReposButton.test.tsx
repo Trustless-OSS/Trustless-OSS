@@ -42,7 +42,7 @@ describe('SyncReposButton', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/backend/api/repos/sync-installation',
+        '/api/backend/api/v1/repos/sync-installation',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ installationId: 42 }),
@@ -54,7 +54,10 @@ describe('SyncReposButton', () => {
       );
       expect(refresh).toHaveBeenCalled();
     });
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/backend/api/repos/sync', expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/backend/api/v1/repos/sync',
+      expect.anything()
+    );
   });
 
   it('fetches GitHub installations when none are known yet', async () => {
@@ -83,7 +86,7 @@ describe('SyncReposButton', () => {
         })
       );
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/backend/api/repos/sync-installation',
+        '/api/backend/api/v1/repos/sync-installation',
         expect.objectContaining({
           body: JSON.stringify({ installationId: 99 }),
         })

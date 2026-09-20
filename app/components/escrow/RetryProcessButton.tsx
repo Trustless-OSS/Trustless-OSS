@@ -25,7 +25,7 @@ export default function RetryProcessButton({
   async function handleRetry() {
     setLoading(true);
     try {
-      const res = await fetch(backendUrl(`/api/issues/${issueId}/retry`), {
+      const res = await fetch(backendUrl(`/api/v1/issues/${issueId}/retry`), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

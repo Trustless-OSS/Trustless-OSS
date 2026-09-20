@@ -98,7 +98,7 @@ export async function fetchBackendHealth(timeoutMs = 55_000): Promise<HealthSnap
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(backendUrl('/api/health'), {
+    const response = await fetch(backendUrl('/api/v1/health'), {
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal,

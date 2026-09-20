@@ -26,7 +26,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
     setError('');
 
     try {
-      const res = await fetch(backendUrl(`/api/repos/${repoId}`), {
+      const res = await fetch(backendUrl(`/api/v1/repos/${repoId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

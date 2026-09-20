@@ -35,25 +35,25 @@ const TIERS: {
   accent: string;
   media: string;
 }[] = [
-  {
-    key: 'low',
-    label: 'Low',
-    accent: 'border-l-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/12',
-    media: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-  },
-  {
-    key: 'medium',
-    label: 'Medium',
-    accent: 'border-l-amber-400 bg-amber-50/80 dark:bg-amber-500/12',
-    media: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  },
-  {
-    key: 'high',
-    label: 'High',
-    accent: 'border-l-rose-400 bg-rose-50/80 dark:bg-rose-500/12',
-    media: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
-  },
-];
+    {
+      key: 'low',
+      label: 'Low',
+      accent: 'border-l-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/12',
+      media: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    },
+    {
+      key: 'medium',
+      label: 'Medium',
+      accent: 'border-l-amber-400 bg-amber-50/80 dark:bg-amber-500/12',
+      media: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    },
+    {
+      key: 'high',
+      label: 'High',
+      accent: 'border-l-rose-400 bg-rose-50/80 dark:bg-rose-500/12',
+      media: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+    },
+  ];
 
 function formatUsdc(value: string) {
   const amount = Number(value);
@@ -148,7 +148,7 @@ export default function RewardSettingsForm({
 
     setSaving(true);
     try {
-      const res = await fetch(backendUrl(`/api/repos/${repoId}/rewards`), {
+      const res = await fetch(backendUrl(`/api/v1/repos/${repoId}/rewards`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

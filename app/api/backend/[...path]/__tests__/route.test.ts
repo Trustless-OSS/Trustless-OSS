@@ -22,8 +22,8 @@ describe('backend proxy route', () => {
       );
     vi.stubGlobal('fetch', fetchMock);
 
-    const request = new NextRequest('http://localhost:3000/api/backend/api/health');
-    const pending = GET(request, { params: Promise.resolve({ path: ['api', 'health'] }) });
+    const request = new NextRequest('http://localhost:3000/api/backend/api/v1/health');
+    const pending = GET(request, { params: Promise.resolve({ path: ['api', 'v1', 'health'] }) });
     await vi.advanceTimersByTimeAsync(2000);
     const response = await pending;
 
@@ -37,14 +37,14 @@ describe('backend proxy route', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('ok', { status: 200 })));
 
     const request = new NextRequest(
-      'http://localhost:3000/api/backend/api/repos/sync-installation',
+      'http://localhost:3000/api/backend/api/v1/repos/sync-installation',
       {
         method: 'POST',
         body: JSON.stringify({ installationId: 1 }),
       }
     );
     await POST(request, {
-      params: Promise.resolve({ path: ['api', 'repos', 'sync-installation'] }),
+      params: Promise.resolve({ path: ['api', 'v1', 'repos', 'sync-installation'] }),
     });
 
     expect(timeout).toHaveBeenCalledWith(170_000);
@@ -57,14 +57,14 @@ describe('backend proxy route', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const request = new NextRequest(
-      'http://localhost:3000/api/backend/api/repos/sync-installation',
+      'http://localhost:3000/api/backend/api/v1/repos/sync-installation',
       {
         method: 'POST',
         body: JSON.stringify({ installationId: 1 }),
       }
     );
     const response = await POST(request, {
-      params: Promise.resolve({ path: ['api', 'repos', 'sync-installation'] }),
+      params: Promise.resolve({ path: ['api', 'v1', 'repos', 'sync-installation'] }),
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

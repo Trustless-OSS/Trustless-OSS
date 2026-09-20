@@ -90,7 +90,7 @@ async function syncRepositories(token: string, installationIds: number[]) {
   const ids = await resolveInstallationIds(installationIds);
 
   for (const installationId of ids) {
-    const response = await fetch(backendUrl('/api/repos/sync-installation'), {
+    const response = await fetch(backendUrl('/api/v1/repos/sync-installation'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

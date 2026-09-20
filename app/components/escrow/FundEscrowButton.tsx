@@ -140,7 +140,7 @@ export default function FundEscrowButton({
       setOpen(true);
       setPhase('sign');
 
-      const res1 = await fetch(backendUrl('/api/escrow/fund-unsigned'), {
+      const res1 = await fetch(backendUrl('/api/v1/escrow/fund-unsigned'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ export default function FundEscrowButton({
       setOpen(true);
       setPhase('processing');
 
-      const res2 = await fetch(backendUrl('/api/escrow/submit-fund'), {
+      const res2 = await fetch(backendUrl('/api/v1/escrow/submit-fund'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -291,11 +291,10 @@ export default function FundEscrowButton({
             </Label>
 
             <div
-              className={`flex items-center gap-2 rounded-2xl border bg-background px-3 py-2 transition-colors ${
-                showAmountError
+              className={`flex items-center gap-2 rounded-2xl border bg-background px-3 py-2 transition-colors ${showAmountError
                   ? 'border-destructive ring-3 ring-destructive/20'
                   : 'border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50'
-              }`}
+                }`}
             >
               <Image
                 src="/usd-coin-usdc-logo.svg"
@@ -365,13 +364,12 @@ export default function FundEscrowButton({
               ) : null}
               <Alert
                 variant={phase === 'error' ? 'destructive' : 'default'}
-                className={`rounded-2xl ${
-                  phase === 'success'
+                className={`rounded-2xl ${phase === 'success'
                     ? 'border-emerald-500/20 bg-emerald-500/5'
                     : phase === 'error'
                       ? 'border-destructive/20 bg-destructive/5'
                       : 'bg-muted/50'
-                }`}
+                  }`}
               >
                 {loading ? (
                   <LoadingLogo size="tiny" variant="circle" />

@@ -194,7 +194,7 @@ export default function InstallationSuccessHandler() {
       }
 
       const listResponse = await fetchWithRetry(
-        `/api/repos/installation-repos?installationId=${numericInstallationId}`,
+        `/api/v1/repos/installation-repos?installationId=${numericInstallationId}`,
         session.access_token
       );
       const repositories = parseInstallationRepos(await listResponse.json());
@@ -213,7 +213,7 @@ export default function InstallationSuccessHandler() {
         if (cancelled) return;
 
         const batch = repositories.slice(offset, offset + REPO_PAGE_SIZE);
-        await fetchWithRetry('/api/repos/sync-installation', session.access_token, {
+        await fetchWithRetry('/api/v1/repos/sync-installation', session.access_token, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

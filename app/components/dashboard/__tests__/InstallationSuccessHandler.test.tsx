@@ -118,7 +118,7 @@ describe('InstallationSuccessHandler', () => {
 
     const syncCalls = vi
       .mocked(global.fetch)
-      .mock.calls.filter(([url]) => String(url).includes('/api/repos/sync-installation'));
+      .mock.calls.filter(([url]) => String(url).includes('/api/v1/repos/sync-installation'));
     expect(syncCalls).toHaveLength(2);
     expect(JSON.parse(String(syncCalls[0][1]?.body))).toEqual({
       installationId: 153860735,
