@@ -143,4 +143,48 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.queryByText('null')).not.toBeInTheDocument();
   });
+
+  it('renders backend-provided reward levels instead of fixed low/medium/high labels', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/api/v1/repos/repo-123/issues')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ data: [] }),
+          });
+        }
+
+        if (url.includes('/api/v1/repos/repo-123')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              data: {
+                ...mockRepo,
+                repo: {
+                  ...mockRepo,
+                  rewards: [
+                    { label: 'starter', amount: 15 },
+                    { label: 'advanced', amount: 60 },
+                  ],
+                },
+              },
+            }),
+          });
+        }
+
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: [] }),
+        });
+      })
+    );
+
+    const PageJSX = await RepoDetailPage({ params: Promise.resolve({ repoId: 'repo-123' }) });
+    render(PageJSX);
+
+    expect(screen.getByText('Reward levels')).toBeInTheDocument();
+    expect(screen.getAllByText('starter').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('advanced').length).toBeGreaterThan(0);
+  });
 });

@@ -160,9 +160,10 @@ export default function RefundFundButton({
 
       notifySuccess(
         'Withdraw complete',
-        `${formatUsdc(refunded)} USDC returned to your wallet${cancelled > 0
-          ? `. ${cancelled} active issue${cancelled === 1 ? '' : 's'} cancelled.`
-          : '.'
+        `${formatUsdc(refunded)} USDC returned to your wallet${
+          cancelled > 0
+            ? `. ${cancelled} active issue${cancelled === 1 ? '' : 's'} cancelled.`
+            : '.'
         }`
       );
       setOpen(false);
@@ -303,10 +304,11 @@ export default function RefundFundButton({
             </div>
 
             <div
-              className={`flex items-center gap-2 rounded-2xl border bg-background px-3 py-2 transition-colors ${showAmountError
+              className={`flex items-center gap-2 rounded-2xl border bg-background px-3 py-2 transition-colors ${
+                showAmountError
                   ? 'border-destructive ring-3 ring-destructive/20'
                   : 'border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50'
-                }`}
+              }`}
             >
               <Image
                 src="/usd-coin-usdc-logo.svg"

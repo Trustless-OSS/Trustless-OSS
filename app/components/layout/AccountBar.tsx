@@ -8,24 +8,30 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NotificationBell from '@/app/components/layout/NotificationBell';
 import UserMenu from '@/app/components/layout/UserMenu';
+import { createClient } from '@/lib/supabase/client';
 
 const iconBtn =
   'size-9 shrink-0 rounded-md border-border bg-card text-foreground shadow-sm hover:border-primary/40 hover:shadow-md';
 
 export default function AccountBar({ user }: { user: User }) {
   const [mounted, setMounted] = useState(false);
+  const [token, setToken] = useState('');
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = mounted && resolvedTheme === 'dark';
 
   useEffect(() => {
     setMounted(true);
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setToken(session?.access_token ?? '');
+    });
   }, []);
 
   return (
     <TooltipProvider delayDuration={400}>
       <div className="flex items-center gap-2 sm:gap-2.5" data-testid="account-bar">
         <UserMenu user={user} />
-        <NotificationBell />
+        <NotificationBell token={token} />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

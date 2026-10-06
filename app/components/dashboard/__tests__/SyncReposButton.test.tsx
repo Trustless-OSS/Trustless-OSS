@@ -54,10 +54,7 @@ describe('SyncReposButton', () => {
       );
       expect(refresh).toHaveBeenCalled();
     });
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/backend/api/v1/repos/sync',
-      expect.anything()
-    );
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/backend/api/v1/repos/sync', expect.anything());
   });
 
   it('fetches GitHub installations when none are known yet', async () => {

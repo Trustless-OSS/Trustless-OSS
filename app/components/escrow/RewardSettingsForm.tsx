@@ -19,41 +19,44 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-type TierKey = 'low' | 'medium' | 'high';
+export interface RewardLevel {
+  label: string;
+  amount: number;
+}
 
 interface RewardSettingsFormProps {
   repoId: string;
   token: string;
-  initialLow: number;
-  initialMedium: number;
-  initialHigh: number;
+  initialLevels: RewardLevel[];
 }
 
-const TIERS: {
-  key: TierKey;
-  label: string;
-  accent: string;
-  media: string;
-}[] = [
-    {
-      key: 'low',
-      label: 'Low',
-      accent: 'border-l-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/12',
-      media: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-    },
-    {
-      key: 'medium',
-      label: 'Medium',
-      accent: 'border-l-amber-400 bg-amber-50/80 dark:bg-amber-500/12',
-      media: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    },
-    {
-      key: 'high',
-      label: 'High',
-      accent: 'border-l-rose-400 bg-rose-50/80 dark:bg-rose-500/12',
-      media: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
-    },
-  ];
+// Colour palette cycles for any number of tiers coming from the backend
+const ACCENT_PALETTE = [
+  {
+    accent: 'border-l-emerald-400 bg-emerald-50/80 dark:bg-emerald-500/12',
+    media: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  },
+  {
+    accent: 'border-l-amber-400 bg-amber-50/80 dark:bg-amber-500/12',
+    media: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  },
+  {
+    accent: 'border-l-rose-400 bg-rose-50/80 dark:bg-rose-500/12',
+    media: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+  },
+  {
+    accent: 'border-l-violet-400 bg-violet-50/80 dark:bg-violet-500/12',
+    media: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+  },
+  {
+    accent: 'border-l-cyan-400 bg-cyan-50/80 dark:bg-cyan-500/12',
+    media: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
+  },
+];
+
+function paletteFor(index: number) {
+  return ACCENT_PALETTE[index % ACCENT_PALETTE.length];
+}
 
 function formatUsdc(value: string) {
   const amount = Number(value);
@@ -67,18 +70,18 @@ function formatUsdc(value: string) {
 export default function RewardSettingsForm({
   repoId,
   token,
-  initialLow,
-  initialMedium,
-  initialHigh,
+  initialLevels,
 }: RewardSettingsFormProps) {
-  const [saved, setSaved] = useState({
-    low: String(initialLow),
-    medium: String(initialMedium),
-    high: String(initialHigh),
-  });
+  // saved is a map of label → amount string, keyed by the backend label
+  const [saved, setSaved] = useState<Record<string, string>>(() =>
+    Object.fromEntries(initialLevels.map((r) => [r.label, String(r.amount)]))
+  );
+  // labels order preserved from backend
+  const [labels] = useState<string[]>(() => initialLevels.map((r) => r.label));
+
   const [draft, setDraft] = useState('');
-  const [editingKey, setEditingKey] = useState<TierKey | null>(null);
-  const [pendingKey, setPendingKey] = useState<TierKey | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,14 +92,14 @@ export default function RewardSettingsForm({
     inputRef.current?.select();
   }, [editingKey]);
 
-  function displayValue(key: TierKey) {
-    return editingKey === key ? draft : saved[key];
+  function displayValue(key: string) {
+    return editingKey === key ? draft : (saved[key] ?? '0');
   }
 
-  function startEditing(key: TierKey) {
+  function startEditing(key: string) {
     if (saving || confirmOpen) return;
     setEditingKey(key);
-    setDraft(saved[key]);
+    setDraft(saved[key] ?? '0');
   }
 
   function cancelPending() {
@@ -106,21 +109,20 @@ export default function RewardSettingsForm({
     setEditingKey(null);
   }
 
-  function requestConfirm(key: TierKey, nextValue: string) {
+  function requestConfirm(key: string, nextValue: string) {
     const normalized = nextValue.trim() === '' ? '0' : nextValue;
-    if (normalized === saved[key]) {
+    if (normalized === (saved[key] ?? '0')) {
       setEditingKey(null);
       setDraft('');
       return;
     }
-
     setDraft(normalized);
     setPendingKey(key);
     setEditingKey(null);
     setConfirmOpen(true);
   }
 
-  function handleBlur(key: TierKey) {
+  function handleBlur(key: string) {
     if (editingKey !== key || confirmOpen) return;
     requestConfirm(key, draft);
   }
@@ -148,22 +150,23 @@ export default function RewardSettingsForm({
 
     setSaving(true);
     try {
+      // Build the payload from all current labels so the backend stays in sync
+      const rewardsPayload = Object.fromEntries(
+        labels.map((lbl) => [`reward_${lbl.toLowerCase()}`, parseFloat(nextSaved[lbl] ?? '0') || 0])
+      );
+
       const res = await fetch(backendUrl(`/api/v1/repos/${repoId}/rewards`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          reward_low: parseFloat(nextSaved.low) || 0,
-          reward_medium: parseFloat(nextSaved.medium) || 0,
-          reward_high: parseFloat(nextSaved.high) || 0,
-        }),
+        body: JSON.stringify(rewardsPayload),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to update rewards');
+        throw new Error((data as { error?: string }).error || 'Failed to update rewards');
       }
 
       setSaved(nextSaved);
@@ -172,7 +175,7 @@ export default function RewardSettingsForm({
       setDraft('');
       notifySuccess(
         'Reward updated',
-        `${TIERS.find((tier) => tier.key === pendingKey)?.label ?? 'Reward'} is now ${formatUsdc(nextSaved[pendingKey])} USDC.`
+        `${pendingKey.charAt(0).toUpperCase() + pendingKey.slice(1)} is now ${formatUsdc(nextSaved[pendingKey])} USDC.`
       );
     } catch (e) {
       handleError(e, 'Update Rewards');
@@ -181,8 +184,10 @@ export default function RewardSettingsForm({
     }
   }
 
-  const pendingTier = TIERS.find((tier) => tier.key === pendingKey);
-  const fromAmount = pendingKey ? formatUsdc(saved[pendingKey]) : '—';
+  const pendingPalette = pendingKey
+    ? paletteFor(labels.indexOf(pendingKey))
+    : ACCENT_PALETTE[0];
+  const fromAmount = pendingKey ? formatUsdc(saved[pendingKey] ?? '0') : '—';
   const toAmount = formatUsdc(draft);
 
   return (
@@ -197,34 +202,36 @@ export default function RewardSettingsForm({
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {TIERS.map((tier) => {
-          const isEditing = editingKey === tier.key;
-          const value = displayValue(tier.key);
+        {labels.map((key, index) => {
+          const palette = paletteFor(index);
+          const isEditing = editingKey === key;
+          const value = displayValue(key);
+          const displayLabel = key.charAt(0).toUpperCase() + key.slice(1);
 
           return (
             <div
-              key={tier.key}
+              key={key}
               className={cn(
                 'flex min-h-[4.75rem] flex-col justify-between rounded-2xl border-l-4 px-4 py-3 ring-1 ring-border/50',
-                tier.accent
+                palette.accent
               )}
             >
               <div className="flex items-center justify-between gap-2">
                 <Label
-                  htmlFor={isEditing ? `reward-${tier.key}` : undefined}
+                  htmlFor={isEditing ? `reward-${key}` : undefined}
                   className="text-sm font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                 >
-                  {tier.label}
+                  {displayLabel}
                 </Label>
                 {!isEditing ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    onClick={() => startEditing(tier.key)}
+                    onClick={() => startEditing(key)}
                     disabled={saving || confirmOpen || editingKey !== null}
-                    aria-label={`Edit ${tier.label} reward`}
-                    title={`Edit ${tier.label}`}
+                    aria-label={`Edit ${displayLabel} reward`}
+                    title={`Edit ${displayLabel}`}
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <Pencil strokeWidth={2.25} aria-hidden="true" />
@@ -236,17 +243,17 @@ export default function RewardSettingsForm({
                 {isEditing ? (
                   <Input
                     ref={inputRef}
-                    id={`reward-${tier.key}`}
+                    id={`reward-${key}`}
                     type="number"
                     inputMode="decimal"
                     step="0.01"
                     min="0"
                     value={draft}
                     disabled={saving}
-                    aria-label={`${tier.label} reward in USDC`}
+                    aria-label={`${displayLabel} reward in USDC`}
                     className="h-8 border-0 bg-transparent px-0 font-mono text-xl font-black shadow-none focus-visible:border-0 focus-visible:ring-0 md:text-xl"
                     onChange={(event) => setDraft(event.target.value)}
-                    onBlur={() => handleBlur(tier.key)}
+                    onBlur={() => handleBlur(key)}
                     onKeyDown={handleKeyDown}
                   />
                 ) : (
@@ -270,15 +277,15 @@ export default function RewardSettingsForm({
         <AlertDialogContent className="gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-md">
           <AlertDialogHeader className="gap-3 p-5 sm:p-6">
             <AlertDialogMedia
-              className={cn('mb-0 size-12 rounded-2xl', pendingTier?.media ?? 'bg-muted')}
+              className={cn('mb-0 size-12 rounded-2xl', pendingPalette.media)}
             >
               <Pencil className="size-5" strokeWidth={2.25} aria-hidden="true" />
             </AlertDialogMedia>
             <AlertDialogTitle className="font-display text-xl font-extrabold tracking-tight">
-              Update {pendingTier?.label.toLowerCase()} reward?
+              Update {pendingKey?.toLowerCase()} reward?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-left text-sm leading-6">
-              This changes the {pendingTier?.label.toLowerCase()} bounty amount for newly discovered
+              This changes the {pendingKey?.toLowerCase()} bounty amount for newly discovered
               issues. Existing bounties keep their original reward.
             </AlertDialogDescription>
           </AlertDialogHeader>

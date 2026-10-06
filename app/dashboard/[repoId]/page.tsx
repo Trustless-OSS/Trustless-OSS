@@ -4,9 +4,9 @@ import { SiGithub } from 'react-icons/si';
 import { createClient } from '@/lib/supabase/server';
 import DeployEscrowButton from '@/app/components/escrow/DeployEscrowButton';
 import FundEscrowButton from '@/app/components/escrow/FundEscrowButton';
-import RewardSettingsForm from '@/app/components/escrow/RewardSettingsForm';
 import RetryProcessButton from '@/app/components/escrow/RetryProcessButton';
 import RefundFundButton from '@/app/components/escrow/RefundFundButton';
+import RewardSettingsForm from '@/app/components/escrow/RewardSettingsForm';
 import DeleteRepoButton from '@/app/components/dashboard/DeleteRepoButton';
 import Button from '@/app/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
@@ -22,41 +22,196 @@ import { getActorUsername } from '@/lib/issues';
 
 const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
 
+// CREATE TABLE "repositories"(
+//   "id" UUID NOT NULL,
+//   "github_repo_id" BIGINT NOT NULL,
+//   "github_install_id" BIGINT,
+//   "full_name" TEXT NOT NULL,
+//   "escrow_contract_id" TEXT,
+//   "escrow_balance" NUMERIC,
+//   "balance_synced_at" TIMESTAMPTZ(6),
+//   "created_at" TIMESTAMPTZ(6) NOT NULL,
+//   PRIMARY KEY("id")
+// );
+// pub(crate) struct RepoDetails {
+//   pub(crate) repo: Repo,
+//     pub(crate) is_maintainer: bool,
+//       pub(crate) escrow_deployed: bool,
+//         pub(crate) escrow_status: & 'static str,
+//   pub(crate) can_deploy_escrow: bool,
+//     pub(crate) can_fund_escrow: bool,
+//       pub(crate) can_close_escrow: bool,
+//         pub(crate) can_refund_escrow: bool,
+// }
+
 type Repo = {
   id: string;
   github_repo_id: number;
+  github_install_id: number | null;
   full_name: string;
-  owner_github_id: number;
-  owner_username: string;
-  installer_github_id: number | null;
-  github_installation_id: number | null;
   escrow_contract_id: string | null;
   escrow_funder_wallet?: string | null;
   escrow_balance: number;
-  reward_low: number;
-  reward_medium: number;
-  reward_high: number;
-  is_fork: boolean;
-  is_private: boolean;
-  owner_type: 'User' | 'Organization';
+  balance_synced_at: string | null;
   created_at: string;
+  rewards?: RewardLevel[];
 };
+
+type RepoDetails = {
+  repo: Repo;
+  is_maintainer: boolean;
+  escrow_deployed: boolean;
+  escrow_status: string;
+  can_deploy_escrow: boolean;
+  can_fund_escrow: boolean;
+  can_close_escrow: boolean;
+  can_refund_escrow: boolean;
+};
+
+type RewardLevel = {
+  label: string;
+  amount: number;
+};
+
+type Reward = RewardLevel[];
+
+type JsonRecord = Record<string, unknown>;
 
 function toNumber(value: unknown): number {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
-function normalizeRepo(data: unknown): Repo | null {
-  if (!data || typeof data !== 'object') return null;
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null;
+}
 
-  const repo = data as Repo;
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function boolean(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeRewardLevels(value: unknown): RewardLevel[] {
+  if (!value) return [];
+
+  const nestedValue =
+    isRecord(value) &&
+    (value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers)
+      ? value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers
+      : value;
+
+  if (Array.isArray(nestedValue)) {
+    return nestedValue.flatMap((item) => {
+      if (isRecord(item)) {
+        const label =
+          nullableString(item.label) ??
+          nullableString(item.name) ??
+          nullableString(item.reward_label) ??
+          nullableString(item.level) ??
+          null;
+        const amount = toNumber(
+          item.amount ?? item.value ?? item.usdc ?? item.reward_amount ?? item.reward ?? item.amount_usdc
+        );
+
+        return label && Number.isFinite(amount) ? [{ label, amount }] : [];
+      }
+
+      if (typeof item === 'number' || typeof item === 'string') {
+        const amount = toNumber(item);
+        return Number.isFinite(amount) ? [{ label: 'custom', amount }] : [];
+      }
+
+      return [];
+    });
+  }
+
+  if (isRecord(nestedValue)) {
+    return Object.entries(nestedValue).flatMap(([key, raw]) => {
+      if (isRecord(raw)) {
+        const label =
+          nullableString(raw.label) ??
+          nullableString(raw.name) ??
+          nullableString(raw.reward_label) ??
+          nullableString(raw.level) ??
+          key;
+        const amount = toNumber(
+          raw.amount ?? raw.value ?? raw.usdc ?? raw.reward_amount ?? raw.reward ?? raw.amount_usdc
+        );
+
+        if (!label || !Number.isFinite(amount)) return [];
+        return [{ label, amount }];
+      }
+
+      if (typeof raw === 'number' || typeof raw === 'string') {
+        const amount = toNumber(raw);
+        if (!Number.isFinite(amount)) return [];
+        return [{ label: key, amount }];
+      }
+
+      return [];
+    });
+  }
+
+  return [];
+}
+
+function normalizeRepo(data: unknown): RepoDetails | null {
+  if (!isRecord(data)) return null;
+
+  const source = isRecord(data.repo) ? data.repo : isRecord(data.Repo) ? data.Repo : data;
+  const id = nullableString(source.id);
+  const fullName = nullableString(source.full_name);
+  const createdAt = nullableString(source.created_at);
+  if (!id || !fullName || !createdAt) return null;
+
+  const rewardLevels = normalizeRewardLevels(
+    source.rewards ??
+      source.reward_levels ??
+      source.rewardLevels ??
+      source.levels ??
+      source.tiers ??
+      data.rewards ??
+      data.reward_levels ??
+      data.rewardLevels ??
+      data.levels ??
+      data.tiers
+  );
+
+  const escrowContractId = nullableString(source.escrow_contract_id);
+  const escrowDeployed = boolean(
+    data.escrow_deployed ?? data.escrowDeployed,
+    Boolean(escrowContractId)
+  );
+  const repo: Repo = {
+    id,
+    github_repo_id: toNumber(source.github_repo_id),
+    github_install_id:
+      source.github_install_id === null || source.github_install_id === undefined
+        ? null
+        : toNumber(source.github_install_id),
+    full_name: fullName,
+    escrow_contract_id: escrowContractId,
+    escrow_funder_wallet: nullableString(source.escrow_funder_wallet),
+    escrow_balance: toNumber(source.escrow_balance),
+    balance_synced_at: nullableString(source.balance_synced_at),
+    created_at: createdAt,
+    rewards: rewardLevels,
+  };
+
   return {
-    ...repo,
-    escrow_balance: toNumber(repo.escrow_balance),
-    reward_low: toNumber(repo.reward_low),
-    reward_medium: toNumber(repo.reward_medium),
-    reward_high: toNumber(repo.reward_high),
+    repo,
+    is_maintainer: boolean(data.is_maintainer ?? data.isMaintainer),
+    escrow_deployed: escrowDeployed,
+    escrow_status:
+      nullableString(data.escrow_status ?? data.escrowStatus) ??
+      (escrowDeployed ? 'active' : 'not_deployed'),
+    can_deploy_escrow: boolean(data.can_deploy_escrow ?? data.canDeployEscrow),
+    can_fund_escrow: boolean(data.can_fund_escrow ?? data.canFundEscrow),
+    can_close_escrow: boolean(data.can_close_escrow ?? data.canCloseEscrow),
+    can_refund_escrow: boolean(data.can_refund_escrow ?? data.canRefundEscrow),
   };
 }
 
@@ -65,7 +220,7 @@ function repoDisplayName(fullName: string): string {
   return name || fullName;
 }
 
-async function getRepo(repoId: string, token: string): Promise<Repo | null> {
+async function getRepo(repoId: string, token: string): Promise<RepoDetails | null> {
   try {
     const res = await fetch(`${BACKEND}/api/v1/repos/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -74,7 +229,23 @@ async function getRepo(repoId: string, token: string): Promise<Repo | null> {
     if (!res.ok) return null;
 
     const data = await res.json();
-    return normalizeRepo(data.data ?? data.repo ?? null);
+    return normalizeRepo(data.data ?? data);
+  } catch {
+    return null;
+  }
+}
+
+async function getRepoRewards(repoId: string, token: string): Promise<Reward | null> {
+  try {
+    const res = await fetch(`${BACKEND}/api/v1/repos/rewards/${repoId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const rewardLevels = normalizeRewardLevels(data.data ?? data);
+    return rewardLevels.length > 0 ? rewardLevels : null;
   } catch {
     return null;
   }
@@ -105,13 +276,14 @@ function statusBadge(status: string) {
 
 function diffBadge(diff: string | null) {
   if (!diff) return '';
+  const normalized = diff.trim().toLowerCase();
   const map: Record<string, string> = {
     low: 'diff-low',
     medium: 'diff-medium',
     high: 'diff-high',
     custom: 'diff-custom',
   };
-  return `${map[diff] ?? ''} rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide`;
+  return `${map[normalized] ?? 'diff-custom'} rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide`;
 }
 
 export default async function RepoDetailPage({ params }: { params: Promise<{ repoId: string }> }) {
@@ -127,12 +299,15 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
   } = await supabase.auth.getSession();
 
   const token = session?.access_token ?? '';
-  const [repo, issues] = await Promise.all([getRepo(repoId, token), getIssues(repoId, token)]);
-
-  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
-  const isRepoMaintainer =
-    repo &&
-    (Number(repo.owner_github_id) === githubId || Number(repo.installer_github_id) === githubId);
+  const [repoDetails, issues, repoRewards] = await Promise.all([
+    getRepo(repoId, token),
+    getIssues(repoId, token),
+    getRepoRewards(repoId, token),
+  ]);
+  const repo = repoDetails?.repo;
+  const rewardLevels = repo?.rewards?.length ? repo.rewards : repoRewards ?? [];
+  const hasEscrow = Boolean(repoDetails?.escrow_deployed && repo?.escrow_contract_id);
+  const isRepoMaintainer = repoDetails?.is_maintainer ?? false;
 
   return (
     <div className="w-full space-y-10">
@@ -143,9 +318,8 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
               <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
                 {repoDisplayName(repo.full_name)}
               </h1>
-
             </div>
-            {repo.escrow_contract_id ? (
+            {hasEscrow && repo.escrow_contract_id ? (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
                 <span className="font-mono font-semibold">
@@ -183,12 +357,14 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
             ) : (
               <div className="mt-4 max-w-xs space-y-3">
                 <p className="text-sm font-semibold text-red-600">No escrow contract yet</p>
-                <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                {repoDetails?.can_deploy_escrow && (
+                  <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                )}
               </div>
             )}
           </div>
 
-          {repo.escrow_contract_id && (
+          {hasEscrow && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
               <div className="sm:pr-2">
                 <p className="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
@@ -199,45 +375,55 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                   <span className="text-sm  font-semibold text-muted-foreground">USDC</span>
                 </p>
               </div>
-              {isRepoMaintainer && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <FundEscrowButton
-                    repoId={repoId}
-                    token={session?.access_token ?? ''}
-                    repoName={repo.full_name}
-                    currentBalance={repo.escrow_balance}
-                  />
-                  {repo.escrow_balance > 0 ? (
-                    <RefundFundButton
-                      repoId={repoId}
-                      token={session?.access_token ?? ''}
-                      currentBalance={repo.escrow_balance}
-                      destinationAddress={repo.escrow_funder_wallet}
-                    />
-                  ) : (
-                    <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
-                  )}
-                </div>
-              )}
+              {(repoDetails?.can_fund_escrow ||
+                repoDetails?.can_refund_escrow ||
+                isRepoMaintainer) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {repoDetails?.can_fund_escrow && (
+                      <FundEscrowButton
+                        repoId={repoId}
+                        token={session?.access_token ?? ''}
+                        repoName={repo.full_name}
+                        currentBalance={repo.escrow_balance}
+                      />
+                    )}
+                    {repo.escrow_balance > 0 && repoDetails?.can_refund_escrow ? (
+                      <RefundFundButton
+                        repoId={repoId}
+                        token={session?.access_token ?? ''}
+                        currentBalance={repo.escrow_balance}
+                        destinationAddress={repo.escrow_funder_wallet}
+                      />
+                    ) : repo.escrow_balance === 0 && isRepoMaintainer ? (
+                      <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
+                    ) : null}
+                  </div>
+                )}
             </div>
           )}
         </header>
-      )}
-
-      {isRepoMaintainer && repo && (
-        <RewardSettingsForm
-          repoId={repoId}
-          token={session?.access_token ?? ''}
-          initialLow={repo.reward_low}
-          initialMedium={repo.reward_medium}
-          initialHigh={repo.reward_high}
-        />
       )}
 
       {!isRepoMaintainer && repo && (
         <p className="text-sm font-semibold text-muted-foreground">
           You are viewing this repository as a contributor.
         </p>
+      )}
+
+      {rewardLevels.length > 0 && (
+        <RewardSettingsForm
+          repoId={repoId}
+          token={token}
+          initialLevels={rewardLevels}
+        />
+      )}
+
+      {rewardLevels.length === 0 && isRepoMaintainer && (
+        <RewardSettingsForm
+          repoId={repoId}
+          token={token}
+          initialLevels={[]}
+        />
       )}
 
       <section>
@@ -251,10 +437,21 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
             <p className="text-sm font-semibold text-muted-foreground">No tracked issues yet.</p>
             <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
               Add a <span className="font-semibold text-foreground">rewarded</span> label with{' '}
-              <span className="font-semibold text-foreground">low</span>,{' '}
-              <span className="font-semibold text-foreground">medium</span>, or{' '}
-              <span className="font-semibold text-foreground">high</span>, or comment{' '}
-              <span className="font-semibold text-foreground">@toss /50</span> on an issue.
+              {rewardLevels.length > 0 ? (
+                rewardLevels.map((level, index) => (
+                  <span key={`${level.label}-${index}`} className="font-semibold text-foreground">
+                    {level.label}
+                    {index < rewardLevels.length - 1 ? ', ' : ''}
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">low</span>,{' '}
+                  <span className="font-semibold text-foreground">medium</span>, or{' '}
+                  <span className="font-semibold text-foreground">high</span>
+                </>
+              )}
+              , or comment <span className="font-semibold text-foreground">@toss /50</span> on an issue.
             </p>
           </div>
         ) : (

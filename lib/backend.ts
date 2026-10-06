@@ -9,7 +9,16 @@ export function remoteBackendUrl(): string {
 
 export function backendUrl(path = ''): string {
   const raw = path ? (path.startsWith('/') ? path : `/${path}`) : '';
-  const normalized = raw === '/api' ? '/api/v1' : raw.startsWith('/api/v1') ? raw : raw.startsWith('/api/') ? raw.replace(/^\/api\//, '/api/v1/') : raw.startsWith('/api') ? '/api/v1' : `/api/v1${raw}`;
+  const normalized =
+    raw === '/api'
+      ? '/api/v1'
+      : raw.startsWith('/api/v1')
+        ? raw
+        : raw.startsWith('/api/')
+          ? raw.replace(/^\/api\//, '/api/v1/')
+          : raw.startsWith('/api')
+            ? '/api/v1'
+            : `/api/v1${raw}`;
 
   if (typeof window !== 'undefined') {
     return `/api/backend${normalized}`;
