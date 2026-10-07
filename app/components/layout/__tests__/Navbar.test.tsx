@@ -38,10 +38,11 @@ vi.mock('@/lib/supabase/client', () => ({
 vi.mock('@/lib/backend', () => ({
   backendUrl: (p: string) => {
     const raw = p.startsWith('/') ? p : `/${p}`;
-    if (raw.startsWith('/api/v1')) return raw;
-    if (raw.startsWith('/api/')) return raw.replace(/^\/api\//, '/api/v1/');
-    if (raw.startsWith('/api')) return '/api/v1';
-    return `/api/v1${raw}`;
+    if (raw.startsWith('/api/v1')) return `http://localhost:5000${raw}`;
+    if (raw.startsWith('/api/'))
+      return `http://localhost:5000${raw.replace(/^\/api\//, '/api/v1/')}`;
+    if (raw.startsWith('/api')) return 'http://localhost:5000/api/v1';
+    return `http://localhost:5000/api/v1${raw}`;
   },
   authHeaders: () => ({ Authorization: 'Bearer tok' }),
 }));

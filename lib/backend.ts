@@ -37,9 +37,8 @@ export function backendUrl(path = ''): string {
   }
 
   if (typeof window !== 'undefined') {
-    // Browser: always call the full API path (no proxy)
-    // This handles both localhost (same origin) and production domains
-    return normalized;
+    // Browser: always use full backend URL (different domain in production)
+    return `${REMOTE_BACKEND}${normalized}`;
   }
 
   // Server-side: use remote backend with full normalized path
