@@ -278,16 +278,18 @@ function statusBadge(status: string) {
   return `${map[status] ?? 'status-pending'} status-badge`;
 }
 
-function diffBadge(diff: string | null) {
-  if (!diff) return '';
-  const normalized = diff.trim().toLowerCase();
+function levelBadge(level: string) {
+  const base =
+    'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1';
   const map: Record<string, string> = {
-    low: 'diff-low',
-    medium: 'diff-medium',
-    high: 'diff-high',
-    custom: 'diff-custom',
+    low: 'bg-emerald-100 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-300',
+    medium: 'bg-amber-100 text-amber-700 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-300',
+    high: 'bg-rose-100 text-rose-700 ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-300',
   };
-  return `${map[normalized] ?? 'diff-custom'} rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide`;
+  const tone =
+    map[level.trim().toLowerCase()] ??
+    'bg-violet-100 text-violet-700 ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-300';
+  return `${base} ${tone}`;
 }
 
 export default async function RepoDetailPage({ params }: { params: Promise<{ repoId: string }> }) {
@@ -455,13 +457,13 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
           <div className="overflow-hidden rounded-2xl bg-card/80 ring-1 ring-foreground/10">
             <Table>
               <TableHeader>
-                <TableRow className="text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                  <TableHead className="px-5">Issue</TableHead>
-                  <TableHead className="px-5">Level</TableHead>
-                  <TableHead className="px-5">Amount</TableHead>
-                  <TableHead className="px-5">State</TableHead>
-                  <TableHead className="px-5">Assiged</TableHead>
-                  <TableHead className="px-5">Exec</TableHead>
+                <TableRow className="border-b border-border/70 text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase hover:bg-transparent">
+                  <TableHead className="px-5 py-3">Issue</TableHead>
+                  <TableHead className="px-5 py-3">Level</TableHead>
+                  <TableHead className="px-5 py-3">Reward</TableHead>
+                  <TableHead className="px-5 py-3">Status</TableHead>
+                  <TableHead className="px-5 py-3">Contributor</TableHead>
+                  <TableHead className="px-5 py-3 text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -479,45 +481,80 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                       ? issue.assignments[0]
                       : issue.assignments;
                     const actorUsername = getActorUsername(issue);
+                    const issueUrl = `https://github.com/${repo?.full_name}/issues/${issue.github_issue_number}`;
                     return (
-                      <TableRow key={issue.id} className="text-foreground">
-                        <TableCell className="px-5 py-3.5">
-                          <span className="mr-2 font-bold text-primary">
-                            #{issue.github_issue_number}
-                          </span>
-                          <span className="font-semibold">{issue.title}</span>
+                      <TableRow key={issue.id} className="border-b border-border/50 text-foreground transition-colors last:border-0 hover:bg-muted/40">
+                        {/* Issue — only the number links to GitHub */}
+                        <TableCell className="max-w-md px-5 py-4">
+                          <div className="flex items-start gap-2.5">
+                            <a
+                              href={issueUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-0.5 shrink-0 font-mono text-xs font-bold text-primary transition-colors hover:underline"
+                              aria-label={`Open issue #${issue.github_issue_number} on GitHub`}
+                            >
+                              #{issue.github_issue_number}
+                            </a>
+                            <span className="truncate text-base font-semibold leading-6 sm:text-[17px]" title={issue.title}>
+                              {issue.title}
+                            </span>
+                          </div>
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
-                          {issue.difficulty_label && (
-                            <span className={diffBadge(issue.difficulty_label)}>
+
+                        {/* Level */}
+                        <TableCell className="px-5 py-4">
+                          {issue.difficulty_label ? (
+                            <span className={levelBadge(issue.difficulty_label)}>
                               {issue.difficulty_label}
                             </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-5 py-3.5 font-mono">
+
+                        {/* Reward */}
+                        <TableCell className="px-5 py-4 font-mono whitespace-nowrap">
                           <span className="font-black">{issue.reward_amount}</span>{' '}
                           <span className="text-xs font-semibold text-muted-foreground">USDC</span>
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
+
+                        {/* Status */}
+                        <TableCell className="px-5 py-4">
                           <Badge variant="secondary" className={statusBadge(issue.status)}>
                             {issue.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
+
+                        {/* Contributor — avatar + handle */}
+                        <TableCell className="px-5 py-4">
                           {actorUsername ? (
                             <a
                               href={`https://github.com/${actorUsername}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-semibold text-foreground transition-colors hover:text-primary hover:underline"
+                              className="inline-flex items-center gap-2 font-semibold text-foreground transition-colors hover:text-primary"
                             >
-                              @{actorUsername}
+                              <img
+                                src={`https://github.com/${actorUsername}.png?size=48`}
+                                alt=""
+                                width={24}
+                                height={24}
+                                loading="lazy"
+                                className="size-6 shrink-0 rounded-full ring-1 ring-border"
+                              />
+                              <span className="truncate">@{actorUsername}</span>
                             </a>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="inline-flex items-center gap-2 text-muted-foreground">
+                              <span className="size-6 shrink-0 rounded-full bg-muted ring-1 ring-border" aria-hidden="true" />
+                              Unassigned
+                            </span>
                           )}
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
+
+                        {/* Action */}
+                        <TableCell className="px-5 py-4 text-right">
                           {isRepoMaintainer ? (
                             <RetryProcessButton
                               issueId={issue.id}
@@ -535,7 +572,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               }
                             />
                           ) : (
-                            <span className="text-xs font-semibold text-muted-foreground">N/A</span>
+                            <span className="text-xs font-semibold text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       </TableRow>

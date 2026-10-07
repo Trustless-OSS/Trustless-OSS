@@ -19,6 +19,7 @@ import { SiDiscord, SiGithub, SiTelegram, SiX } from 'react-icons/si';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
+import { authHeaders, backendUrl } from '@/lib/backend';
 import { handleError, notifySuccess } from '@/lib/notifications';
 import Button from '@/app/components/ui/Button';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
@@ -147,6 +148,69 @@ function websiteHref(value: string) {
   }
 }
 
+/** Map a backend /contributor/me contributor object onto the form shape. */
+function formFromContributor(c: Record<string, unknown>, fallback: ProfileForm): ProfileForm {
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  const name = splitDisplayName(str(c.full_name));
+  return {
+    firstName: name.firstName || fallback.firstName,
+    lastName: name.lastName || fallback.lastName,
+    bio: str(c.bio),
+    location: str(c.location),
+    website: str(c.website),
+    skills: str(c.skills),
+    telegram: normalizeUsername(str(c.telegram)),
+    discord: normalizeUsername(str(c.discord)),
+    twitter: normalizeUsername(str(c.twitter)),
+    stellarAddress: str(c.stellar_wallet),
+  };
+}
+
+async function fetchContributor(token: string): Promise<Record<string, unknown> | null> {
+  const res = await fetch(backendUrl('/contributor/me'), { headers: authHeaders(token, false), cache: 'no-store' });
+  if (!res.ok) return null;
+  const json = await res.json();
+  const c = json?.contributor ?? json?.data?.contributor ?? null;
+  return c && typeof c === 'object' ? (c as Record<string, unknown>) : null;
+}
+
+async function saveProfile(token: string, form: ProfileForm) {
+  const res = await fetch(backendUrl('/contributor/profile'), {
+    method: 'PUT',
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      fullName: fullName(form),
+      bio: form.bio.trim(),
+      location: form.location.trim(),
+      website: form.website.trim(),
+      skills: form.skills.trim(),
+      telegram: normalizeUsername(form.telegram),
+      discord: normalizeUsername(form.discord),
+      twitter: normalizeUsername(form.twitter),
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    let m = `HTTP ${res.status}`;
+    try { m = ((JSON.parse(t) as { error?: string }).error ?? t) || m; } catch { if (t) m = t; }
+    throw new Error(m);
+  }
+}
+
+async function connectWalletBackend(token: string, address: string) {
+  const res = await fetch(backendUrl('/wallet/connect'), {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ wallet: address, payoutChain: 'stellar', payoutAddress: address }),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    let m = `HTTP ${res.status}`;
+    try { m = ((JSON.parse(t) as { error?: string }).error ?? t) || m; } catch { if (t) m = t; }
+    throw new Error(m);
+  }
+}
+
 export default function ProfileSettings({ user }: { user: User }) {
   const githubName = user.user_metadata?.user_name ?? user.email?.split('@')[0] ?? 'developer';
   const avatar = user.user_metadata?.avatar_url as string | undefined;
@@ -157,9 +221,30 @@ export default function ProfileSettings({ user }: { user: User }) {
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [copiedField, setCopiedField] = useState<'email' | 'wallet' | null>(null);
+  const [token, setToken] = useState('');
   const copiedTimer = useRef<number>(0);
 
   useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+
+  // Load the token, then hydrate the form from the backend (source of truth).
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const t = session?.access_token ?? '';
+      if (!active) return;
+      setToken(t);
+      if (!t) return;
+      const contributor = await fetchContributor(t);
+      if (!active || !contributor) return;
+      const next = formFromContributor(contributor, profileFromUser(user));
+      setForm(next);
+      setSaved(next);
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const skills = useMemo(() => parseSkills(form.skills), [form.skills]);
   const githubEmail = user.email?.trim() ?? '';
@@ -197,24 +282,8 @@ export default function ProfileSettings({ user }: { user: User }) {
   }
 
   async function persist(next: ProfileForm) {
-    const supabase = createClient();
-    const name = fullName(next);
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        first_name: next.firstName.trim(),
-        last_name: next.lastName.trim(),
-        display_name: name,
-        bio: next.bio.trim(),
-        location: next.location.trim(),
-        website: next.website.trim(),
-        skills: next.skills.trim(),
-        telegram: normalizeUsername(next.telegram),
-        discord: normalizeUsername(next.discord),
-        twitter: normalizeUsername(next.twitter),
-        stellar_address: next.stellarAddress.trim(),
-      },
-    });
-    if (error) throw error;
+    if (!token) throw new Error('Not signed in — refresh and try again.');
+    await saveProfile(token, next);
     setSaved({
       ...next,
       telegram: normalizeUsername(next.telegram),
@@ -248,10 +317,12 @@ export default function ProfileSettings({ user }: { user: User }) {
         'Wallet authorization timed out. Close the wallet modal and try again.'
       );
       if (!address) throw new Error('No Stellar public key returned');
+      if (!token) throw new Error('Not signed in — refresh and try again.');
 
+      await connectWalletBackend(token, address);
       const next = { ...form, stellarAddress: address };
       setForm(next);
-      await persist(next);
+      setSaved(next);
       notifySuccess('Stellar wallet connected', 'This address will be used for USDC payouts.');
     } catch (error) {
       handleError(error, 'Connect wallet');
@@ -260,18 +331,12 @@ export default function ProfileSettings({ user }: { user: User }) {
     }
   }
 
-  async function handleDisconnectWallet() {
-    const next = { ...form, stellarAddress: '' };
-    setForm(next);
-    setSaving(true);
-    try {
-      await persist(next);
-      notifySuccess('Wallet disconnected', 'Connect a Stellar wallet before claiming bounties.');
-    } catch (error) {
-      handleError(error, 'Disconnect wallet');
-    } finally {
-      setSaving(false);
-    }
+  // ponytail: backend has no wallet-disconnect route. Connecting a new wallet
+  // re-points the primary payout address, so "disconnect" just clears the local
+  // view and prompts a reconnect rather than faking a delete the API can't do.
+  function handleDisconnectWallet() {
+    setForm((f) => ({ ...f, stellarAddress: '' }));
+    notifySuccess('Wallet cleared', 'Connect a Stellar wallet to set your payout address.');
   }
 
   async function handleCopy(field: 'email' | 'wallet', value: string, title: string) {
