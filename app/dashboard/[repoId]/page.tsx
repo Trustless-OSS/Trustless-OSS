@@ -100,7 +100,7 @@ function normalizeRewardLevels(value: unknown): RewardLevel[] {
   const nestedValue =
     isRecord(value) &&
     (value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers)
-      ? value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers
+      ? (value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers)
       : value;
 
   if (Array.isArray(nestedValue)) {
@@ -113,7 +113,12 @@ function normalizeRewardLevels(value: unknown): RewardLevel[] {
           nullableString(item.level) ??
           null;
         const amount = toNumber(
-          item.amount ?? item.value ?? item.usdc ?? item.reward_amount ?? item.reward ?? item.amount_usdc
+          item.amount ??
+            item.value ??
+            item.usdc ??
+            item.reward_amount ??
+            item.reward ??
+            item.amount_usdc
         );
 
         return label && Number.isFinite(amount) ? [{ label, amount }] : [];
@@ -305,7 +310,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
     getRepoRewards(repoId, token),
   ]);
   const repo = repoDetails?.repo;
-  const rewardLevels = repo?.rewards?.length ? repo.rewards : repoRewards ?? [];
+  const rewardLevels = repo?.rewards?.length ? repo.rewards : (repoRewards ?? []);
   const hasEscrow = Boolean(repoDetails?.escrow_deployed && repo?.escrow_contract_id);
   const isRepoMaintainer = repoDetails?.is_maintainer ?? false;
 
@@ -378,27 +383,27 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
               {(repoDetails?.can_fund_escrow ||
                 repoDetails?.can_refund_escrow ||
                 isRepoMaintainer) && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {repoDetails?.can_fund_escrow && (
-                      <FundEscrowButton
-                        repoId={repoId}
-                        token={session?.access_token ?? ''}
-                        repoName={repo.full_name}
-                        currentBalance={repo.escrow_balance}
-                      />
-                    )}
-                    {repo.escrow_balance > 0 && repoDetails?.can_refund_escrow ? (
-                      <RefundFundButton
-                        repoId={repoId}
-                        token={session?.access_token ?? ''}
-                        currentBalance={repo.escrow_balance}
-                        destinationAddress={repo.escrow_funder_wallet}
-                      />
-                    ) : repo.escrow_balance === 0 && isRepoMaintainer ? (
-                      <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
-                    ) : null}
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {repoDetails?.can_fund_escrow && (
+                    <FundEscrowButton
+                      repoId={repoId}
+                      token={session?.access_token ?? ''}
+                      repoName={repo.full_name}
+                      currentBalance={repo.escrow_balance}
+                    />
+                  )}
+                  {repo.escrow_balance > 0 && repoDetails?.can_refund_escrow ? (
+                    <RefundFundButton
+                      repoId={repoId}
+                      token={session?.access_token ?? ''}
+                      currentBalance={repo.escrow_balance}
+                      destinationAddress={repo.escrow_funder_wallet}
+                    />
+                  ) : repo.escrow_balance === 0 && isRepoMaintainer ? (
+                    <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
+                  ) : null}
+                </div>
+              )}
             </div>
           )}
         </header>
@@ -411,19 +416,11 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
       )}
 
       {rewardLevels.length > 0 && (
-        <RewardSettingsForm
-          repoId={repoId}
-          token={token}
-          initialLevels={rewardLevels}
-        />
+        <RewardSettingsForm repoId={repoId} token={token} initialLevels={rewardLevels} />
       )}
 
       {rewardLevels.length === 0 && isRepoMaintainer && (
-        <RewardSettingsForm
-          repoId={repoId}
-          token={token}
-          initialLevels={[]}
-        />
+        <RewardSettingsForm repoId={repoId} token={token} initialLevels={[]} />
       )}
 
       <section>
@@ -451,7 +448,8 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                   <span className="font-semibold text-foreground">high</span>
                 </>
               )}
-              , or comment <span className="font-semibold text-foreground">@toss /50</span> on an issue.
+              , or comment <span className="font-semibold text-foreground">@toss /50</span> on an
+              issue.
             </p>
           </div>
         ) : (
@@ -528,12 +526,12 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               status={issue.status}
                               payoutStatus={
                                 assignment &&
-                                  typeof assignment === 'object' &&
-                                  'payout_status' in assignment
+                                typeof assignment === 'object' &&
+                                'payout_status' in assignment
                                   ? String(
-                                    (assignment as { payout_status?: string }).payout_status ??
-                                    'pending'
-                                  )
+                                      (assignment as { payout_status?: string }).payout_status ??
+                                        'pending'
+                                    )
                                   : 'pending'
                               }
                             />

@@ -73,11 +73,7 @@ async function fetchNotifications(token: string): Promise<Notice[]> {
   });
   if (!res.ok) return [];
   const json = await res.json();
-  const raw: unknown[] = Array.isArray(json)
-    ? json
-    : Array.isArray(json?.data)
-      ? json.data
-      : [];
+  const raw: unknown[] = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
   return raw
     .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
     .map(normalizeNotice);
@@ -172,9 +168,7 @@ export default function NotificationBell({ token }: { token: string }) {
   }
 
   async function markRead(id: string) {
-    setItems((curr) =>
-      curr.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    setItems((curr) => curr.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnread((prev) => Math.max(0, prev - 1));
     if (token) await apiReadOne(token, id);
   }

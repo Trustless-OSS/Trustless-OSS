@@ -31,7 +31,7 @@ export default async function DashboardPage(props: DashboardProps) {
           <Button
             href="/dashboard/repos"
             variant="outline"
-            
+
             className="animate-hero-in hero-stagger-5 mt-10 flex flex-col gap-3 sm:flex-row"
           >
             <GitBranch className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
@@ -40,7 +40,7 @@ export default async function DashboardPage(props: DashboardProps) {
           <Button
             href="/dashboard/transactions"
             variant="outline"
-        
+
             className="animate-hero-in hero-stagger-5 mt-10 flex flex-col gap-3 sm:flex-row"
           >
             <ArrowLeftRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
