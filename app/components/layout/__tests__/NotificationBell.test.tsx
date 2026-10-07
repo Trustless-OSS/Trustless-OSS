@@ -11,7 +11,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('@/lib/backend', () => ({
-  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  backendUrl: (p: string) => `/api/backend${p.replace(/^\/api\/v1/, '')}`,
   authHeaders: (token: string) => ({ Authorization: `Bearer ${token}` }),
 }));
 
@@ -71,7 +71,7 @@ describe('NotificationBell', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/backend/api/v1/notifications/read-all',
+        '/api/backend/notifications/read-all',
         expect.objectContaining({ method: 'POST' })
       )
     );

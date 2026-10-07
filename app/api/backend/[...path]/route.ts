@@ -41,7 +41,7 @@ function isTimeoutError(error: unknown) {
 }
 
 function normalizeBackendPath(path: string[]) {
-  if (path[0] !== 'api') return path;
+  if (path[0] !== 'api') return ['api', 'v1', ...path];
   if (path[1] === 'v1') return path;
   return ['api', 'v1', ...path.slice(1)];
 }

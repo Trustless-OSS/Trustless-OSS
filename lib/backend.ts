@@ -16,19 +16,32 @@ export function authHeaders(token: string, json = true): Record<string, string> 
 
 export function backendUrl(path = ''): string {
   const raw = path ? (path.startsWith('/') ? path : `/${path}`) : '';
-  const normalized =
-    raw === '/api'
-      ? '/api/v1'
-      : raw.startsWith('/api/v1')
-        ? raw
-        : raw.startsWith('/api/')
-          ? raw.replace(/^\/api\//, '/api/v1/')
-          : raw.startsWith('/api')
-            ? '/api/v1'
-            : `/api/v1${raw}`;
+
+  // Normalize: ensure path starts with /api/v1
+  let normalized: string;
+  if (raw.startsWith('/api/v1')) {
+    // Already /api/v1, keep as-is
+    normalized = raw;
+  } else if (raw.startsWith('/api/')) {
+    // Has /api/ but not /api/v1, add v1
+    normalized = raw.replace(/^\/api\//, '/api/v1/');
+  } else if (raw.startsWith('/api')) {
+    // Exactly /api, convert to /api/v1
+    normalized = '/api/v1';
+  } else if (raw === '') {
+    // Empty path
+    normalized = '/api/v1';
+  } else {
+    // No /api prefix, add /api/v1
+    normalized = `/api/v1${raw}`;
+  }
 
   if (typeof window !== 'undefined') {
-    return `/api/backend${normalized}`;
+    // Browser: use proxy path - strip /api/v1 prefix since the proxy route captures it
+    const pathOnly = normalized.replace(/^\/api\/v1/, '') || '/';
+    return `/api/backend${pathOnly}`;
   }
+
+  // Server-side: use remote backend with full normalized path
   return `${REMOTE_BACKEND}${normalized}`;
 }

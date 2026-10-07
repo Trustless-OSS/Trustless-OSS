@@ -19,7 +19,7 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 vi.mock('@/lib/backend', () => ({
-  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  backendUrl: (p: string) => `/api/backend${p.replace(/^\/api\/v1/, '')}`,
   authHeaders: (token: string, json = true) =>
     json
       ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }

@@ -10,7 +10,7 @@ vi.mock('@/lib/notifications', () => ({
 
 // backendUrl returns the proxy path in tests; keep it predictable.
 vi.mock('@/lib/backend', () => ({
-  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  backendUrl: (p: string) => `/api/backend${p.replace(/^\/api\/v1/, '')}`,
   authHeaders: (token: string) => ({
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
@@ -70,7 +70,7 @@ describe('RewardSettingsForm', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/backend/api/v1/repos/repo_123/rewards',
+      '/api/backend/repos/repo_123/rewards',
       expect.objectContaining({
         method: 'PUT',
         headers: expect.objectContaining({ Authorization: 'Bearer session_token' }),
@@ -95,7 +95,7 @@ describe('RewardSettingsForm', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/backend/api/v1/repos/repo_123/rewards/medium');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/backend/repos/repo_123/rewards/medium');
     expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
     expect(notifySuccess).toHaveBeenCalled();
   });
