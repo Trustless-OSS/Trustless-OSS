@@ -167,7 +167,10 @@ function formFromContributor(c: Record<string, unknown>, fallback: ProfileForm):
 }
 
 async function fetchContributor(token: string): Promise<Record<string, unknown> | null> {
-  const res = await fetch(backendUrl('/contributor/me'), { headers: authHeaders(token, false), cache: 'no-store' });
+  const res = await fetch(backendUrl('/contributor/me'), {
+    headers: authHeaders(token, false),
+    cache: 'no-store',
+  });
   if (!res.ok) return null;
   const json = await res.json();
   const c = json?.contributor ?? json?.data?.contributor ?? null;
@@ -192,7 +195,11 @@ async function saveProfile(token: string, form: ProfileForm) {
   if (!res.ok) {
     const t = await res.text().catch(() => '');
     let m = `HTTP ${res.status}`;
-    try { m = ((JSON.parse(t) as { error?: string }).error ?? t) || m; } catch { if (t) m = t; }
+    try {
+      m = ((JSON.parse(t) as { error?: string }).error ?? t) || m;
+    } catch {
+      if (t) m = t;
+    }
     throw new Error(m);
   }
 }
@@ -206,7 +213,11 @@ async function connectWalletBackend(token: string, address: string) {
   if (!res.ok) {
     const t = await res.text().catch(() => '');
     let m = `HTTP ${res.status}`;
-    try { m = ((JSON.parse(t) as { error?: string }).error ?? t) || m; } catch { if (t) m = t; }
+    try {
+      m = ((JSON.parse(t) as { error?: string }).error ?? t) || m;
+    } catch {
+      if (t) m = t;
+    }
     throw new Error(m);
   }
 }

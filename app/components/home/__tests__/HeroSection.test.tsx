@@ -35,7 +35,7 @@ describe('HeroSection', () => {
   it('renders the authenticated dashboard CTA', () => {
     const { markup, text } = renderHero({ id: 'user_123' } as User);
 
-    expect(text).toContain('Open dashboard');
+    expect(text).toContain('Dashboard');
     expect(text).not.toContain('Connect GitHub');
     expect(markup).toContain('href="/dashboard"');
   });

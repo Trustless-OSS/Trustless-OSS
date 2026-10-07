@@ -11,8 +11,19 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
       updateUser,
+      // No session in tests → component keeps the user-metadata-derived form
+      // and skips the backend /contributor/me hydration fetch.
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
     },
   }),
+}));
+
+vi.mock('@/lib/backend', () => ({
+  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  authHeaders: (token: string, json = true) =>
+    json
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      : { Authorization: `Bearer ${token}` },
 }));
 
 vi.mock('@/lib/notifications', () => ({

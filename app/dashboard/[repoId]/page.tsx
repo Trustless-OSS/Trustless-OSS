@@ -283,7 +283,8 @@ function levelBadge(level: string) {
     'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1';
   const map: Record<string, string> = {
     low: 'bg-emerald-100 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-300',
-    medium: 'bg-amber-100 text-amber-700 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-300',
+    medium:
+      'bg-amber-100 text-amber-700 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-300',
     high: 'bg-rose-100 text-rose-700 ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-300',
   };
   const tone =
@@ -483,7 +484,10 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                     const actorUsername = getActorUsername(issue);
                     const issueUrl = `https://github.com/${repo?.full_name}/issues/${issue.github_issue_number}`;
                     return (
-                      <TableRow key={issue.id} className="border-b border-border/50 text-foreground transition-colors last:border-0 hover:bg-muted/40">
+                      <TableRow
+                        key={issue.id}
+                        className="border-b border-border/50 text-foreground transition-colors last:border-0 hover:bg-muted/40"
+                      >
                         {/* Issue — only the number links to GitHub */}
                         <TableCell className="max-w-md px-5 py-4">
                           <div className="flex items-start gap-2.5">
@@ -496,7 +500,10 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                             >
                               #{issue.github_issue_number}
                             </a>
-                            <span className="truncate text-base font-semibold leading-6 sm:text-[17px]" title={issue.title}>
+                            <span
+                              className="truncate text-base font-semibold leading-6 sm:text-[17px]"
+                              title={issue.title}
+                            >
                               {issue.title}
                             </span>
                           </div>
@@ -547,7 +554,10 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                             </a>
                           ) : (
                             <span className="inline-flex items-center gap-2 text-muted-foreground">
-                              <span className="size-6 shrink-0 rounded-full bg-muted ring-1 ring-border" aria-hidden="true" />
+                              <span
+                                className="size-6 shrink-0 rounded-full bg-muted ring-1 ring-border"
+                                aria-hidden="true"
+                              />
                               Unassigned
                             </span>
                           )}

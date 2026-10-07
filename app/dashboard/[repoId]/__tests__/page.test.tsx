@@ -30,7 +30,15 @@ vi.mock('@/app/components/escrow/RefundFundButton', () => ({
   default: () => <button>Refund Escrow</button>,
 }));
 vi.mock('@/app/components/escrow/RewardSettingsForm', () => ({
-  default: () => <div>Reward Settings</div>,
+  // Echo the levels this form receives so the page test can assert the backend
+  // rewards were passed through (the real form is covered by its own test).
+  default: ({ initialLevels }: { initialLevels: { label: string; amount: number }[] }) => (
+    <div data-testid="reward-settings">
+      {initialLevels.map((l) => (
+        <span key={l.label}>{l.label}</span>
+      ))}
+    </div>
+  ),
 }));
 vi.mock('@/app/components/escrow/RetryProcessButton', () => ({
   default: () => <button>Retry</button>,
@@ -183,7 +191,7 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     const PageJSX = await RepoDetailPage({ params: Promise.resolve({ repoId: 'repo-123' }) });
     render(PageJSX);
 
-    expect(screen.getByText('Reward levels')).toBeInTheDocument();
+    expect(screen.getByTestId('reward-settings')).toBeInTheDocument();
     expect(screen.getAllByText('starter').length).toBeGreaterThan(0);
     expect(screen.getAllByText('advanced').length).toBeGreaterThan(0);
   });

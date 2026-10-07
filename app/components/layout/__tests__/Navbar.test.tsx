@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Navbar from '../Navbar';
 import type { User } from '@supabase/supabase-js';
 
@@ -25,9 +25,37 @@ vi.mock('next-themes', () => ({
   }),
 }));
 
+// AccountBar reads the Supabase session; NotificationBell polls the backend
+// unread count. Mock both so the bell renders "3 unread" deterministically.
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: 'tok' } } }),
+    },
+  }),
+}));
+
+vi.mock('@/lib/backend', () => ({
+  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  authHeaders: () => ({ Authorization: 'Bearer tok' }),
+}));
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) => {
+      if (url.includes('/notifications/unread-count')) {
+        return Promise.resolve({ ok: true, json: async () => ({ count: 3 }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    })
+  );
+});
+
 afterEach(() => {
   cleanup();
   setTheme.mockClear();
+  vi.unstubAllGlobals();
 });
 
 const user = {
@@ -49,7 +77,7 @@ describe('Navbar', () => {
     expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
   });
 
-  it('opens a profile menu with Profile, Dashboard, and Sign out', () => {
+  it('opens a profile menu with Profile, Dashboard, and Sign out', async () => {
     render(<Navbar user={user} />);
 
     expect(screen.queryByRole('link', { name: 'Docs' })).not.toBeInTheDocument();
@@ -57,7 +85,9 @@ describe('Navbar', () => {
     expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
 
     expect(screen.getByTestId('account-bar')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Notifications, 3 unread' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: 'Notifications, 3 unread' })
+    ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Open profile' })).not.toBeInTheDocument();
     const settings = screen.getByRole('button', { name: /open settings for ryzen-xp/i });
     const labels = screen

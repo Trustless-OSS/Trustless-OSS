@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import NotificationBell, { DEMO_NOTIFICATIONS, unreadCount } from '../NotificationBell';
+import NotificationBell from '../NotificationBell';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: React.ComponentProps<'a'>) => (
@@ -10,31 +10,71 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-afterEach(cleanup);
+vi.mock('@/lib/backend', () => ({
+  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  authHeaders: (token: string) => ({ Authorization: `Bearer ${token}` }),
+}));
 
-describe('unreadCount', () => {
-  it('counts unread maintainer alerts', () => {
-    expect(unreadCount(DEMO_NOTIFICATIONS)).toBe(3);
-    expect(unreadCount(DEMO_NOTIFICATIONS.map((notice) => ({ ...notice, read: true })))).toBe(0);
+const NOTICES = [
+  {
+    id: 'n1',
+    kind: 'released',
+    title: 'Payout released',
+    body: '220 USDC sent to @gaearon',
+    isRead: false,
+    refId: null,
+    data: { repoId: 'repo_9' },
+    createdAt: '2026-10-01T12:00:00.000Z',
+  },
+];
+
+function mockFetch() {
+  return vi.fn((url: string) => {
+    if (url.includes('/notifications/unread-count')) {
+      return Promise.resolve({ ok: true, json: async () => ({ count: 1 }) });
+    }
+    if (url.endsWith('/notifications')) {
+      return Promise.resolve({ ok: true, json: async () => NOTICES });
+    }
+    // read-all / read-one
+    return Promise.resolve({ ok: true, json: async () => ({}) });
   });
+}
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('NotificationBell', () => {
-  it('opens maintainer alerts and can mark them all read', () => {
-    render(<NotificationBell />);
+  it('shows the unread badge from the backend count', async () => {
+    vi.stubGlobal('fetch', mockFetch());
+    render(<NotificationBell token="tok" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notifications, 3 unread' }));
+    expect(
+      await screen.findByRole('button', { name: 'Notifications, 1 unread' })
+    ).toBeInTheDocument();
+  });
 
-    expect(screen.getByRole('dialog', { name: 'Maintainer notifications' })).toBeInTheDocument();
-    expect(screen.getByText('Payout released')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /220 USDC sent to @gaearon/i })).toHaveAttribute(
-      'href',
-      '/dashboard/transactions'
-    );
+  it('loads notifications when opened and can mark all read', async () => {
+    const fetchMock = mockFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    render(<NotificationBell token="tok" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Notifications/ }));
+
+    expect(await screen.findByText('Payout released')).toBeInTheDocument();
+    expect(screen.getByText('220 USDC sent to @gaearon')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
 
-    expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/backend/api/v1/notifications/read-all',
+        expect.objectContaining({ method: 'POST' })
+      )
+    );
     expect(screen.getByText('You are caught up')).toBeInTheDocument();
   });
 });

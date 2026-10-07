@@ -1,19 +1,30 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import RewardSettingsForm from '../RewardSettingsForm';
-import { handleError, notifySuccess } from '@/lib/notifications';
+import { notifySuccess } from '@/lib/notifications';
 
 vi.mock('@/lib/notifications', () => ({
   notifySuccess: vi.fn(),
   handleError: vi.fn(),
 }));
 
+// backendUrl returns the proxy path in tests; keep it predictable.
+vi.mock('@/lib/backend', () => ({
+  backendUrl: (p: string) => `/api/backend/api/v1${p}`,
+  authHeaders: (token: string) => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  }),
+}));
+
 const defaultProps = {
   repoId: 'repo_123',
   token: 'session_token',
-  initialLow: 0.1,
-  initialMedium: 2,
-  initialHigh: 3,
+  initialLevels: [
+    { label: 'low', amount: 0.1 },
+    { label: 'medium', amount: 2 },
+    { label: 'high', amount: 3 },
+  ],
 };
 
 afterEach(() => {
@@ -23,111 +34,69 @@ afterEach(() => {
 });
 
 describe('RewardSettingsForm', () => {
-  it('renders a separate edit control on each reward tier', () => {
+  it('renders each tier read-only with the top-level actions', () => {
     render(<RewardSettingsForm {...defaultProps} />);
 
     expect(screen.getByText('Reward parameters')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit Low reward' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit Medium reward' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit High reward' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
+    expect(screen.getByText('low')).toBeInTheDocument();
+    expect(screen.getByText('medium')).toBeInTheDocument();
+    expect(screen.getByText('high')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add level' })).toBeInTheDocument();
   });
 
-  it('edits one tier and asks for confirmation after leaving the input', () => {
+  it('turns every tier into an editable input in edit mode', () => {
     render(<RewardSettingsForm {...defaultProps} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Low reward' }));
-    const input = screen.getByLabelText('Low reward in USDC');
-    fireEvent.change(input, { target: { value: '9' } });
-    fireEvent.blur(input);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
 
-    const dialog = screen.getByRole('alertdialog');
-    expect(dialog).toBeInTheDocument();
-    expect(screen.getByText(/Update low reward/i)).toBeInTheDocument();
-    expect(screen.getByText('Current')).toBeInTheDocument();
-    expect(screen.getByText('New')).toBeInTheDocument();
-    expect(dialog.textContent).toMatch(/0\.1/);
-    expect(dialog.textContent).toMatch(/9/);
+    expect(screen.getByLabelText('low reward in USDC')).toBeInTheDocument();
+    expect(screen.getByLabelText('medium reward in USDC')).toBeInTheDocument();
+    expect(screen.getByLabelText('high reward in USDC')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
   });
 
-  it('skips the confirm dialog when the value is unchanged', () => {
-    render(<RewardSettingsForm {...defaultProps} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Medium reward' }));
-    fireEvent.blur(screen.getByLabelText('Medium reward in USDC'));
-
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-  });
-
-  it('cancels a pending change and restores the saved value', () => {
-    render(<RewardSettingsForm {...defaultProps} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Low reward' }));
-    fireEvent.change(screen.getByLabelText('Low reward in USDC'), { target: { value: '9' } });
-    fireEvent.blur(screen.getByLabelText('Low reward in USDC'));
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
-    expect(screen.getByText('0.1')).toBeInTheDocument();
-    expect(screen.queryByText('9')).not.toBeInTheDocument();
-  });
-
-  it('saves the confirmed tier update', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({}),
-    });
+  it('saves only the tiers that changed', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: async () => '{}' });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<RewardSettingsForm {...defaultProps} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit High reward' }));
-    fireEvent.change(screen.getByLabelText('High reward in USDC'), { target: { value: '8' } });
-    fireEvent.blur(screen.getByLabelText('High reward in USDC'));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(screen.getByLabelText('high reward in USDC'), { target: { value: '8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/backend/api/v1/repos/repo_123/rewards',
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({
-            Authorization: 'Bearer session_token',
-          }),
-        })
-      );
-    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-      reward_low: 0.1,
-      reward_medium: 2,
-      reward_high: 8,
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/backend/api/v1/repos/repo_123/rewards',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ Authorization: 'Bearer session_token' }),
+      })
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ label: 'high', amount: 8 });
     expect(notifySuccess).toHaveBeenCalled();
-    expect(await screen.findByText('8')).toBeInTheDocument();
   });
 
-  it('keeps the confirm dialog open when save fails', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ error: 'Reward update blocked' }),
-    });
+  it('selects a tier for deletion and confirms removal', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: async () => '{}' });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<RewardSettingsForm {...defaultProps} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Low reward' }));
-    fireEvent.change(screen.getByLabelText('Low reward in USDC'), { target: { value: '4' } });
-    fireEvent.blur(screen.getByLabelText('Low reward in USDC'));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByLabelText('Select medium for removal'));
 
-    await waitFor(() => {
-      expect(handleError).toHaveBeenCalled();
-    });
+    // "Remove (1)" button becomes enabled; clicking opens the confirm dialog
+    fireEvent.click(screen.getByRole('button', { name: /Remove \(1\)/ }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
 
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(notifySuccess).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/backend/api/v1/repos/repo_123/rewards/medium');
+    expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+    expect(notifySuccess).toHaveBeenCalled();
   });
 });
