@@ -19,8 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { getActorUsername } from '@/lib/issues';
-
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
+import { remoteBackendUrl } from '@/lib/backend';
 
 // CREATE TABLE "repositories"(
 //   "id" UUID NOT NULL,
@@ -227,7 +226,7 @@ function repoDisplayName(fullName: string): string {
 
 async function getRepo(repoId: string, token: string): Promise<RepoDetails | null> {
   try {
-    const res = await fetch(`${BACKEND}/api/v1/repos/${repoId}`, {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -242,7 +241,7 @@ async function getRepo(repoId: string, token: string): Promise<RepoDetails | nul
 
 async function getRepoRewards(repoId: string, token: string): Promise<Reward | null> {
   try {
-    const res = await fetch(`${BACKEND}/api/v1/repos/rewards/${repoId}`, {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/rewards/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -258,7 +257,7 @@ async function getRepoRewards(repoId: string, token: string): Promise<Reward | n
 
 async function getIssues(repoId: string, token: string) {
   try {
-    const res = await fetch(`${BACKEND}/api/v1/repos/${repoId}/issues`, {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}/issues`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });

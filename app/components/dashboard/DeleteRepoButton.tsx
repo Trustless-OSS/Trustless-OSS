@@ -7,7 +7,7 @@ import { handleError, notifySuccess } from '@/lib/notifications';
 import Portal from '@/app/components/layout/Portal';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 
 export default function DeleteRepoButton({ repoId, token }: { repoId: string; token: string }) {
   const [showModal, setShowModal] = useState(false);
@@ -28,7 +28,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
     try {
       const res = await fetch(backendUrl(`/api/v1/repos/${repoId}`), {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(token, false),
       });
 
       if (!res.ok) {

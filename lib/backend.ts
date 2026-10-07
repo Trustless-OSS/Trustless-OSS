@@ -7,6 +7,13 @@ export function remoteBackendUrl(): string {
   return REMOTE_BACKEND;
 }
 
+/** Bearer auth headers for backend calls. Set json=false to omit Content-Type (GET/no-body). */
+export function authHeaders(token: string, json = true): Record<string, string> {
+  return json
+    ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    : { Authorization: `Bearer ${token}` };
+}
+
 export function backendUrl(path = ''): string {
   const raw = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const normalized =

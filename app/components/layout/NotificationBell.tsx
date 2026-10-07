@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Bell, GitMerge, Lock, Tag, UserPlus } from 'lucide-react';
 import { formatWhen } from '@/app/components/dashboard/MaintainerActivity';
 import { cn } from '@/lib/utils';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,10 +45,6 @@ function toneFor(kind: string) {
 }
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
-
-function authHeaders(token: string) {
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-}
 
 function normalizeNotice(raw: Record<string, unknown>): Notice {
   return {

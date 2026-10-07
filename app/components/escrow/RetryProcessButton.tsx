@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { notifySuccess, handleError } from '@/lib/notifications';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 
 interface RetryProcessButtonProps {
   issueId: string;
@@ -27,9 +27,7 @@ export default function RetryProcessButton({
     try {
       const res = await fetch(backendUrl(`/api/v1/issues/${issueId}/retry`), {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token, false),
       });
 
       if (res.ok) {

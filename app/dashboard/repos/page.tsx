@@ -11,8 +11,7 @@ import { filterAndSortRepos, parseRepoQuery, parseRepoSort } from '@/lib/repo-fi
 import Button from '@/app/components/ui/Button';
 import type { Repo } from '@/app/types';
 import { Badge } from '@/components/ui/badge';
-
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
+import { remoteBackendUrl } from '@/lib/backend';
 
 function toNumber(value: unknown): number {
   const numberValue = Number(value);
@@ -49,7 +48,7 @@ function isDashboardRepo(repo: DashboardRepo | null): repo is DashboardRepo {
 }
 
 async function getRepos(token: string): Promise<{ repos: DashboardRepo[]; error: string | null }> {
-  const url = `${BACKEND}/api/v1/repos`;
+  const url = `${remoteBackendUrl()}/api/v1/repos`;
   try {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { handleError, notifySuccess } from '@/lib/notifications';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 import Button from '@/app/components/ui/Button';
 
 async function readError(response: Response, fallback: string) {
@@ -92,10 +92,7 @@ async function syncRepositories(token: string, installationIds: number[]) {
   for (const installationId of ids) {
     const response = await fetch(backendUrl('/api/v1/repos/sync-installation'), {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(token),
       body: JSON.stringify({ installationId }),
     });
     if (!response.ok) {

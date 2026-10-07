@@ -5,7 +5,7 @@ import { ArrowRight, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
 import { notifySuccess, handleError } from '@/lib/notifications';
 import AppButton from '@/app/components/ui/Button';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -76,12 +76,10 @@ const fmt = (v: string) => {
     ? n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
     : v;
 };
-const authH = (t: string) => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${t}` });
-
 async function apiUpsert(repoId: string, token: string, label: string, amount: number) {
   const r = await fetch(backendUrl(`/repos/${repoId}/rewards`), {
     method: 'PUT',
-    headers: authH(token),
+    headers: authHeaders(token),
     body: JSON.stringify({ label, amount }),
   });
   if (!r.ok) {
@@ -99,7 +97,7 @@ async function apiUpsert(repoId: string, token: string, label: string, amount: n
 async function apiDelete(repoId: string, token: string, label: string, gh: boolean) {
   const r = await fetch(backendUrl(`/repos/${repoId}/rewards/${encodeURIComponent(label)}`), {
     method: 'DELETE',
-    headers: authH(token),
+    headers: authHeaders(token),
     body: JSON.stringify({ alsoDeleteGithubLabel: gh }),
   });
   if (!r.ok) {
@@ -116,7 +114,7 @@ async function apiDelete(repoId: string, token: string, label: string, gh: boole
 
 async function apiGhLabels(repoId: string, token: string): Promise<GitHubLabel[]> {
   const r = await fetch(backendUrl(`/repos/${repoId}/github-labels`), {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token, false),
     cache: 'no-store',
   });
   if (!r.ok) return [];

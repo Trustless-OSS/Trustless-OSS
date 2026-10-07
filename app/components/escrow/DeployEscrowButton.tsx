@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 
 interface DeployEscrowButtonProps {
   repoId: string;
@@ -39,10 +39,7 @@ export default function DeployEscrowButton({
 
       const res1 = await fetch(backendUrl('/api/v1/escrow/create-unsigned'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({ repoId, maintainerWallet: address }),
       });
 
@@ -61,10 +58,7 @@ export default function DeployEscrowButton({
       );
       const res2 = await fetch(backendUrl('/api/v1/escrow/submit-deploy'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({ repoId, signedXdr: signedTxXdr }),
       });
 

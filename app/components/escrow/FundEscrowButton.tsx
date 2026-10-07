@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowRight, Check, ExternalLink, Plus, X } from 'lucide-
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -142,10 +142,7 @@ export default function FundEscrowButton({
 
       const res1 = await fetch(backendUrl('/api/v1/escrow/fund-unsigned'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({
           repoId,
           amount: parsedAmount,
@@ -176,10 +173,7 @@ export default function FundEscrowButton({
 
       const res2 = await fetch(backendUrl('/api/v1/escrow/submit-fund'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({
           repoId,
           amount: parsedAmount,
