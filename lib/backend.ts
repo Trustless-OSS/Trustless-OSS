@@ -37,9 +37,9 @@ export function backendUrl(path = ''): string {
   }
 
   if (typeof window !== 'undefined') {
-    // Browser: use proxy path - strip /api/v1 prefix since the proxy route captures it
-    const pathOnly = normalized.replace(/^\/api\/v1/, '') || '/';
-    return `/api/backend${pathOnly}`;
+    // Browser: always call the full API path (no proxy)
+    // This handles both localhost (same origin) and production domains
+    return normalized;
   }
 
   // Server-side: use remote backend with full normalized path

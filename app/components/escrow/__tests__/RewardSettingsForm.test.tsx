@@ -8,9 +8,15 @@ vi.mock('@/lib/notifications', () => ({
   handleError: vi.fn(),
 }));
 
-// backendUrl returns the proxy path in tests; keep it predictable.
+// backendUrl returns the API path directly in tests
 vi.mock('@/lib/backend', () => ({
-  backendUrl: (p: string) => `/api/backend${p.replace(/^\/api\/v1/, '')}`,
+  backendUrl: (p: string) => {
+    const raw = p.startsWith('/') ? p : `/${p}`;
+    if (raw.startsWith('/api/v1')) return raw;
+    if (raw.startsWith('/api/')) return raw.replace(/^\/api\//, '/api/v1/');
+    if (raw.startsWith('/api')) return '/api/v1';
+    return `/api/v1${raw}`;
+  },
   authHeaders: (token: string) => ({
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
@@ -70,7 +76,7 @@ describe('RewardSettingsForm', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/backend/repos/repo_123/rewards',
+      '/api/v1/repos/repo_123/rewards',
       expect.objectContaining({
         method: 'PUT',
         headers: expect.objectContaining({ Authorization: 'Bearer session_token' }),
@@ -95,7 +101,7 @@ describe('RewardSettingsForm', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/backend/repos/repo_123/rewards/medium');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/repos/repo_123/rewards/medium');
     expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
     expect(notifySuccess).toHaveBeenCalled();
   });
