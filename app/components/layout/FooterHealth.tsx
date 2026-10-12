@@ -7,31 +7,18 @@ import {
   type HealthSnapshot,
   type HealthStatus,
 } from '@/lib/health';
+import { Status, StatusIndicator, StatusLabel, type StatusProps } from '@/components/ui/status';
 
 const POLL_MS = 4 * 60 * 1000;
 const WAKING_HINT_MS = 2500;
 
-const STATUS_COPY: Record<HealthStatus, { label: string; className: string; dot: string }> = {
-  checking: {
-    label: 'Checking API',
-    className: 'text-muted-foreground',
-    dot: 'bg-slate-400',
-  },
-  waking: {
-    label: 'Waking API',
-    className: 'text-amber-700 dark:text-amber-400',
-    dot: 'bg-amber-500',
-  },
-  ok: {
-    label: 'Operational',
-    className: 'text-emerald-700 dark:text-emerald-400',
-    dot: 'bg-emerald-500',
-  },
-  down: {
-    label: 'API down',
-    className: 'text-red-700 dark:text-red-400',
-    dot: 'bg-red-500',
-  },
+// Maps our live health states onto the shadcn Status badge's four variants.
+// The badge renders its own label (Online/Offline/Maintenance/Degraded) per variant.
+const STATUS_VARIANT: Record<HealthStatus, StatusProps['status']> = {
+  checking: 'maintenance',
+  waking: 'degraded',
+  ok: 'online',
+  down: 'offline',
 };
 
 export default function FooterHealth() {
@@ -76,26 +63,21 @@ export default function FooterHealth() {
     };
   }, []);
 
-  const copy = STATUS_COPY[status];
-
   return (
     <a
       href={STATUS_PAGE_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-2 font-mono text-[0.58rem] font-black uppercase tracking-[0.08em] sm:text-[0.64rem] sm:tracking-[0.1em] ${copy.className} transition-colors hover:text-blue-600`}
       aria-live="polite"
       title={snapshot?.message ?? 'Open public status page'}
     >
-      <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-        {status !== 'down' && (
-          <span
-            className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-70 ${copy.dot}`}
-          />
-        )}
-        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${copy.dot}`} />
-      </span>
-      <span>{copy.label}</span>
+      <Status
+        status={STATUS_VARIANT[status]}
+        className="gap-2.5 px-3.5 py-1.5 text-sm transition-colors"
+      >
+        <StatusIndicator className="h-2.5 w-2.5" />
+        <StatusLabel />
+      </Status>
     </a>
   );
 }

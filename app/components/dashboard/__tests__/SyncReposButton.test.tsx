@@ -121,9 +121,7 @@ describe('SyncReposButton', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
 
     await waitFor(() => {
-      expect(signInWithOAuth).toHaveBeenCalledWith(
-        expect.objectContaining({ provider: 'github' })
-      );
+      expect(signInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({ provider: 'github' }));
       expect(assign).toHaveBeenCalledWith('https://github.com/login/oauth/authorize?x=1');
     });
     expect(fetchMock).not.toHaveBeenCalled();
