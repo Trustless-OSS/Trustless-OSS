@@ -38,6 +38,8 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
 
+const BIO_MAX_LENGTH = 280;
+
 type ProfileForm = {
   firstName: string;
   lastName: string;
@@ -378,8 +380,7 @@ export default function ProfileSettings({ user }: { user: User }) {
           </p>
         </div>
         <div className="w-full max-w-sm space-y-2">
-          <div className="flex items-center justify-between gap-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-            <span>Profile completeness</span>
+          <div className="flex items-center justify-end gap-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
             <span>{completeness.percent}%</span>
           </div>
           <Progress
@@ -689,11 +690,11 @@ export default function ProfileSettings({ user }: { user: User }) {
                   </button>
                 ) : null}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {githubEmail
-                  ? 'Verified through GitHub sign-in.'
-                  : 'Sign in with GitHub to attach a verified email.'}
-              </p>
+              {!githubEmail && (
+                <p className="text-xs text-muted-foreground">
+                  Sign in with GitHub to attach a verified email.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="website">Website / portfolio</Label>
@@ -834,14 +835,18 @@ export default function ProfileSettings({ user }: { user: User }) {
             <div className="space-y-1.5 sm:col-span-2">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="bio">Bio</Label>
-                <span className="text-xs text-muted-foreground">{form.bio.length} characters</span>
+                <span className="text-xs text-muted-foreground">
+                  {form.bio.length}/{BIO_MAX_LENGTH}
+                </span>
               </div>
               <Textarea
                 id="bio"
                 value={form.bio}
-                onChange={(event) => update('bio', event.target.value)}
+                onChange={(event) => update('bio', event.target.value.slice(0, BIO_MAX_LENGTH))}
+                maxLength={BIO_MAX_LENGTH}
                 rows={6}
                 placeholder="What you ship, the stacks you like, and how you work."
+                className="h-36 resize-none"
               />
             </div>
           </CardContent>

@@ -83,7 +83,7 @@ describe('ProfileSettings', () => {
     expect(screen.queryByText('5/6')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Profile completeness')).toBeInTheDocument();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
-    expect(screen.getByText('Verified through GitHub sign-in.')).toBeInTheDocument();
+    expect(screen.queryByText('Verified through GitHub sign-in.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
     expect(screen.queryByText('You have unsaved profile changes.')).not.toBeInTheDocument();
