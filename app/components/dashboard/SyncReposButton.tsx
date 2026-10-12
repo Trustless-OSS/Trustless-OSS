@@ -30,12 +30,38 @@ function readGhToken(): string | null {
   }
 }
 
+// The gh_token cookie that lets us read GitHub installations lives only 8 hours
+// (see app/auth/callback/route.ts). A returning user hits an empty/expired cookie
+// and used to get a dead-end "sign out and sign in again" error. Instead, silently
+// re-run the same GitHub OAuth flow as login, redirecting back to this page so a
+// fresh gh_token is minted. GitHub skips the consent screen since the app is already
+// authorized, so this is a near-instant bounce, not a reinstall.
+// ponytail: throws after redirect to stop execution; caller never resolves (page unloads).
+async function reauthorizeGitHub(): Promise<never> {
+  const { createClient } = await import('@/lib/supabase/client');
+  const supabase = createClient();
+  const next = `${window.location.pathname}${window.location.search}`;
+  document.cookie = `auth_next=${encodeURIComponent(next)}; path=/; max-age=600; samesite=lax`;
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'github',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      scopes: 'read:user user:email',
+    },
+  });
+  if (error) throw error;
+  if (data.url) {
+    window.location.assign(data.url);
+    // Give the navigation a tick so we never fall through to a thrown error.
+    await new Promise(() => {});
+  }
+  throw new Error('GitHub did not return a sign-in URL.');
+}
+
 async function fetchInstallationIdsFromGitHub(): Promise<number[]> {
   const ghToken = readGhToken();
   if (!ghToken) {
-    throw new Error(
-      'Connect a GitHub repository first (Add repository), or sign out and sign in again so we can read your GitHub installations.'
-    );
+    return reauthorizeGitHub();
   }
 
   const response = await fetch('https://api.github.com/user/installations?per_page=100', {
@@ -45,6 +71,11 @@ async function fetchInstallationIdsFromGitHub(): Promise<number[]> {
       'X-GitHub-Api-Version': '2022-11-28',
     },
   });
+
+  // 401/403 means the OAuth token expired or was revoked — refresh it the same way.
+  if (response.status === 401 || response.status === 403) {
+    return reauthorizeGitHub();
+  }
 
   if (!response.ok) {
     throw new Error(

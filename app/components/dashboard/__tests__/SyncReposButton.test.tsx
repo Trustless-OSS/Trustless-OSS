@@ -5,6 +5,7 @@ import SyncReposButton from '../SyncReposButton';
 const refresh = vi.fn();
 const handleError = vi.fn();
 const notifySuccess = vi.fn();
+const signInWithOAuth = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh }),
@@ -15,11 +16,16 @@ vi.mock('@/lib/notifications', () => ({
   notifySuccess: (...args: unknown[]) => notifySuccess(...args),
 }));
 
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({ auth: { signInWithOAuth } }),
+}));
+
 afterEach(() => {
   cleanup();
   refresh.mockReset();
   handleError.mockReset();
   notifySuccess.mockReset();
+  signInWithOAuth.mockReset();
   vi.unstubAllGlobals();
   document.cookie = 'gh_token=; Max-Age=0; path=/';
 });
@@ -96,17 +102,32 @@ describe('SyncReposButton', () => {
     });
   });
 
-  it('does not refresh when GitHub installations cannot be resolved', async () => {
+  it('re-authorizes GitHub instead of erroring when the gh_token cookie is gone', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      origin: 'http://localhost:3000',
+      pathname: '/dashboard/repos',
+      search: '',
+      assign,
+    });
+    signInWithOAuth.mockResolvedValue({
+      data: { url: 'https://github.com/login/oauth/authorize?x=1' },
+      error: null,
+    });
 
     render(<SyncReposButton token="token" installationIds={[]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
 
     await waitFor(() => {
-      expect(handleError).toHaveBeenCalled();
+      expect(signInWithOAuth).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'github' })
+      );
+      expect(assign).toHaveBeenCalledWith('https://github.com/login/oauth/authorize?x=1');
     });
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(handleError).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
 
