@@ -6,18 +6,24 @@ import { notifySuccess, handleError } from '@/lib/notifications';
 import AppButton from '@/app/components/ui/Button';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import { authHeaders, backendUrl } from '@/lib/backend';
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogMedia,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from '@/components/ui/input-group';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -190,21 +196,21 @@ export default function RewardSettingsForm({
     }
   }
 
-  // ── Add flow (dialog) ──────────────────────────────────────────────────────
-  const [addOpen, setAddOpen] = useState(false);
-  const [addMode, setAddMode] = useState<'pick' | 'custom'>('pick');
+  // ── Add tier dialog ─────────────────────────────────────────────────────────
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'github' | 'custom'>('github');
   const [ghLabels, setGhLabels] = useState<GitHubLabel[]>([]);
   const [ghLoading, setGhLoading] = useState(false);
-  const [pickedLabel, setPickedLabel] = useState('');
-  const [newLabel, setNewLabel] = useState('');
-  const [newAmount, setNewAmount] = useState('');
-  const [addErr, setAddErr] = useState('');
-  const [adding, setAdding] = useState(false);
-  const newLabelRef = useRef<HTMLInputElement>(null);
+  const [ghLabel, setGhLabel] = useState('');
+  const [customLabel, setCustomLabel] = useState('');
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const customRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (addOpen && addMode === 'custom') setTimeout(() => newLabelRef.current?.focus(), 50);
-  }, [addOpen, addMode]);
+    if (open && tab === 'custom') setTimeout(() => customRef.current?.focus(), 50);
+  }, [open, tab]);
 
   const loadGhLabels = useCallback(async () => {
     setGhLoading(true);
@@ -214,53 +220,49 @@ export default function RewardSettingsForm({
   }, [repoId, token, labels]);
 
   useEffect(() => {
-    if (addOpen) loadGhLabels();
-  }, [addOpen, loadGhLabels]);
+    if (open) loadGhLabels();
+  }, [open, loadGhLabels]);
 
-  function openAdd() {
+  function openDialog() {
     setMode('view');
-    setAddMode('pick');
-    setPickedLabel('');
-    setNewLabel('');
-    setNewAmount('');
-    setAddErr('');
-    setAddOpen(true);
-  }
-  function closeAdd() {
-    if (adding) return;
-    setAddOpen(false);
+    setTab('github');
+    setGhLabel('');
+    setCustomLabel('');
+    setAmount('');
+    setError('');
+    setOpen(true);
   }
 
-  async function confirmAdd() {
-    const lbl = (addMode === 'pick' ? pickedLabel : newLabel)
+  async function submit() {
+    const label = (tab === 'github' ? ghLabel : customLabel)
       .trim()
       .toLowerCase()
       .replace(/\s+/g, '-');
-    const amt = parseFloat(newAmount);
-    if (!lbl) {
-      setAddErr('Pick or enter a label.');
+    const value = parseFloat(amount);
+    if (!label) {
+      setError(tab === 'github' ? 'Select a label to continue.' : 'Enter a label name.');
       return;
     }
-    if (labels.includes(lbl)) {
-      setAddErr(`"${lbl}" already configured.`);
+    if (labels.includes(label)) {
+      setError(`“${label}” is already configured.`);
       return;
     }
-    if (!Number.isFinite(amt) || amt < 0) {
-      setAddErr('Enter a valid amount ≥ 0.');
+    if (!Number.isFinite(value) || value < 0) {
+      setError('Enter a valid amount of 0 or more.');
       return;
     }
-    setAdding(true);
+    setSaving(true);
     try {
-      await apiUpsert(repoId, token, lbl, amt);
-      setSaved((p) => ({ ...p, [lbl]: String(amt) }));
-      setLabels((p) => [...p, lbl]);
-      setAddOpen(false);
-      notifySuccess('Level added', `"${lbl}" → ${fmt(String(amt))} USDC`);
+      await apiUpsert(repoId, token, label, value);
+      setSaved((p) => ({ ...p, [label]: String(value) }));
+      setLabels((p) => [...p, label]);
+      setOpen(false);
+      notifySuccess('Tier added', `“${label}” now pays ${fmt(String(value))} USDC.`);
     } catch (e) {
-      console.error('[RewardForm] add:', e);
-      handleError(e, 'Add Level');
+      console.error('[RewardSettings] submit:', e);
+      handleError(e, 'Add tier');
     } finally {
-      setAdding(false);
+      setSaving(false);
     }
   }
 
@@ -308,11 +310,11 @@ export default function RewardSettingsForm({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={openAdd}
+                onClick={openDialog}
                 className="h-8 gap-1.5 rounded-lg border-dashed px-3 text-xs font-semibold text-muted-foreground hover:border-primary/50 hover:text-foreground"
               >
                 <Plus className="size-3.5" strokeWidth={2.5} />
-                Add level
+                Add tier
               </Button>
             </>
           )}
@@ -342,7 +344,7 @@ export default function RewardSettingsForm({
                 ) : (
                   <Check className="size-3.5" strokeWidth={2.5} />
                 )}
-                Save changes
+                Save
               </Button>
             </>
           )}
@@ -380,10 +382,11 @@ export default function RewardSettingsForm({
         {labels.map((key, i) => {
           const isChecked = Boolean(checked[key]);
           return (
-            <div
+            <Card
               key={key}
+              size="sm"
               className={cn(
-                'flex min-h-[4.5rem] flex-col justify-between rounded-2xl border-l-4 px-4 py-3 ring-1 transition-all',
+                'justify-between rounded-2xl border-l-4 transition-all',
                 pal(i).accent,
                 mode === 'delete' && isChecked ? 'ring-2 ring-destructive/60' : 'ring-border/50',
                 mode === 'delete' && 'cursor-pointer'
@@ -392,23 +395,25 @@ export default function RewardSettingsForm({
                 mode === 'delete' ? () => setChecked((c) => ({ ...c, [key]: !c[key] })) : undefined
               }
             >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+              <CardHeader>
+                <CardTitle className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                   {key}
-                </p>
+                </CardTitle>
                 {mode === 'delete' && (
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => setChecked((c) => ({ ...c, [key]: e.target.checked }))}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Select ${key} for removal`}
-                    className="h-4 w-4 shrink-0 accent-destructive"
-                  />
+                  <CardAction>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => setChecked((c) => ({ ...c, [key]: e.target.checked }))}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Select ${key} for removal`}
+                      className="h-4 w-4 shrink-0 accent-destructive"
+                    />
+                  </CardAction>
                 )}
-              </div>
+              </CardHeader>
 
-              <div className="mt-2 flex items-center gap-2">
+              <CardContent className="flex items-center gap-2">
                 {mode === 'edit' ? (
                   <Input
                     type="number"
@@ -427,41 +432,44 @@ export default function RewardSettingsForm({
                   </p>
                 )}
                 <span className="shrink-0 text-sm font-semibold text-muted-foreground">USDC</span>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           );
         })}
 
         {labels.length === 0 && (
           <p className="col-span-full rounded-2xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
-            No levels yet — click <strong className="text-foreground">Add level</strong> to get
-            started.
+            No reward tiers yet. Select <strong className="text-foreground">Add tier</strong> to map
+            a label to a payout.
           </p>
         )}
       </div>
 
       {/* Delete confirm dialog */}
-      <AlertDialog
+      <Dialog
         open={delConfirmOpen}
         onOpenChange={(o) => {
-          if (!o && !busy) setDelConfirmOpen(false);
+          if (!busy) setDelConfirmOpen(o);
         }}
       >
-        <AlertDialogContent className="gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-md">
-          <AlertDialogHeader className="gap-3 p-5 sm:p-6">
-            <AlertDialogMedia className="mb-0 size-12 rounded-2xl bg-destructive/10 text-destructive">
+        <DialogContent className="overflow-hidden sm:max-w-md">
+          <DialogHeader className="flex-row items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
               <Trash2 className="size-5" strokeWidth={2.25} />
-            </AlertDialogMedia>
-            <AlertDialogTitle className="font-display text-xl font-extrabold tracking-tight">
-              Remove {checkedLabels.length} level{checkedLabels.length === 1 ? '' : 's'}?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-left text-sm leading-6">
-              {checkedLabels.join(', ')} — issues with{' '}
-              {checkedLabels.length === 1 ? 'this label' : 'these labels'} will no longer earn a
-              bounty.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="px-5 pb-2 sm:px-6">
+            </span>
+            <div className="space-y-1">
+              <DialogTitle className="font-display text-lg font-extrabold tracking-tight">
+                Remove {checkedLabels.length} tier{checkedLabels.length === 1 ? '' : 's'}?
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-6">
+                {checkedLabels.join(', ')} — issues with{' '}
+                {checkedLabels.length === 1 ? 'this label' : 'these labels'} will no longer earn a
+                reward.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+
+          <div>
             <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3 hover:bg-muted/60">
               <input
                 type="checkbox"
@@ -474,12 +482,13 @@ export default function RewardSettingsForm({
                 <p className="text-sm font-semibold">Also delete from GitHub</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Permanently removes the matching label{checkedLabels.length === 1 ? '' : 's'} from
-                  the repo.
+                  the repository.
                 </p>
               </div>
             </label>
           </div>
-          <div className="mt-4 flex flex-col-reverse gap-2 border-t border-border/70 bg-muted/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+
+          <DialogFooter className="mt-0">
             <AppButton
               variant="outline"
               size="sm"
@@ -494,7 +503,7 @@ export default function RewardSettingsForm({
               size="sm"
               onClick={confirmDelete}
               disabled={busy}
-              className="w-full sm:min-w-28 sm:w-auto !bg-destructive !text-white hover:!bg-destructive/90"
+              className="w-full !bg-destructive !text-white hover:!bg-destructive/90 sm:w-auto sm:min-w-28"
             >
               {busy ? (
                 <>
@@ -505,159 +514,171 @@ export default function RewardSettingsForm({
                 'Remove'
               )}
             </AppButton>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Add dialog */}
-      <AlertDialog
-        open={addOpen}
+      {/* Add tier dialog */}
+      <Dialog
+        open={open}
         onOpenChange={(o) => {
-          if (!o) closeAdd();
+          if (!saving) setOpen(o);
         }}
       >
-        <AlertDialogContent className="gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-lg">
-          <AlertDialogHeader className="gap-3 p-5 sm:p-6">
-            <AlertDialogMedia className="mb-0 size-12 rounded-2xl bg-primary/10 text-primary">
+        <DialogContent className="overflow-hidden sm:max-w-lg">
+          <DialogHeader className="flex-row items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Tag className="size-5" strokeWidth={2.25} />
-            </AlertDialogMedia>
-            <AlertDialogTitle className="font-display text-xl font-extrabold tracking-tight">
-              Add bounty tier
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-left text-sm leading-5">
-              Link a label to a USDC amount.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </span>
+            <div className="space-y-1">
+              <DialogTitle className="font-display text-lg font-extrabold tracking-tight">
+                Add a reward tier
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-5">
+                Map a repository label to a fixed USDC payout.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
 
-          <div className="space-y-4 px-5 pb-2 sm:px-6">
-            <Tabs
-              value={addMode}
-              onValueChange={(v) => {
-                setAddMode(v as 'pick' | 'custom');
-                setAddErr('');
-              }}
-              className="gap-4"
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="pick">From GitHub</TabsTrigger>
-                <TabsTrigger value="custom">Custom</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="pick">
-                <div className="h-52 overflow-y-auto rounded-xl border border-border bg-muted/30 p-1.5">
-                  {ghLoading ? (
-                    <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <LoadingLogo size="tiny" variant="circle" /> Loading…
-                    </div>
-                  ) : ghLabels.length === 0 ? (
-                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-                      No labels. Use Custom.
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {ghLabels.map((gl) => {
-                        const active = pickedLabel === gl.name.toLowerCase();
-                        return (
-                          <button
-                            key={gl.name}
-                            type="button"
-                            onClick={() => {
-                              setPickedLabel(gl.name.toLowerCase());
-                              setAddErr('');
-                            }}
-                            className={cn(
-                              'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
-                              active ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-accent'
-                            )}
-                          >
-                            <span
-                              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-black/10"
-                              style={{ backgroundColor: `#${gl.color}` }}
-                            />
-                            <span className="truncate font-mono font-semibold text-foreground">
-                              {gl.name}
-                            </span>
-                            {active && (
-                              <Check
-                                className="ml-auto size-4 shrink-0 text-primary"
-                                strokeWidth={2.5}
-                              />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+          <div className="space-y-4">
+            {/* Source toggle */}
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+              {(['github', 'custom'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setTab(value);
+                    setError('');
+                  }}
+                  className={cn(
+                    'rounded-lg py-1.5 text-sm font-semibold transition-colors',
+                    tab === value
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
-                </div>
-              </TabsContent>
+                >
+                  {value === 'github' ? 'GitHub label' : 'Custom label'}
+                </button>
+              ))}
+            </div>
 
-              <TabsContent value="custom">
-                <div className="flex h-52 flex-col justify-center space-y-1.5">
-                  <Label htmlFor="add-label-name" className="text-sm font-semibold">
-                    Label name
-                  </Label>
-                  <Input
-                    ref={newLabelRef}
-                    id="add-label-name"
-                    placeholder="e.g. critical"
-                    value={newLabel}
-                    disabled={adding}
-                    onChange={(e) => {
-                      setNewLabel(e.target.value);
-                      setAddErr('');
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') confirmAdd();
-                    }}
-                    className="h-10 font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">Must match the GitHub label.</p>
-                </div>
-              </TabsContent>
-            </Tabs>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="add-label-amount" className="text-sm font-semibold">
-                Amount (USDC)
-              </Label>
-              <div className="relative">
+            {/* Label selection */}
+            {tab === 'github' ? (
+              <div className="h-52 overflow-y-auto rounded-xl border border-border bg-muted/30 p-1.5">
+                {ghLoading ? (
+                  <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <LoadingLogo size="tiny" variant="circle" /> Loading labels…
+                  </div>
+                ) : ghLabels.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                    No eligible labels found. Switch to a custom label instead.
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {ghLabels.map((gl) => {
+                      const active = ghLabel === gl.name.toLowerCase();
+                      return (
+                        <button
+                          key={gl.name}
+                          type="button"
+                          onClick={() => {
+                            setGhLabel(gl.name.toLowerCase());
+                            setError('');
+                          }}
+                          className={cn(
+                            'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
+                            active ? 'bg-primary/10 ring-1 ring-primary/40' : 'hover:bg-accent'
+                          )}
+                        >
+                          <span
+                            className="size-3.5 shrink-0 rounded-full ring-1 ring-black/10"
+                            style={{ backgroundColor: `#${gl.color}` }}
+                          />
+                          <span className="truncate font-mono font-semibold text-foreground">
+                            {gl.name}
+                          </span>
+                          {active && (
+                            <Check
+                              className="ml-auto size-4 shrink-0 text-primary"
+                              strokeWidth={2.5}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex h-52 flex-col justify-center space-y-1.5">
+                <Label htmlFor="tier-label" className="text-sm font-semibold">
+                  Label name
+                </Label>
                 <Input
-                  id="add-label-amount"
+                  ref={customRef}
+                  id="tier-label"
+                  placeholder="e.g. critical"
+                  value={customLabel}
+                  disabled={saving}
+                  onChange={(e) => {
+                    setCustomLabel(e.target.value);
+                    setError('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submit();
+                  }}
+                  className="h-10 font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must exactly match the label on your GitHub issues.
+                </p>
+              </div>
+            )}
+
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <Label htmlFor="tier-amount" className="text-sm font-semibold">
+                Payout amount
+              </Label>
+              <InputGroup className="h-11">
+                <InputGroupInput
+                  id="tier-amount"
                   type="number"
                   inputMode="decimal"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
-                  value={newAmount}
-                  disabled={adding}
+                  value={amount}
+                  disabled={saving}
                   onChange={(e) => {
-                    setNewAmount(e.target.value);
-                    setAddErr('');
+                    setAmount(e.target.value);
+                    setError('');
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') confirmAdd();
+                    if (e.key === 'Enter') submit();
                   }}
-                  className="h-10 pr-14 font-mono text-lg font-bold"
+                  className="font-mono text-lg font-bold"
                 />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
-                  USDC
-                </span>
-              </div>
+                <InputGroupAddon align="inline-end">
+                  <InputGroupText className="text-xs font-semibold">USDC</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
             </div>
 
-            {addErr && (
+            {error && (
               <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive">
-                {addErr}
+                {error}
               </p>
             )}
           </div>
 
-          <div className="mt-4 flex flex-col-reverse gap-2 border-t border-border/70 bg-muted/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+          <DialogFooter className="mt-0">
             <AppButton
               variant="outline"
               size="sm"
-              onClick={closeAdd}
-              disabled={adding}
+              onClick={() => !saving && setOpen(false)}
+              disabled={saving}
               className="w-full sm:w-auto"
             >
               Cancel
@@ -665,22 +686,22 @@ export default function RewardSettingsForm({
             <AppButton
               variant="solid"
               size="sm"
-              onClick={confirmAdd}
-              disabled={adding}
-              className="w-full sm:min-w-28 sm:w-auto"
+              onClick={submit}
+              disabled={saving}
+              className="w-full sm:w-auto sm:min-w-28"
             >
-              {adding ? (
+              {saving ? (
                 <>
                   <LoadingLogo size="tiny" variant="circle" />
-                  Adding
+                  Saving
                 </>
               ) : (
-                'Add level'
+                'Add tier'
               )}
             </AppButton>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

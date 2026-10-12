@@ -143,7 +143,7 @@ export default function RepositoryEscrowCard({
             onClick={() => onManage?.(repo)}
             className="w-full text-center"
           >
-            Manage Escrow
+            Manage
           </Button>
         ) : (
           <DeployEscrowButton

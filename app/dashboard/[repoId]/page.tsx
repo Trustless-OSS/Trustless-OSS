@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { ExternalLink } from 'lucide-react';
+import { Check, Clock, ExternalLink, Loader, X } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { createClient } from '@/lib/supabase/server';
 import DeployEscrowButton from '@/app/components/escrow/DeployEscrowButton';
@@ -293,6 +293,16 @@ function levelBadge(level: string) {
   return `${base} ${tone}`;
 }
 
+function statusIcon(status: string) {
+  const map: Record<string, typeof Check> = {
+    pending: Clock,
+    active: Loader,
+    completed: Check,
+    cancelled: X,
+  };
+  return map[status] ?? Clock;
+}
+
 export default async function RepoDetailPage({ params }: { params: Promise<{ repoId: string }> }) {
   const { repoId } = await params;
   const supabase = await createClient();
@@ -427,7 +437,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
 
       <section>
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-xl font-black tracking-tight text-foreground">Active bounties</h2>
+          <h2 className="text-xl font-black tracking-tight text-foreground">Rewarded Issues</h2>
           <p className="text-sm font-semibold text-muted-foreground">{issues.length} tracked</p>
         </div>
 
@@ -455,16 +465,21 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-card/80 ring-1 ring-foreground/10">
-            <Table>
+          <div className="rounded-2xl bg-card/80 ring-1 ring-foreground/10">
+            <Table containerClassName="rounded-2xl" className="min-w-[48rem]">
               <TableHeader>
                 <TableRow className="border-b border-border/70 text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase hover:bg-transparent">
-                  <TableHead className="px-5 py-3">Issue</TableHead>
-                  <TableHead className="px-5 py-3">Level</TableHead>
-                  <TableHead className="px-5 py-3">Reward</TableHead>
-                  <TableHead className="px-5 py-3">Status</TableHead>
-                  <TableHead className="px-5 py-3">Contributor</TableHead>
-                  <TableHead className="px-5 py-3 text-right">Action</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-6 whitespace-nowrap">Issue</TableHead>
+                  <TableHead className="px-4 py-3 md:px-6">Title</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">Level</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">Reward</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">Status</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">
+                    Contributor
+                  </TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-6 text-right whitespace-nowrap">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -488,59 +503,70 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                         key={issue.id}
                         className="border-b border-border/50 text-foreground transition-colors last:border-0 hover:bg-muted/40"
                       >
-                        {/* Issue — only the number links to GitHub */}
-                        <TableCell className="max-w-md px-5 py-4">
-                          <div className="flex items-start gap-2.5">
-                            <a
-                              href={issueUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-0.5 shrink-0 font-mono text-xs font-bold text-primary transition-colors hover:underline"
-                              aria-label={`Open issue #${issue.github_issue_number} on GitHub`}
-                            >
-                              #{issue.github_issue_number}
-                            </a>
-                            <span
-                              className="truncate text-base font-semibold leading-6 sm:text-[17px]"
-                              title={issue.title}
-                            >
-                              {issue.title}
-                            </span>
-                          </div>
+                        {/* Issue — number links to GitHub */}
+                        <TableCell className="px-4 py-4 md:px-6">
+                          <a
+                            href={issueUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-sm font-bold text-primary transition-colors hover:underline"
+                            aria-label={`Open issue #${issue.github_issue_number} on GitHub`}
+                          >
+                            #{issue.github_issue_number}
+                          </a>
+                        </TableCell>
+
+                        {/* Title */}
+                        <TableCell className="max-w-sm px-4 py-4 md:px-6">
+                          <span
+                            className="block truncate text-base font-bold leading-6 sm:text-[17px]"
+                            title={issue.title}
+                          >
+                            {issue.title}
+                          </span>
                         </TableCell>
 
                         {/* Level */}
-                        <TableCell className="px-5 py-4">
+                        <TableCell className="px-4 py-4 md:px-8">
                           {issue.difficulty_label ? (
                             <span className={levelBadge(issue.difficulty_label)}>
                               {issue.difficulty_label}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="font-bold text-muted-foreground">—</span>
                           )}
                         </TableCell>
 
                         {/* Reward */}
-                        <TableCell className="px-5 py-4 font-mono whitespace-nowrap">
+                        <TableCell className="px-4 py-4 md:px-8 font-mono whitespace-nowrap">
                           <span className="font-black">{issue.reward_amount}</span>{' '}
-                          <span className="text-xs font-semibold text-muted-foreground">USDC</span>
+                          <span className="text-xs font-bold text-muted-foreground">USDC</span>
                         </TableCell>
 
                         {/* Status */}
-                        <TableCell className="px-5 py-4">
-                          <Badge variant="secondary" className={statusBadge(issue.status)}>
-                            {issue.status}
-                          </Badge>
+                        <TableCell className="px-4 py-4 md:px-8">
+                          {(() => {
+                            const StatusIcon = statusIcon(issue.status);
+                            return (
+                              <Badge
+                                variant="secondary"
+                                className={`${statusBadge(issue.status)} gap-1 font-bold capitalize`}
+                              >
+                                <StatusIcon className="h-3 w-3" aria-hidden="true" />
+                                {issue.status}
+                              </Badge>
+                            );
+                          })()}
                         </TableCell>
 
                         {/* Contributor — avatar + handle */}
-                        <TableCell className="px-5 py-4">
+                        <TableCell className="px-4 py-4 md:px-8">
                           {actorUsername ? (
                             <a
                               href={`https://github.com/${actorUsername}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 font-semibold text-foreground transition-colors hover:text-primary"
+                              className="inline-flex items-center gap-2 font-bold text-foreground transition-colors hover:text-primary"
                             >
                               <img
                                 src={`https://github.com/${actorUsername}.png?size=48`}
@@ -553,18 +579,18 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               <span className="truncate">@{actorUsername}</span>
                             </a>
                           ) : (
-                            <span className="inline-flex items-center gap-2 text-muted-foreground">
+                            <span className="inline-flex items-center gap-2 font-bold text-muted-foreground">
                               <span
                                 className="size-6 shrink-0 rounded-full bg-muted ring-1 ring-border"
                                 aria-hidden="true"
                               />
-                              Unassigned
+                              Not assigned
                             </span>
                           )}
                         </TableCell>
 
                         {/* Action */}
-                        <TableCell className="px-5 py-4 text-right">
+                        <TableCell className="px-4 py-4 md:px-6 text-right">
                           {isRepoMaintainer ? (
                             <RetryProcessButton
                               issueId={issue.id}

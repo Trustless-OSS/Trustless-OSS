@@ -1,8 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, GitMerge, Lock, Tag, UserPlus } from 'lucide-react';
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  DollarSign,
+  GitMerge,
+  Lock,
+  UserMinus,
+  UserPlus,
+  X,
+  XCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { formatWhen } from '@/app/components/dashboard/MaintainerActivity';
 import { cn } from '@/lib/utils';
 import { authHeaders, backendUrl } from '@/lib/backend';
@@ -23,17 +35,22 @@ export type Notice = {
 // ─── Icon / colour map ────────────────────────────────────────────────────────
 
 const KIND_ICON: Record<string, typeof Bell> = {
-  rewarded: Tag,
-  locked: Lock,
-  released: GitMerge,
-  assigned: UserPlus,
+  rewarded: DollarSign, // money attached to an issue
+  locked: Lock, // funds locked in escrow
+  released: GitMerge, // PR merged / payout released
+  assigned: UserPlus, // assigned to an issue
+  unassigned: UserMinus, // removed from an issue
+  rejected: XCircle, // claim rejected
 };
 
+// Each kind gets a distinct circle tint + icon colour so types are glanceable.
 const KIND_TONE: Record<string, string> = {
-  rewarded: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  rewarded: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
   locked: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
-  released: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  assigned: 'bg-muted text-muted-foreground dark:bg-white/10 dark:text-foreground',
+  released: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  assigned: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  unassigned: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 };
 
 function iconFor(kind: string) {
@@ -41,7 +58,7 @@ function iconFor(kind: string) {
 }
 
 function toneFor(kind: string) {
-  return KIND_TONE[kind] ?? 'bg-muted text-muted-foreground';
+  return KIND_TONE[kind] ?? 'bg-muted text-muted-foreground dark:bg-white/5';
 }
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
@@ -169,6 +186,17 @@ export default function NotificationBell({ token }: { token: string }) {
     if (token) await apiReadOne(token, id);
   }
 
+  // Unread first, then newest to oldest within each group. Read items stay in the
+  // list so they can be revisited.
+  const sortedItems = useMemo(
+    () =>
+      [...items].sort((a, b) => {
+        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+        return b.createdAt.localeCompare(a.createdAt);
+      }),
+    [items]
+  );
+
   // Build a link for each notification based on its data payload
   function hrefFor(notice: Notice): string {
     const repoId = notice.data?.repoId ?? notice.data?.repo_id;
@@ -201,20 +229,15 @@ export default function NotificationBell({ token }: { token: string }) {
           className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
-            <div>
-              <p className="text-sm font-bold">Notifications</p>
-              <p className="text-xs text-muted-foreground">
-                {unread > 0 ? `${unread} unread` : 'You are caught up'}
-              </p>
-            </div>
+          <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-4">
+            <p className="text-lg font-bold">Notifications</p>
             <button
               type="button"
-              onClick={markAllRead}
-              disabled={unread === 0}
-              className="text-xs font-semibold text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+              onClick={() => setOpen(false)}
+              aria-label="Close notifications"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              Mark all read
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -229,7 +252,7 @@ export default function NotificationBell({ token }: { token: string }) {
             </p>
           ) : (
             <ul className="max-h-96 overflow-y-auto py-1">
-              {items.map((notice) => {
+              {sortedItems.map((notice) => {
                 const Icon = iconFor(notice.kind);
                 return (
                   <li key={notice.id}>
@@ -240,31 +263,39 @@ export default function NotificationBell({ token }: { token: string }) {
                         setOpen(false);
                       }}
                       className={cn(
-                        'flex gap-3 px-4 py-3 transition-colors hover:bg-accent',
+                        'flex gap-3 px-5 py-4 transition-colors hover:bg-accent',
                         notice.isRead ? 'opacity-80' : 'bg-primary/5'
                       )}
                     >
                       <span
                         className={cn(
-                          'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+                          'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
                           toneFor(notice.kind)
                         )}
                       >
-                        <Icon className="h-4 w-4" aria-hidden="true" />
+                        <Icon className="h-5 w-5" aria-hidden="true" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-semibold text-foreground">
+                          <span className="block text-sm font-semibold text-foreground">
                             {notice.title}
                           </span>
-                          {!notice.isRead && (
-                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                          {notice.isRead ? (
+                            <CheckCheck
+                              className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                              aria-label="Read"
+                            />
+                          ) : (
+                            <Check
+                              className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
+                              aria-label="Unread"
+                            />
                           )}
                         </span>
-                        <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">
+                        <span className="mt-1 line-clamp-3 block text-sm leading-5 text-muted-foreground">
                           {notice.body}
                         </span>
-                        <time className="mt-1 block text-xs text-muted-foreground">
+                        <time className="mt-2 block text-xs text-muted-foreground">
                           {formatWhen(notice.createdAt)}
                         </time>
                       </span>
@@ -276,14 +307,17 @@ export default function NotificationBell({ token }: { token: string }) {
           )}
 
           {/* Footer */}
-          <div className="border-t border-border/70 px-4 py-2.5">
-            <Link
-              href="/dashboard/transactions"
-              onClick={() => setOpen(false)}
-              className="text-sm font-semibold text-primary hover:underline"
+          <div className="border-t border-border/70 p-3">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={markAllRead}
+              disabled={unread === 0}
             >
-              View activity
-            </Link>
+              <CheckCheck className="h-4 w-4" aria-hidden="true" />
+              Mark all read
+            </Button>
           </div>
         </div>
       )}

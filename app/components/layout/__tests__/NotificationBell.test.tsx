@@ -82,6 +82,9 @@ describe('NotificationBell', () => {
         expect.objectContaining({ method: 'POST' })
       )
     );
-    expect(screen.getByText('You are caught up')).toBeInTheDocument();
+    // Unread badge clears once everything is marked read.
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /unread/ })).not.toBeInTheDocument()
+    );
   });
 });

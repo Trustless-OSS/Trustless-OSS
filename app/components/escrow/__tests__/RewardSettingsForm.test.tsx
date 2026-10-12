@@ -50,7 +50,7 @@ describe('RewardSettingsForm', () => {
     expect(screen.getByText('high')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add level' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add tier' })).toBeInTheDocument();
   });
 
   it('turns every tier into an editable input in edit mode', () => {
@@ -61,7 +61,7 @@ describe('RewardSettingsForm', () => {
     expect(screen.getByLabelText('low reward in USDC')).toBeInTheDocument();
     expect(screen.getByLabelText('medium reward in USDC')).toBeInTheDocument();
     expect(screen.getByLabelText('high reward in USDC')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 
   it('saves only the tiers that changed', async () => {
@@ -72,7 +72,7 @@ describe('RewardSettingsForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByLabelText('high reward in USDC'), { target: { value: '8' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
@@ -98,7 +98,7 @@ describe('RewardSettingsForm', () => {
 
     // "Remove (1)" button becomes enabled; clicking opens the confirm dialog
     fireEvent.click(screen.getByRole('button', { name: /Remove \(1\)/ }));
-    const dialog = await screen.findByRole('alertdialog');
+    const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
