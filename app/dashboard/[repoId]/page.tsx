@@ -9,7 +9,6 @@ import RefundFundButton from '@/app/components/escrow/RefundFundButton';
 import RewardSettingsForm from '@/app/components/escrow/RewardSettingsForm';
 import DeleteRepoButton from '@/app/components/dashboard/DeleteRepoButton';
 import Button from '@/app/components/ui/Button';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -271,11 +270,20 @@ async function getIssues(repoId: string, token: string) {
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'status-pending',
+    open: 'status-pending',
     active: 'status-active',
+    in_progress: 'status-active',
+    assigned: 'status-active',
     completed: 'status-completed',
+    merged: 'status-completed',
+    released: 'status-completed',
     cancelled: 'status-cancelled',
+    canceled: 'status-cancelled',
+    rejected: 'status-cancelled',
+    closed: 'status-cancelled',
   };
-  return `${map[status] ?? 'status-pending'} status-badge`;
+  const tone = map[status.trim().toLowerCase()] ?? 'status-neutral';
+  return `${tone} status-badge`;
 }
 
 function levelBadge(level: string) {
@@ -548,13 +556,12 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                           {(() => {
                             const StatusIcon = statusIcon(issue.status);
                             return (
-                              <Badge
-                                variant="secondary"
-                                className={`${statusBadge(issue.status)} gap-1 font-bold capitalize`}
+                              <span
+                                className={`${statusBadge(issue.status)} inline-flex items-center gap-1 font-bold capitalize`}
                               >
                                 <StatusIcon className="h-3 w-3" aria-hidden="true" />
                                 {issue.status}
-                              </Badge>
+                              </span>
                             );
                           })()}
                         </TableCell>
