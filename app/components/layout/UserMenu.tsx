@@ -1,19 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, ChevronDown, LayoutDashboard, LogOut, Menu, UserRound } from 'lucide-react';
+import {
+  BookText,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Menu,
+} from 'lucide-react';
+import { FaGithub, FaXTwitter } from 'react-icons/fa6';
 import type { User } from '@supabase/supabase-js';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { STATUS_PAGE_URL } from '@/lib/health';
 
 export default function UserMenu({ user }: { user: User }) {
   const name = user.user_metadata?.user_name ?? user.email?.split('@')[0] ?? 'Account';
@@ -56,25 +68,76 @@ export default function UserMenu({ user }: { user: User }) {
         </TooltipTrigger>
         <TooltipContent side="bottom">Open settings</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end" sideOffset={8} className="w-56 min-w-56">
-        <DropdownMenuLabel className="font-medium text-foreground">{name}</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/profile">
-            <UserRound aria-hidden="true" />
-            Profile
+      <DropdownMenuContent align="end" sideOffset={8} className="w-64 min-w-64 p-1.5">
+        {/* Profile header */}
+        <DropdownMenuItem asChild className="gap-3 rounded-lg p-2">
+          <Link href="/profile" aria-label="Profile">
+            <Avatar className="size-9">
+              {avatar ? (
+                <AvatarImage src={avatar} alt="" className="object-cover object-center" />
+              ) : null}
+              <AvatarFallback className="bg-foreground text-xs font-semibold text-background">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold text-foreground">{name}</span>
+              <span className="text-xs text-muted-foreground">View profile</span>
+            </span>
+            <ChevronRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard">
-            <LayoutDashboard aria-hidden="true" />
-            Dashboard
-          </Link>
-        </DropdownMenuItem>
+
         <DropdownMenuSeparator />
+
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard">
+              <LayoutDashboard aria-hidden="true" />
+              Dashboard
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/docs">
+              <BookText aria-hidden="true" />
+              Documentation
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuLabel className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+          Resources
+        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <a href="https://github.com/Trustless-OSS" target="_blank" rel="noopener noreferrer">
+              <FaGithub aria-hidden="true" />
+              GitHub
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href="https://x.com/Trustless_OSS" target="_blank" rel="noopener noreferrer">
+              <FaXTwitter aria-hidden="true" />X (Twitter)
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={STATUS_PAGE_URL} target="_blank" rel="noopener noreferrer">
+              <LifeBuoy aria-hidden="true" />
+              API status
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuLabel className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+          Account
+        </DropdownMenuLabel>
         <form action="/auth/signout" method="post">
           <DropdownMenuItem variant="destructive" asChild>
-            <button type="submit">
+            <button type="submit" className="w-full">
               <LogOut aria-hidden="true" />
               Sign out
             </button>

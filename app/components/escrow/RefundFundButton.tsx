@@ -7,7 +7,7 @@ import { AlertTriangle, ArrowDownToLine, Copy, Check, ExternalLink, X } from 'lu
 import { handleError, notifySuccess } from '@/lib/notifications';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -132,12 +132,9 @@ export default function RefundFundButton({
     setLoading(true);
 
     try {
-      const res = await fetch(backendUrl('/api/escrow/refund'), {
+      const res = await fetch(backendUrl('/api/v1/escrow/refund'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({
           repoId,
           amount: parsedAmount,

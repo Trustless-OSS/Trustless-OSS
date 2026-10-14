@@ -1,12 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, ExternalLink, Plus, X } from 'lucide-react';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -42,6 +43,7 @@ export default function FundEscrowButton({
   repoName?: string;
   currentBalance?: number;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,12 +51,13 @@ export default function FundEscrowButton({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [phase, setPhase] = useState<ModalPhase>('amount');
   const [transactionHash, setTransactionHash] = useState('');
+  const [confirmedBalance, setConfirmedBalance] = useState<number | null>(null);
 
   const parsedAmount = Number(amount);
   const isAmountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const showAmountError = submitAttempted && !isAmountValid;
   const currentBalanceValue = currentBalance ?? 0;
-  const nextBalance = currentBalanceValue + (isAmountValid ? parsedAmount : 0);
+  const nextBalance = confirmedBalance ?? currentBalanceValue + (isAmountValid ? parsedAmount : 0);
   const amountLocked = loading || phase === 'success' || phase === 'error';
 
   const progressValue =
@@ -76,7 +79,7 @@ export default function FundEscrowButton({
       : phase === 'sign'
         ? 'Sign the transaction in your wallet'
         : phase === 'processing'
-          ? 'Submitting to Stellar…'
+          ? 'Confirming deposit and syncing balance…'
           : phase === 'success'
             ? 'Deposit confirmed'
             : phase === 'error'
@@ -88,6 +91,7 @@ export default function FundEscrowButton({
     setSubmitAttempted(false);
     setPhase('amount');
     setTransactionHash('');
+    setConfirmedBalance(null);
     setError('');
     setLoading(false);
   }
@@ -105,7 +109,7 @@ export default function FundEscrowButton({
 
   function handleCloseAndRefresh() {
     setOpen(false);
-    window.location.reload();
+    router.refresh();
   }
 
   async function handleFund() {
@@ -123,6 +127,9 @@ export default function FundEscrowButton({
     try {
       const kit = await getWalletKit();
 
+      // Radix dialog overlay (z-50) sits above Stellar Wallets Kit and blocks wallet UI clicks.
+      setOpen(false);
+
       const { address } = await withTimeout(
         kit.authModal(),
         WALLET_OPERATION_TIMEOUT_MS,
@@ -130,14 +137,12 @@ export default function FundEscrowButton({
       );
       if (!address) throw new Error('No public key returned');
 
+      setOpen(true);
       setPhase('sign');
 
-      const res1 = await fetch(backendUrl('/api/escrow/fund-unsigned'), {
+      const res1 = await fetch(backendUrl('/api/v1/escrow/fund-unsigned'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({
           repoId,
           amount: parsedAmount,
@@ -156,20 +161,25 @@ export default function FundEscrowButton({
 
       const { unsignedTransaction } = await res1.json();
 
-      setPhase('processing');
+      setOpen(false);
+      setPhase('sign');
       const { signedTxXdr } = await withTimeout(
         kit.signTransaction(unsignedTransaction),
         WALLET_OPERATION_TIMEOUT_MS,
         'Transaction signing timed out. Please close the wallet modal and try again.'
       );
+      setOpen(true);
+      setPhase('processing');
 
-      const res2 = await fetch(backendUrl('/api/escrow/submit-fund'), {
+      const res2 = await fetch(backendUrl('/api/v1/escrow/submit-fund'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ repoId, amount: parsedAmount, signedXdr: signedTxXdr }),
+        headers: authHeaders(token),
+        body: JSON.stringify({
+          repoId,
+          amount: parsedAmount,
+          funderWallet: address,
+          signedXdr: signedTxXdr,
+        }),
       });
 
       if (!res2.ok) {
@@ -180,9 +190,15 @@ export default function FundEscrowButton({
       const result = await res2.json();
       const nextHash =
         result?.transactionHash || result?.hash || result?.txHash || result?.txid || '';
+      const reportedBalance = Number(result?.newBalance ?? result?.new_balance);
+      if (Number.isFinite(reportedBalance)) {
+        setConfirmedBalance(reportedBalance);
+      }
       setTransactionHash(nextHash);
       setPhase('success');
+      router.refresh();
     } catch (err: unknown) {
+      setOpen(true);
       setPhase('error');
       setError(err instanceof Error ? err.message : 'Failed to fund');
     } finally {

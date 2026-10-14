@@ -11,8 +11,26 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
       updateUser,
+      // No session in tests → component keeps the user-metadata-derived form
+      // and skips the backend /contributor/me hydration fetch.
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
     },
   }),
+}));
+
+vi.mock('@/lib/backend', () => ({
+  backendUrl: (p: string) => {
+    const raw = p.startsWith('/') ? p : `/${p}`;
+    if (raw.startsWith('/api/v1')) return `http://localhost:5000${raw}`;
+    if (raw.startsWith('/api/'))
+      return `http://localhost:5000${raw.replace(/^\/api\//, '/api/v1/')}`;
+    if (raw.startsWith('/api')) return 'http://localhost:5000/api/v1';
+    return `http://localhost:5000/api/v1${raw}`;
+  },
+  authHeaders: (token: string, json = true) =>
+    json
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      : { Authorization: `Bearer ${token}` },
 }));
 
 vi.mock('@/lib/notifications', () => ({
@@ -65,7 +83,7 @@ describe('ProfileSettings', () => {
     expect(screen.queryByText('5/6')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Profile completeness')).toBeInTheDocument();
     expect(screen.getAllByText('Verified').length).toBeGreaterThan(0);
-    expect(screen.getByText('Verified through GitHub sign-in.')).toBeInTheDocument();
+    expect(screen.queryByText('Verified through GitHub sign-in.')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Discard' })).not.toBeInTheDocument();
     expect(screen.queryByText('You have unsaved profile changes.')).not.toBeInTheDocument();

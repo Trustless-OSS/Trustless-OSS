@@ -9,7 +9,7 @@ interface LogoProps {
 
 const sizeConfig: Record<LogoSize, string> = {
   tiny: 'h-4 w-4',
-  nav: 'h-14 w-14',
+  nav: 'h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14',
   sm: 'h-12 w-12',
   md: 'h-20 w-20',
   lg: 'h-28 w-28',

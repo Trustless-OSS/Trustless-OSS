@@ -35,7 +35,7 @@ describe('RepositoryEscrowCard', () => {
     expect(screen.getByText('$16,100.50')).toBeInTheDocument();
     expect(screen.queryByText('Contributors Whitelisted')).not.toBeInTheDocument();
     expect(screen.queryByText('No whitelist setup')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Manage Escrow' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Manage' })).toHaveAttribute(
       'href',
       '/dashboard/repo_123'
     );
@@ -72,7 +72,7 @@ describe('RepositoryEscrowCard', () => {
     const onManage = vi.fn();
     render(<RepositoryEscrowCard repo={repo} onManage={onManage} />);
 
-    fireEvent.click(screen.getByRole('link', { name: 'Manage Escrow' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Manage' }));
 
     expect(onManage).toHaveBeenCalledWith(repo);
   });
@@ -100,6 +100,6 @@ describe('RepositoryEscrowCard', () => {
     render(<RepositoryEscrowCard repo={repo} isLoading />);
 
     expect(screen.getByLabelText('Loading repository escrow')).toHaveAttribute('aria-busy', 'true');
-    expect(screen.queryByText('Manage Escrow')).not.toBeInTheDocument();
+    expect(screen.queryByText('Manage')).not.toBeInTheDocument();
   });
 });

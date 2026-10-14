@@ -1,15 +1,14 @@
 import { redirect } from 'next/navigation';
-import { ExternalLink } from 'lucide-react';
+import { Check, Clock, ExternalLink, Loader, X } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { createClient } from '@/lib/supabase/server';
 import DeployEscrowButton from '@/app/components/escrow/DeployEscrowButton';
 import FundEscrowButton from '@/app/components/escrow/FundEscrowButton';
-import RewardSettingsForm from '@/app/components/escrow/RewardSettingsForm';
 import RetryProcessButton from '@/app/components/escrow/RetryProcessButton';
 import RefundFundButton from '@/app/components/escrow/RefundFundButton';
+import RewardSettingsForm from '@/app/components/escrow/RewardSettingsForm';
 import DeleteRepoButton from '@/app/components/dashboard/DeleteRepoButton';
 import Button from '@/app/components/ui/Button';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -19,44 +18,203 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { getActorUsername } from '@/lib/issues';
+import { remoteBackendUrl } from '@/lib/backend';
 
-const BACKEND = (process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000').replace(/\/$/, '');
+// CREATE TABLE "repositories"(
+//   "id" UUID NOT NULL,
+//   "github_repo_id" BIGINT NOT NULL,
+//   "github_install_id" BIGINT,
+//   "full_name" TEXT NOT NULL,
+//   "escrow_contract_id" TEXT,
+//   "escrow_balance" NUMERIC,
+//   "balance_synced_at" TIMESTAMPTZ(6),
+//   "created_at" TIMESTAMPTZ(6) NOT NULL,
+//   PRIMARY KEY("id")
+// );
+// pub(crate) struct RepoDetails {
+//   pub(crate) repo: Repo,
+//     pub(crate) is_maintainer: bool,
+//       pub(crate) escrow_deployed: bool,
+//         pub(crate) escrow_status: & 'static str,
+//   pub(crate) can_deploy_escrow: bool,
+//     pub(crate) can_fund_escrow: bool,
+//       pub(crate) can_close_escrow: bool,
+//         pub(crate) can_refund_escrow: bool,
+// }
 
 type Repo = {
   id: string;
   github_repo_id: number;
+  github_install_id: number | null;
   full_name: string;
-  owner_github_id: number;
-  owner_username: string;
-  installer_github_id: number | null;
-  github_installation_id: number | null;
   escrow_contract_id: string | null;
   escrow_funder_wallet?: string | null;
   escrow_balance: number;
-  reward_low: number;
-  reward_medium: number;
-  reward_high: number;
-  is_fork: boolean;
-  is_private: boolean;
-  owner_type: 'User' | 'Organization';
+  balance_synced_at: string | null;
   created_at: string;
+  rewards?: RewardLevel[];
 };
+
+type RepoDetails = {
+  repo: Repo;
+  is_maintainer: boolean;
+  escrow_deployed: boolean;
+  escrow_status: string;
+  can_deploy_escrow: boolean;
+  can_fund_escrow: boolean;
+  can_close_escrow: boolean;
+  can_refund_escrow: boolean;
+};
+
+type RewardLevel = {
+  label: string;
+  amount: number;
+};
+
+type Reward = RewardLevel[];
+
+type JsonRecord = Record<string, unknown>;
 
 function toNumber(value: unknown): number {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
-function normalizeRepo(data: unknown): Repo | null {
-  if (!data || typeof data !== 'object') return null;
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === 'object' && value !== null;
+}
 
-  const repo = data as Repo;
+function nullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function boolean(value: unknown, fallback = false): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeRewardLevels(value: unknown): RewardLevel[] {
+  if (!value) return [];
+
+  const nestedValue =
+    isRecord(value) &&
+    (value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers)
+      ? (value.rewards ?? value.reward_levels ?? value.rewardLevels ?? value.levels ?? value.tiers)
+      : value;
+
+  if (Array.isArray(nestedValue)) {
+    return nestedValue.flatMap((item) => {
+      if (isRecord(item)) {
+        const label =
+          nullableString(item.label) ??
+          nullableString(item.name) ??
+          nullableString(item.reward_label) ??
+          nullableString(item.level) ??
+          null;
+        const amount = toNumber(
+          item.amount ??
+            item.value ??
+            item.usdc ??
+            item.reward_amount ??
+            item.reward ??
+            item.amount_usdc
+        );
+
+        return label && Number.isFinite(amount) ? [{ label, amount }] : [];
+      }
+
+      if (typeof item === 'number' || typeof item === 'string') {
+        const amount = toNumber(item);
+        return Number.isFinite(amount) ? [{ label: 'custom', amount }] : [];
+      }
+
+      return [];
+    });
+  }
+
+  if (isRecord(nestedValue)) {
+    return Object.entries(nestedValue).flatMap(([key, raw]) => {
+      if (isRecord(raw)) {
+        const label =
+          nullableString(raw.label) ??
+          nullableString(raw.name) ??
+          nullableString(raw.reward_label) ??
+          nullableString(raw.level) ??
+          key;
+        const amount = toNumber(
+          raw.amount ?? raw.value ?? raw.usdc ?? raw.reward_amount ?? raw.reward ?? raw.amount_usdc
+        );
+
+        if (!label || !Number.isFinite(amount)) return [];
+        return [{ label, amount }];
+      }
+
+      if (typeof raw === 'number' || typeof raw === 'string') {
+        const amount = toNumber(raw);
+        if (!Number.isFinite(amount)) return [];
+        return [{ label: key, amount }];
+      }
+
+      return [];
+    });
+  }
+
+  return [];
+}
+
+function normalizeRepo(data: unknown): RepoDetails | null {
+  if (!isRecord(data)) return null;
+
+  const source = isRecord(data.repo) ? data.repo : isRecord(data.Repo) ? data.Repo : data;
+  const id = nullableString(source.id);
+  const fullName = nullableString(source.full_name);
+  const createdAt = nullableString(source.created_at);
+  if (!id || !fullName || !createdAt) return null;
+
+  const rewardLevels = normalizeRewardLevels(
+    source.rewards ??
+      source.reward_levels ??
+      source.rewardLevels ??
+      source.levels ??
+      source.tiers ??
+      data.rewards ??
+      data.reward_levels ??
+      data.rewardLevels ??
+      data.levels ??
+      data.tiers
+  );
+
+  const escrowContractId = nullableString(source.escrow_contract_id);
+  const escrowDeployed = boolean(
+    data.escrow_deployed ?? data.escrowDeployed,
+    Boolean(escrowContractId)
+  );
+  const repo: Repo = {
+    id,
+    github_repo_id: toNumber(source.github_repo_id),
+    github_install_id:
+      source.github_install_id === null || source.github_install_id === undefined
+        ? null
+        : toNumber(source.github_install_id),
+    full_name: fullName,
+    escrow_contract_id: escrowContractId,
+    escrow_funder_wallet: nullableString(source.escrow_funder_wallet),
+    escrow_balance: toNumber(source.escrow_balance),
+    balance_synced_at: nullableString(source.balance_synced_at),
+    created_at: createdAt,
+    rewards: rewardLevels,
+  };
+
   return {
-    ...repo,
-    escrow_balance: toNumber(repo.escrow_balance),
-    reward_low: toNumber(repo.reward_low),
-    reward_medium: toNumber(repo.reward_medium),
-    reward_high: toNumber(repo.reward_high),
+    repo,
+    is_maintainer: boolean(data.is_maintainer ?? data.isMaintainer),
+    escrow_deployed: escrowDeployed,
+    escrow_status:
+      nullableString(data.escrow_status ?? data.escrowStatus) ??
+      (escrowDeployed ? 'active' : 'not_deployed'),
+    can_deploy_escrow: boolean(data.can_deploy_escrow ?? data.canDeployEscrow),
+    can_fund_escrow: boolean(data.can_fund_escrow ?? data.canFundEscrow),
+    can_close_escrow: boolean(data.can_close_escrow ?? data.canCloseEscrow),
+    can_refund_escrow: boolean(data.can_refund_escrow ?? data.canRefundEscrow),
   };
 }
 
@@ -65,16 +223,32 @@ function repoDisplayName(fullName: string): string {
   return name || fullName;
 }
 
-async function getRepo(repoId: string, token: string): Promise<Repo | null> {
+async function getRepo(repoId: string, token: string): Promise<RepoDetails | null> {
   try {
-    const res = await fetch(`${BACKEND}/api/repos/${repoId}`, {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
     if (!res.ok) return null;
 
     const data = await res.json();
-    return normalizeRepo(data.data ?? data.repo ?? null);
+    return normalizeRepo(data.data ?? data);
+  } catch {
+    return null;
+  }
+}
+
+async function getRepoRewards(repoId: string, token: string): Promise<Reward | null> {
+  try {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/rewards/${repoId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const rewardLevels = normalizeRewardLevels(data.data ?? data);
+    return rewardLevels.length > 0 ? rewardLevels : null;
   } catch {
     return null;
   }
@@ -82,7 +256,7 @@ async function getRepo(repoId: string, token: string): Promise<Repo | null> {
 
 async function getIssues(repoId: string, token: string) {
   try {
-    const res = await fetch(`${BACKEND}/api/repos/${repoId}/issues`, {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}/issues`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -96,22 +270,45 @@ async function getIssues(repoId: string, token: string) {
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'status-pending',
+    open: 'status-pending',
     active: 'status-active',
+    in_progress: 'status-active',
+    assigned: 'status-active',
     completed: 'status-completed',
+    merged: 'status-completed',
+    released: 'status-completed',
     cancelled: 'status-cancelled',
+    canceled: 'status-cancelled',
+    rejected: 'status-cancelled',
+    closed: 'status-cancelled',
   };
-  return `${map[status] ?? 'status-pending'} status-badge`;
+  const tone = map[status.trim().toLowerCase()] ?? 'status-neutral';
+  return `${tone} status-badge`;
 }
 
-function diffBadge(diff: string | null) {
-  if (!diff) return '';
+function levelBadge(level: string) {
+  const base =
+    'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ring-1';
   const map: Record<string, string> = {
-    low: 'diff-low',
-    medium: 'diff-medium',
-    high: 'diff-high',
-    custom: 'diff-custom',
+    low: 'bg-emerald-100 text-emerald-700 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-300',
+    medium:
+      'bg-amber-100 text-amber-700 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-300',
+    high: 'bg-rose-100 text-rose-700 ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-300',
   };
-  return `${map[diff] ?? ''} rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide`;
+  const tone =
+    map[level.trim().toLowerCase()] ??
+    'bg-violet-100 text-violet-700 ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-300';
+  return `${base} ${tone}`;
+}
+
+function statusIcon(status: string) {
+  const map: Record<string, typeof Check> = {
+    pending: Clock,
+    active: Loader,
+    completed: Check,
+    cancelled: X,
+  };
+  return map[status] ?? Clock;
 }
 
 export default async function RepoDetailPage({ params }: { params: Promise<{ repoId: string }> }) {
@@ -127,12 +324,15 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
   } = await supabase.auth.getSession();
 
   const token = session?.access_token ?? '';
-  const [repo, issues] = await Promise.all([getRepo(repoId, token), getIssues(repoId, token)]);
-
-  const githubId = Number(user.user_metadata?.provider_id ?? user.user_metadata?.sub);
-  const isRepoMaintainer =
-    repo &&
-    (Number(repo.owner_github_id) === githubId || Number(repo.installer_github_id) === githubId);
+  const [repoDetails, issues, repoRewards] = await Promise.all([
+    getRepo(repoId, token),
+    getIssues(repoId, token),
+    getRepoRewards(repoId, token),
+  ]);
+  const repo = repoDetails?.repo;
+  const rewardLevels = repo?.rewards?.length ? repo.rewards : (repoRewards ?? []);
+  const hasEscrow = Boolean(repoDetails?.escrow_deployed && repo?.escrow_contract_id);
+  const isRepoMaintainer = repoDetails?.is_maintainer ?? false;
 
   return (
     <div className="w-full space-y-10">
@@ -143,25 +343,8 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
               <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
                 {repoDisplayName(repo.full_name)}
               </h1>
-              <Button
-                href={`https://github.com/${repo.full_name}`}
-                external
-                variant="outline"
-                size="sm"
-                aria-label={`Open ${repo.full_name} on GitHub`}
-                className="h-7 gap-1.5 rounded-md border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
-              >
-                <SiGithub className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                GitHub
-                <ExternalLink
-                  size={12}
-                  strokeWidth={2.25}
-                  className="text-muted-foreground"
-                  aria-hidden="true"
-                />
-              </Button>
             </div>
-            {repo.escrow_contract_id ? (
+            {hasEscrow && repo.escrow_contract_id ? (
               <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
                 <span className="font-mono font-semibold">
@@ -177,16 +360,36 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                   <ExternalLink size={14} strokeWidth={2.5} aria-hidden="true" />
                   Inspect
                 </Button>
+
+                <Button
+                  href={`https://github.com/${repo.full_name}`}
+                  external
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Open ${repo.full_name} on GitHub`}
+                  className="h-7 gap-1.5 rounded-md border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted"
+                >
+                  <SiGithub className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  GitHub
+                  <ExternalLink
+                    size={12}
+                    strokeWidth={2.25}
+                    className="text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                </Button>
               </div>
             ) : (
               <div className="mt-4 max-w-xs space-y-3">
                 <p className="text-sm font-semibold text-red-600">No escrow contract yet</p>
-                <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                {repoDetails?.can_deploy_escrow && (
+                  <DeployEscrowButton repoId={repoId} token={session?.access_token ?? ''} />
+                )}
               </div>
             )}
           </div>
 
-          {repo.escrow_contract_id && (
+          {hasEscrow && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
               <div className="sm:pr-2">
                 <p className="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
@@ -194,42 +397,36 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                 </p>
                 <p className="text-2xl font-black tracking-tight text-foreground">
                   {repo.escrow_balance.toFixed(2)}{' '}
-                  <span className="text-sm font-semibold text-muted-foreground">USDC</span>
+                  <span className="text-sm  font-semibold text-muted-foreground">USDC</span>
                 </p>
               </div>
-              {isRepoMaintainer && (
+              {(repoDetails?.can_fund_escrow ||
+                repoDetails?.can_refund_escrow ||
+                isRepoMaintainer) && (
                 <div className="flex flex-wrap items-center gap-2">
-                  <FundEscrowButton
-                    repoId={repoId}
-                    token={session?.access_token ?? ''}
-                    repoName={repo.full_name}
-                    currentBalance={repo.escrow_balance}
-                  />
-                  {repo.escrow_balance > 0 ? (
+                  {repoDetails?.can_fund_escrow && (
+                    <FundEscrowButton
+                      repoId={repoId}
+                      token={session?.access_token ?? ''}
+                      repoName={repo.full_name}
+                      currentBalance={repo.escrow_balance}
+                    />
+                  )}
+                  {repo.escrow_balance > 0 && repoDetails?.can_refund_escrow ? (
                     <RefundFundButton
                       repoId={repoId}
                       token={session?.access_token ?? ''}
                       currentBalance={repo.escrow_balance}
                       destinationAddress={repo.escrow_funder_wallet}
                     />
-                  ) : (
+                  ) : repo.escrow_balance === 0 && isRepoMaintainer ? (
                     <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
-                  )}
+                  ) : null}
                 </div>
               )}
             </div>
           )}
         </header>
-      )}
-
-      {isRepoMaintainer && repo && (
-        <RewardSettingsForm
-          repoId={repoId}
-          token={session?.access_token ?? ''}
-          initialLow={repo.reward_low}
-          initialMedium={repo.reward_medium}
-          initialHigh={repo.reward_high}
-        />
       )}
 
       {!isRepoMaintainer && repo && (
@@ -238,9 +435,17 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
         </p>
       )}
 
+      {rewardLevels.length > 0 && (
+        <RewardSettingsForm repoId={repoId} token={token} initialLevels={rewardLevels} />
+      )}
+
+      {rewardLevels.length === 0 && isRepoMaintainer && (
+        <RewardSettingsForm repoId={repoId} token={token} initialLevels={[]} />
+      )}
+
       <section>
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-xl font-black tracking-tight text-foreground">Active bounties</h2>
+          <h2 className="text-xl font-black tracking-tight text-foreground">Rewarded Issues</h2>
           <p className="text-sm font-semibold text-muted-foreground">{issues.length} tracked</p>
         </div>
 
@@ -249,23 +454,40 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
             <p className="text-sm font-semibold text-muted-foreground">No tracked issues yet.</p>
             <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
               Add a <span className="font-semibold text-foreground">rewarded</span> label with{' '}
-              <span className="font-semibold text-foreground">low</span>,{' '}
-              <span className="font-semibold text-foreground">medium</span>, or{' '}
-              <span className="font-semibold text-foreground">high</span>, or comment{' '}
-              <span className="font-semibold text-foreground">@Trustless-OSS 50</span> on an issue.
+              {rewardLevels.length > 0 ? (
+                rewardLevels.map((level, index) => (
+                  <span key={`${level.label}-${index}`} className="font-semibold text-foreground">
+                    {level.label}
+                    {index < rewardLevels.length - 1 ? ', ' : ''}
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">low</span>,{' '}
+                  <span className="font-semibold text-foreground">medium</span>, or{' '}
+                  <span className="font-semibold text-foreground">high</span>
+                </>
+              )}
+              , or comment <span className="font-semibold text-foreground">@toss /50</span> on an
+              issue.
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-card/80 ring-1 ring-foreground/10">
-            <Table>
+          <div className="rounded-2xl bg-card/80 ring-1 ring-foreground/10">
+            <Table containerClassName="rounded-2xl" className="min-w-[48rem]">
               <TableHeader>
-                <TableRow className="text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                  <TableHead className="px-5">Target</TableHead>
-                  <TableHead className="px-5">Class</TableHead>
-                  <TableHead className="px-5">Bounty</TableHead>
-                  <TableHead className="px-5">State</TableHead>
-                  <TableHead className="px-5">Actor</TableHead>
-                  <TableHead className="px-5">Exec</TableHead>
+                <TableRow className="border-b border-border/70 text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase hover:bg-transparent">
+                  <TableHead className="w-px px-4 py-3 md:px-6 whitespace-nowrap">Issue</TableHead>
+                  <TableHead className="px-4 py-3 md:px-6">Title</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">Level</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">Reward</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">Status</TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-8 whitespace-nowrap">
+                    Contributor
+                  </TableHead>
+                  <TableHead className="w-px px-4 py-3 md:px-6 text-right whitespace-nowrap">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -283,45 +505,99 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                       ? issue.assignments[0]
                       : issue.assignments;
                     const actorUsername = getActorUsername(issue);
+                    const issueUrl = `https://github.com/${repo?.full_name}/issues/${issue.github_issue_number}`;
                     return (
-                      <TableRow key={issue.id} className="text-foreground">
-                        <TableCell className="px-5 py-3.5">
-                          <span className="mr-2 font-bold text-primary">
+                      <TableRow
+                        key={issue.id}
+                        className="border-b border-border/50 text-foreground transition-colors last:border-0 hover:bg-muted/40"
+                      >
+                        {/* Issue — number links to GitHub */}
+                        <TableCell className="px-4 py-4 md:px-6">
+                          <a
+                            href={issueUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-sm font-bold text-primary transition-colors hover:underline"
+                            aria-label={`Open issue #${issue.github_issue_number} on GitHub`}
+                          >
                             #{issue.github_issue_number}
-                          </span>
-                          <span className="font-semibold">{issue.title}</span>
+                          </a>
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
-                          {issue.difficulty_label && (
-                            <span className={diffBadge(issue.difficulty_label)}>
+
+                        {/* Title */}
+                        <TableCell className="max-w-sm px-4 py-4 md:px-6">
+                          <span
+                            className="block truncate text-base font-bold leading-6 sm:text-[17px]"
+                            title={issue.title}
+                          >
+                            {issue.title}
+                          </span>
+                        </TableCell>
+
+                        {/* Level */}
+                        <TableCell className="px-4 py-4 md:px-8">
+                          {issue.difficulty_label ? (
+                            <span className={levelBadge(issue.difficulty_label)}>
                               {issue.difficulty_label}
                             </span>
+                          ) : (
+                            <span className="font-bold text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-5 py-3.5 font-mono">
+
+                        {/* Reward */}
+                        <TableCell className="px-4 py-4 md:px-8 font-mono whitespace-nowrap">
                           <span className="font-black">{issue.reward_amount}</span>{' '}
-                          <span className="text-xs font-semibold text-muted-foreground">USDC</span>
+                          <span className="text-xs font-bold text-muted-foreground">USDC</span>
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
-                          <Badge variant="secondary" className={statusBadge(issue.status)}>
-                            {issue.status}
-                          </Badge>
+
+                        {/* Status */}
+                        <TableCell className="px-4 py-4 md:px-8">
+                          {(() => {
+                            const StatusIcon = statusIcon(issue.status);
+                            return (
+                              <span
+                                className={`${statusBadge(issue.status)} inline-flex items-center gap-1 font-bold capitalize`}
+                              >
+                                <StatusIcon className="h-3 w-3" aria-hidden="true" />
+                                {issue.status}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
+
+                        {/* Contributor — avatar + handle */}
+                        <TableCell className="px-4 py-4 md:px-8">
                           {actorUsername ? (
                             <a
                               href={`https://github.com/${actorUsername}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-semibold text-foreground transition-colors hover:text-primary hover:underline"
+                              className="inline-flex items-center gap-2 font-bold text-foreground transition-colors hover:text-primary"
                             >
-                              @{actorUsername}
+                              <img
+                                src={`https://github.com/${actorUsername}.png?size=48`}
+                                alt=""
+                                width={24}
+                                height={24}
+                                loading="lazy"
+                                className="size-6 shrink-0 rounded-full ring-1 ring-border"
+                              />
+                              <span className="truncate">@{actorUsername}</span>
                             </a>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="inline-flex items-center gap-2 font-bold text-muted-foreground">
+                              <span
+                                className="size-6 shrink-0 rounded-full bg-muted ring-1 ring-border"
+                                aria-hidden="true"
+                              />
+                              Not assigned
+                            </span>
                           )}
                         </TableCell>
-                        <TableCell className="px-5 py-3.5">
+
+                        {/* Action */}
+                        <TableCell className="px-4 py-4 md:px-6 text-right">
                           {isRepoMaintainer ? (
                             <RetryProcessButton
                               issueId={issue.id}
@@ -339,7 +615,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               }
                             />
                           ) : (
-                            <span className="text-xs font-semibold text-muted-foreground">N/A</span>
+                            <span className="text-xs font-semibold text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       </TableRow>

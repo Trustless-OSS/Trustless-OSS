@@ -38,14 +38,33 @@ async function loadWalletKit(): Promise<WalletKit> {
     throw new Error('Stellar Wallets Kit can only be initialized in the browser.');
   }
 
-  const [{ StellarWalletsKit, Networks }, { defaultModules }] = await Promise.all([
+  // Register only real Stellar wallets. defaultModules() includes a MetaMask
+  // (Ethereum) module that throws "Failed to connect to MetaMask" when picked.
+  const [
+    { StellarWalletsKit, Networks },
+    { FreighterModule },
+    { xBullModule },
+    { AlbedoModule },
+    { LobstrModule },
+    { RabetModule },
+  ] = await Promise.all([
     import('@creit.tech/stellar-wallets-kit'),
-    import('@creit.tech/stellar-wallets-kit/modules/utils'),
+    import('@creit.tech/stellar-wallets-kit/modules/freighter'),
+    import('@creit.tech/stellar-wallets-kit/modules/xbull'),
+    import('@creit.tech/stellar-wallets-kit/modules/albedo'),
+    import('@creit.tech/stellar-wallets-kit/modules/lobstr'),
+    import('@creit.tech/stellar-wallets-kit/modules/rabet'),
   ]);
 
   StellarWalletsKit.init({
     network: Networks.TESTNET,
-    modules: defaultModules(),
+    modules: [
+      new FreighterModule(),
+      new xBullModule(),
+      new AlbedoModule(),
+      new LobstrModule(),
+      new RabetModule(),
+    ],
   });
 
   return StellarWalletsKit;

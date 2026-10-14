@@ -5,6 +5,7 @@ import SyncReposButton from '../SyncReposButton';
 const refresh = vi.fn();
 const handleError = vi.fn();
 const notifySuccess = vi.fn();
+const signInWithOAuth = vi.fn();
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh }),
@@ -15,12 +16,18 @@ vi.mock('@/lib/notifications', () => ({
   notifySuccess: (...args: unknown[]) => notifySuccess(...args),
 }));
 
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({ auth: { signInWithOAuth } }),
+}));
+
 afterEach(() => {
   cleanup();
   refresh.mockReset();
   handleError.mockReset();
   notifySuccess.mockReset();
+  signInWithOAuth.mockReset();
   vi.unstubAllGlobals();
+  document.cookie = 'gh_token=; Max-Age=0; path=/';
 });
 
 describe('SyncReposButton', () => {
@@ -41,7 +48,7 @@ describe('SyncReposButton', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/backend/api/repos/sync-installation',
+        'http://localhost:5000/api/v1/repos/sync-installation',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ installationId: 42 }),
@@ -53,20 +60,72 @@ describe('SyncReposButton', () => {
       );
       expect(refresh).toHaveBeenCalled();
     });
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/backend/api/repos/sync', expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      'http://localhost:5000/api/v1/repos/sync',
+      expect.anything()
+    );
   });
 
-  it('does not refresh when there is no GitHub installation to sync', async () => {
-    const fetchMock = vi.fn();
+  it('fetches GitHub installations when none are known yet', async () => {
+    document.cookie = 'gh_token=github-token; path=/';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          installations: [{ id: 99, app_slug: 'Trustless-OSS-Dev' }],
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, text: async () => '' });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<SyncReposButton token="token" installationIds={[]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
 
     await waitFor(() => {
-      expect(handleError).toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://api.github.com/user/installations?per_page=100',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer github-token',
+          }),
+        })
+      );
+      expect(fetchMock).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v1/repos/sync-installation',
+        expect.objectContaining({
+          body: JSON.stringify({ installationId: 99 }),
+        })
+      );
+      expect(notifySuccess).toHaveBeenCalled();
+      expect(refresh).toHaveBeenCalled();
+    });
+  });
+
+  it('re-authorizes GitHub instead of erroring when the gh_token cookie is gone', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const assign = vi.fn();
+    vi.stubGlobal('location', {
+      origin: 'http://localhost:3000',
+      pathname: '/dashboard/repos',
+      search: '',
+      assign,
+    });
+    signInWithOAuth.mockResolvedValue({
+      data: { url: 'https://github.com/login/oauth/authorize?x=1' },
+      error: null,
+    });
+
+    render(<SyncReposButton token="token" installationIds={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sync' }));
+
+    await waitFor(() => {
+      expect(signInWithOAuth).toHaveBeenCalledWith(expect.objectContaining({ provider: 'github' }));
+      expect(assign).toHaveBeenCalledWith('https://github.com/login/oauth/authorize?x=1');
     });
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(handleError).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
 

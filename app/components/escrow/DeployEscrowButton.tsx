@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
 import Button from '@/app/components/ui/Button';
-import { backendUrl } from '@/lib/backend';
+import { authHeaders, backendUrl } from '@/lib/backend';
 
 interface DeployEscrowButtonProps {
   repoId: string;
@@ -37,12 +37,9 @@ export default function DeployEscrowButton({
       );
       if (!address) throw new Error('No public key returned');
 
-      const res1 = await fetch(backendUrl('/api/escrow/create-unsigned'), {
+      const res1 = await fetch(backendUrl('/api/v1/escrow/create-unsigned'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({ repoId, maintainerWallet: address }),
       });
 
@@ -59,12 +56,9 @@ export default function DeployEscrowButton({
         WALLET_OPERATION_TIMEOUT_MS,
         'Transaction signing timed out. Please close the wallet modal and try again.'
       );
-      const res2 = await fetch(backendUrl('/api/escrow/submit-deploy'), {
+      const res2 = await fetch(backendUrl('/api/v1/escrow/submit-deploy'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({ repoId, signedXdr: signedTxXdr }),
       });
 

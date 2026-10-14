@@ -27,32 +27,37 @@ export default async function DashboardPage(props: DashboardProps) {
             Dashboard
           </h1>
         </div>
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Button
-            href="/dashboard/repos"
-            variant="outline"
-            size="lg"
-            className="w-full border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-100 hover:text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20 dark:hover:text-blue-200 sm:w-auto"
-          >
-            <GitBranch className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
-            View repositories
+        <div className="animate-hero-in hero-stagger-5 grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3">
+          <Button href="/dashboard/repos" variant="outline" className="w-full justify-center">
+            <GitBranch
+              className="h-5 w-5 text-blue-600 dark:text-blue-400"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
+            Repositories
           </Button>
           <Button
             href="/dashboard/transactions"
             variant="outline"
-            size="lg"
-            className="w-full border-violet-200 bg-violet-50 text-violet-700 shadow-sm hover:border-violet-300 hover:bg-violet-100 hover:text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300 dark:hover:bg-violet-500/20 dark:hover:text-violet-200 sm:w-auto"
+            className="w-full justify-center"
           >
-            <ArrowLeftRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+            <ArrowLeftRight
+              className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
             Activity
           </Button>
           <Button
             href="/dashboard/contributors"
             variant="outline"
-            size="lg"
-            className="w-full border-amber-200 bg-amber-50 text-amber-800 shadow-sm hover:border-amber-300 hover:bg-amber-100 hover:text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20 dark:hover:text-amber-200 sm:w-auto"
+            className="w-full justify-center"
           >
-            <Trophy className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+            <Trophy
+              className="h-5 w-5 text-amber-500 dark:text-amber-400"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
             Leaderboard
           </Button>
         </div>

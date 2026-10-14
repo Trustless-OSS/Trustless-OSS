@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { backendUrl, remoteBackendUrl } from '../backend';
 
 describe('backendUrl', () => {
-  it('uses the Next.js proxy from the browser in development', () => {
-    expect(backendUrl('/api/repos/sync-installation')).toBe(
-      '/api/backend/api/repos/sync-installation'
+  it('uses the full backend URL for all calls', () => {
+    expect(backendUrl('/repos/sync-installation')).toBe(
+      'http://localhost:5000/api/v1/repos/sync-installation'
     );
   });
 

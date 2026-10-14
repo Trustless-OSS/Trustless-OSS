@@ -55,7 +55,7 @@ const bountySteps = [
 export default function HeroSection({ user }: HeroSectionProps) {
   const isAuthenticated = Boolean(user);
   const primaryAction = isAuthenticated
-    ? { href: '/dashboard', label: 'Open dashboard' }
+    ? { href: '/dashboard', label: 'Dashboard' }
     : { href: '/login', label: 'Connect GitHub' };
 
   return (
