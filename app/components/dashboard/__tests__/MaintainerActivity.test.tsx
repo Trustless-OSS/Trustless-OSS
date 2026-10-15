@@ -86,7 +86,7 @@ describe('buildLeaderboard', () => {
 });
 
 describe('rollupByRepo', () => {
-  it('sums Explore Bounties and fund movement per repository', () => {
+  it('sums rewarded issues and fund movement per repository', () => {
     const web = rollupByRepo(DEMO_ACTIVITY).find((row) => row.repo === 'trustless-oss/web');
 
     expect(web).toEqual(

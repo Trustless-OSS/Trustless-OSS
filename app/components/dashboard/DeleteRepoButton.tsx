@@ -38,7 +38,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
 
       notifySuccess('Repository removed', 'The GitHub connection and bounty records were deleted.');
       setShowModal(false);
-      router.push('/dashboard');
+      router.push('/dashboard/repos');
     } catch (err: unknown) {
       handleError(err, 'Delete repository');
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');

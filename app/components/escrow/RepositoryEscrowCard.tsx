@@ -139,7 +139,7 @@ export default function RepositoryEscrowCard({
       <CardFooter className="mt-auto border-0 bg-transparent">
         {isSecured ? (
           <Button
-            href={`/dashboard/${repo.id}`}
+            href={`/dashboard/repos/${repo.id}`}
             onClick={() => onManage?.(repo)}
             className="w-full text-center"
           >

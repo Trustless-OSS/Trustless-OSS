@@ -37,7 +37,7 @@ describe('RepositoryEscrowCard', () => {
     expect(screen.queryByText('No whitelist setup')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Manage' })).toHaveAttribute(
       'href',
-      '/dashboard/repo_123'
+      '/dashboard/repos/repo_123'
     );
     expect(
       screen.queryByRole('link', { name: 'Open trustless-oss/nftxlend on GitHub' })

@@ -171,7 +171,7 @@ export default async function ReposPage({ searchParams }: ReposProps) {
             {repos.length > 0 && <ReposToolbar query={query} sort={sort} />}
             <SyncReposButton token={token} installationIds={installationIdsFrom(repos)} />
             <Button
-              href="/dashboard/connect-repo"
+              href="/dashboard/repos/new"
               size="md"
               className="h-10 shrink-0 rounded-md bg-emerald-500 px-4 text-sm whitespace-nowrap text-white shadow-sm hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-600"
             >
@@ -201,7 +201,7 @@ export default async function ReposPage({ searchParams }: ReposProps) {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
             <Button
-              href="/dashboard/connect-repo"
+              href="/dashboard/repos/new"
               size="sm"
               className="rounded-md bg-emerald-500 px-3.5 text-white hover:bg-emerald-600"
             >

@@ -61,7 +61,7 @@ describe('DeleteRepoButton', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete repository' }));
 
     await waitFor(() => {
-      expect(push).toHaveBeenCalledWith('/dashboard');
+      expect(push).toHaveBeenCalledWith('/dashboard/repos');
     });
   });
 });
