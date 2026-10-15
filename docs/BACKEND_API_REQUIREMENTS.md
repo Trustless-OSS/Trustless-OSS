@@ -185,7 +185,7 @@ Always return one point per month in the window, including months with `0`. Char
 
 ### 4.3 `GET /api/dashboard/repos` — P0
 
-**UI:** “Repository funds” stacked bars + “Rewarded issues” bars  
+**UI:** “Repository funds” stacked bars + “Explore Bounties” bars  
 **Auth:** bearer, maintainer  
 **Type:** REST JSON
 
@@ -215,7 +215,7 @@ One row per connected repo.
 | `locked` | `number` | Lifetime USDC locked into this repo’s escrow |
 | `released` | `number` | Lifetime USDC released from this repo |
 | `remaining` | `number` | `max(0, locked - released)` — “still locked” stack |
-| `rewarded` | `integer` | Distinct rewarded issues in this repo |
+| `rewarded` | `integer` | Distinct Explore Bounties in this repo |
 
 Sort by most recent activity descending. Include repos with zero funds so empty charts are honest.
 

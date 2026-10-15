@@ -445,7 +445,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
 
       <section>
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <h2 className="text-xl font-black tracking-tight text-foreground">Rewarded Issues</h2>
+          <h2 className="text-xl font-black tracking-tight text-foreground">Explore Bounties</h2>
           <p className="text-sm font-semibold text-muted-foreground">{issues.length} tracked</p>
         </div>
 

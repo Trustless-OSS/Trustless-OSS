@@ -460,7 +460,7 @@ export default function MaintainerActivity({ rows = DEMO_ACTIVITY }: { rows?: Ac
         <Card className="rounded-3xl">
           <CardHeader>
             <CardTitle className="font-display text-xl font-extrabold tracking-tight">
-              Rewarded issues
+              Explore Bounties
             </CardTitle>
             <CardDescription>Issues marked rewarded in each repository.</CardDescription>
           </CardHeader>

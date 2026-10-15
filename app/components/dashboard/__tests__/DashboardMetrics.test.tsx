@@ -5,7 +5,7 @@ import DashboardMetrics from '../DashboardMetrics';
 afterEach(cleanup);
 
 describe('DashboardMetrics', () => {
-  it('shows locked and released funds with progress, plus rewarded issues', () => {
+  it('shows locked and released funds with progress, plus Explore Bounties', () => {
     render(<DashboardMetrics />);
 
     expect(screen.getByText('Live metrics unavailable — showing sample data.')).toBeInTheDocument();

@@ -86,7 +86,7 @@ describe('buildLeaderboard', () => {
 });
 
 describe('rollupByRepo', () => {
-  it('sums rewarded issues and fund movement per repository', () => {
+  it('sums Explore Bounties and fund movement per repository', () => {
     const web = rollupByRepo(DEMO_ACTIVITY).find((row) => row.repo === 'trustless-oss/web');
 
     expect(web).toEqual(
@@ -138,7 +138,7 @@ describe('MaintainerActivity', () => {
     render(<MaintainerActivity />);
 
     expect(screen.getByText('Repository funds')).toBeInTheDocument();
-    expect(screen.getByText('Rewarded issues')).toBeInTheDocument();
+    expect(screen.getByText('Explore Bounties')).toBeInTheDocument();
     expect(screen.getAllByTestId('bar-chart')).toHaveLength(2);
     expect(screen.queryByTestId('line')).not.toBeInTheDocument();
     expect(screen.queryByText('Activity')).not.toBeInTheDocument();

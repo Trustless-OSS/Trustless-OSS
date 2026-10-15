@@ -85,7 +85,7 @@ export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
           <Tooltip content={<RewardedTooltip />} />
           <Bar
             dataKey="rewarded"
-            name="Rewarded issues"
+            name="Explore Bounties"
             fill="#10b981"
             radius={[6, 6, 0, 0]}
             maxBarSize={48}
