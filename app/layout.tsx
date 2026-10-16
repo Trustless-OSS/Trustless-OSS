@@ -5,6 +5,7 @@ import Footer from './components/layout/Footer';
 import ThemeProvider from './components/layout/ThemeProvider';
 import { Toaster } from './components/layout/Toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Analytics } from '@vercel/analytics/next';
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </TooltipProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
