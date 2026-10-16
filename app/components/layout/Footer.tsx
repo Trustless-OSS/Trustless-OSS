@@ -10,6 +10,11 @@ const resourceLinks = [
   { label: 'Dashboard', href: '/dashboard' },
 ];
 
+const supportLinks = [
+  { label: 'Get Help', href: '/support' },
+  { label: 'FAQ', href: '/faq' },
+];
+
 const connectLinks = [
   { label: 'LinkedIn', href: 'https://www.linkedin.com/company/trustless-oss', icon: FaLinkedinIn },
   { label: 'X (Twitter)', href: 'https://x.com/Trustless_OSS', icon: FaXTwitter },
@@ -22,7 +27,7 @@ export default function Footer() {
       className="site-footer relative z-10 mt-auto px-4 py-12 sm:px-6 lg:px-8"
     >
       <div className="mx-auto w-full max-w-[96rem]">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_0.8fr_0.8fr]">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="max-w-xs">
             <Link href="/" aria-label="Trustless OSS" className="inline-flex items-center gap-3">
               <Logo size="sm" />
@@ -38,6 +43,14 @@ export default function Footer() {
 
           <FooterColumn title="Resources">
             {resourceLinks.map((link) => (
+              <FooterLink key={link.href} href={link.href}>
+                {link.label}
+              </FooterLink>
+            ))}
+          </FooterColumn>
+
+          <FooterColumn title="Support">
+            {supportLinks.map((link) => (
               <FooterLink key={link.href} href={link.href}>
                 {link.label}
               </FooterLink>
