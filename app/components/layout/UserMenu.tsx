@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
 } from 'lucide-react';
+import { DOCS_URL } from '@/lib/links';
 import { FaGithub, FaXTwitter } from 'react-icons/fa6';
 import type { User } from '@supabase/supabase-js';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -98,10 +99,10 @@ export default function UserMenu({ user }: { user: User }) {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/docs">
+            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
               <BookText aria-hidden="true" />
               Documentation
-            </Link>
+            </a>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 

@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { User } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import HeroSection from '../HeroSection';
+import { DOCS_URL } from '@/lib/links';
 
 function renderHero(user: User | null = null) {
   const markup = renderToStaticMarkup(<HeroSection user={user} />);
@@ -26,7 +27,9 @@ describe('HeroSection', () => {
     expect(text).toContain('Connect GitHub');
     expect(markup).toContain('href="/login"');
     expect(text).toContain('Read the guide');
-    expect(markup).toContain('href="/docs"');
+    expect(markup).toContain(`href="${DOCS_URL}"`);
+    expect(markup).toContain('target="_blank"');
+    expect(markup).toContain('rel="noopener noreferrer"');
     expect(text).not.toContain('CMD_PROMPT_INPUT');
     expect(text).not.toContain('Gas Cost');
     expect(text).not.toContain('crypto-guardian');

@@ -3,10 +3,11 @@ import { FaLinkedinIn, FaXTwitter } from 'react-icons/fa6';
 import Logo from './Logo';
 import FooterHealth from './FooterHealth';
 import { Separator } from '@/components/ui/separator';
+import { DOCS_URL } from '@/lib/links';
 
 const resourceLinks = [
   { label: 'Website', href: '/' },
-  { label: 'Docs', href: '/docs' },
+  { label: 'Docs', href: DOCS_URL, external: true },
   { label: 'Dashboard', href: '/dashboard' },
 ];
 
@@ -43,7 +44,7 @@ export default function Footer() {
 
           <FooterColumn title="Resources">
             {resourceLinks.map((link) => (
-              <FooterLink key={link.href} href={link.href}>
+              <FooterLink key={link.href} href={link.href} external={link.external}>
                 {link.label}
               </FooterLink>
             ))}
@@ -113,7 +114,28 @@ function FooterColumn({ title, children }: { title: string; children: React.Reac
   );
 }
 
-function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+function FooterLink({
+  href,
+  children,
+  external,
+}: {
+  href: string;
+  children: React.ReactNode;
+  external?: boolean;
+}) {
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+      >
+        {children}
+      </a>
+    );
+  }
+
   return (
     <Link
       href={href}

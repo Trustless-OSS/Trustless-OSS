@@ -41,6 +41,7 @@
 
   <p>
     <a href="#-how-it-works">How it works</a> ·
+    <a href="https://docs.trustless-oss.xyz">Documentation</a> ·
     <a href="#-software-stack">Software stack</a> ·
     <a href="#-quick-start">Quick start</a> ·
     <a href="docs/BOT_COMMANDS.md">Bot commands</a>

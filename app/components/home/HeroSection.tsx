@@ -13,6 +13,7 @@ import {
 import Button from '@/app/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { DOCS_URL } from '@/lib/links';
 
 interface HeroSectionProps {
   user?: User | null;
@@ -121,7 +122,13 @@ export default function HeroSection({ user }: HeroSectionProps) {
               {primaryAction.label}
               <ArrowUpRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
             </Button>
-            <Button href="/docs" variant="outline" size="lg" className="w-full sm:w-auto">
+            <Button
+              href={DOCS_URL}
+              external
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto"
+            >
               <BookOpen className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
               Read the guide
             </Button>
