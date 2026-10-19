@@ -15,7 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatWhen } from '@/app/components/dashboard/MaintainerActivity';
+import { formatWhen } from '@/app/components/dashboard/activity';
 import { cn } from '@/lib/utils';
 import { authHeaders, backendUrl } from '@/lib/backend';
 

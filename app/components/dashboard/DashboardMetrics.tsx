@@ -1,18 +1,34 @@
+'use client';
+
 import { Lock, Tag, Unlock, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  DEMO_ACTIVITY,
   formatUsdc,
   githubAvatarUrl,
   githubProfileUrl,
   listContributors,
   summarizeActivity,
-  type ActivityRow,
-} from '@/app/components/dashboard/MaintainerActivity';
+} from '@/app/components/dashboard/activity';
+import { useActivity } from '@/app/components/dashboard/useActivity';
 
-export default function DashboardMetrics({ rows = DEMO_ACTIVITY }: { rows?: ActivityRow[] }) {
+export default function DashboardMetrics() {
+  const { data, loading, error } = useActivity();
+
+  if (loading) {
+    return <Skeleton className="mb-6 h-56 w-full rounded-3xl" />;
+  }
+  if (error) {
+    return (
+      <p className="mb-6 rounded-3xl border border-border bg-card px-6 py-4 text-sm font-medium text-destructive">
+        {error}
+      </p>
+    );
+  }
+
+  const rows = data ?? [];
   const totals = summarizeActivity(rows);
   const contributors = listContributors(rows);
   const visibleContributors = contributors.slice(0, 6); // Show only 6 contributors

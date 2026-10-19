@@ -31,7 +31,6 @@ import {
 import GithubUserLink from '@/app/components/dashboard/GithubUserLink';
 import {
   ACTIVITY_FILTERS,
-  DEMO_ACTIVITY,
   KIND_STYLES,
   filterActivity,
   formatUsdc,
@@ -41,7 +40,8 @@ import {
   txExplorerUrl,
   type ActivityFilter,
   type ActivityRow,
-} from '@/app/components/dashboard/MaintainerActivity';
+} from '@/app/components/dashboard/activity';
+import { useActivity } from '@/app/components/dashboard/useActivity';
 import { paginateItems } from '@/lib/paginate';
 
 export const TX_PAGE_SIZE = 20;
@@ -149,11 +149,17 @@ function ActivityPagination({
   );
 }
 
-export default function TransactionHistory({ rows = DEMO_ACTIVITY }: { rows?: ActivityRow[] }) {
+export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
+  const fetched = useActivity();
+  // rows prop (tests) overrides the fetched feed.
+  const activity = rows ?? fetched.data ?? [];
   const [filter, setFilter] = useState<ActivityFilter>('all');
   const [page, setPage] = useState(1);
-  const filtered = useMemo(() => filterActivity(rows, filter), [rows, filter]);
+  const filtered = useMemo(() => filterActivity(activity, filter), [activity, filter]);
   const paged = useMemo(() => paginateItems(filtered, page, TX_PAGE_SIZE), [filtered, page]);
+
+  const loading = rows == null && fetched.loading;
+  const error = rows == null ? fetched.error : null;
 
   return (
     <Tabs
@@ -198,7 +204,15 @@ export default function TransactionHistory({ rows = DEMO_ACTIVITY }: { rows?: Ac
           </CardAction>
         </CardHeader>
         <CardContent className="px-0 pb-0">
-          {paged.items.length === 0 ? (
+          {error ? (
+            <p className="px-6 py-16 text-center text-base font-semibold text-destructive">
+              {error}
+            </p>
+          ) : loading ? (
+            <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
+              Loading activity…
+            </p>
+          ) : paged.items.length === 0 ? (
             <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
               No activity in this filter.
             </p>

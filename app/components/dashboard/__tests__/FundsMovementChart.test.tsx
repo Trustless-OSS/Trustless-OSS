@@ -19,6 +19,11 @@ vi.mock('recharts', () => {
   };
 });
 
+const fetchFundsMovement = vi.fn();
+vi.mock('@/lib/dashboard-api', () => ({
+  fetchFundsMovement: () => fetchFundsMovement(),
+}));
+
 import FundsMovementChart from '../FundsMovementChart';
 
 afterEach(() => {
@@ -27,29 +32,25 @@ afterEach(() => {
 });
 
 describe('FundsMovementChart', () => {
-  it('renders chart with data from API', async () => {
-    const chartData = [
-      { month: 'Jul', tvl: 1000, payouts: 800 },
-      { month: 'Aug', tvl: 1500, payouts: 900 },
-      { month: 'Sep', tvl: 2000, payouts: 1200 },
-    ];
-
-    const mock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => chartData });
-    global.fetch = mock;
+  it('renders chart with data from the API', async () => {
+    fetchFundsMovement.mockResolvedValueOnce([
+      { month: 'Jul', period: '2026-07', tvl: 1000, payouts: 800 },
+      { month: 'Aug', period: '2026-08', tvl: 1500, payouts: 900 },
+      { month: 'Sep', period: '2026-09', tvl: 2000, payouts: 1200 },
+    ]);
 
     render(<FundsMovementChart />);
 
-    await waitFor(() => expect(screen.getByText('Funds movement')).toBeInTheDocument());
-    expect(screen.getByTestId('legend')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('legend')).toBeInTheDocument());
     expect(screen.getAllByTestId('area').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('does not repeat the sample-data banner on the chart', () => {
-    const mock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 });
-    global.fetch = mock;
+  it('shows an error message when the request fails', async () => {
+    fetchFundsMovement.mockRejectedValueOnce(new Error('boom'));
 
     render(<FundsMovementChart />);
+
     expect(screen.getByText('Funds movement')).toBeInTheDocument();
-    expect(screen.queryByText(/showing sample data/i)).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('boom')).toBeInTheDocument());
   });
 });

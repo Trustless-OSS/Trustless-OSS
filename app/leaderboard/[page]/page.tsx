@@ -13,8 +13,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { DEMO_ACTIVITY, buildLeaderboard } from '@/app/components/dashboard/MaintainerActivity';
-import { paginateItems } from '@/lib/paginate';
+import { fetchPublicLeaderboard } from '@/lib/dashboard-api';
 import {
   filterAndSortLeaderboard,
   leaderboardPageHref,
@@ -50,15 +49,23 @@ export default async function LeaderboardPage(props: LeaderboardPageProps) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Build leaderboard from activity data
-  const leaderboard = buildLeaderboard(DEMO_ACTIVITY);
-  const filtered = filterAndSortLeaderboard(leaderboard, query, sort);
-  const paged = paginateItems(filtered, pageNum, LEADERBOARD_PAGE_SIZE);
-
-  // Redirect if page is out of range
-  if (pageNum > paged.totalPages && pageNum > 1) {
-    redirect(leaderboardPageHref(paged.totalPages, { q: query, sort }));
+  let page: Awaited<ReturnType<typeof fetchPublicLeaderboard>> | null = null;
+  let loadError: string | null = null;
+  try {
+    page = await fetchPublicLeaderboard(pageNum, LEADERBOARD_PAGE_SIZE);
+  } catch (e) {
+    loadError = e instanceof Error ? e.message : 'Failed to load leaderboard.';
   }
+
+  // Redirect if page is out of range (server already clamps, so this only fires on >1).
+  if (page && pageNum > page.totalPages && pageNum > 1) {
+    redirect(leaderboardPageHref(page.totalPages, { q: query, sort }));
+  }
+
+  // shortcut: q/sort apply only within the current server page (the public API has no
+  // q/sort params); upgrade when the backend adds them.
+  const items = page ? filterAndSortLeaderboard(page.items, query, sort) : [];
+  const totalPages = page?.totalPages ?? 1;
 
   return (
     <>
@@ -81,13 +88,19 @@ export default async function LeaderboardPage(props: LeaderboardPageProps) {
           </div>
 
           {/* Leaderboard Table */}
-          <ContributorLeaderboard entries={paged.items} hidePodium={pageNum !== 1} />
+          {loadError ? (
+            <p className="rounded-3xl border border-border bg-card px-6 py-16 text-center text-base font-semibold text-destructive">
+              {loadError}
+            </p>
+          ) : (
+            <ContributorLeaderboard entries={items} hidePodium={pageNum !== 1} />
+          )}
 
           {/* Pagination */}
-          {paged.totalPages > 1 && (
+          {totalPages > 1 && (
             <LeaderboardPagination
               page={pageNum}
-              totalPages={paged.totalPages}
+              totalPages={totalPages}
               query={query}
               sort={sort}
             />

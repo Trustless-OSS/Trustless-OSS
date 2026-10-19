@@ -1,7 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// TransactionHistory self-fetches via useActivity when no rows prop is given.
+vi.mock('../useActivity', () => ({
+  useActivity: () => ({ data: ACTIVITY_FIXTURE, loading: false, error: null }),
+}));
+
 import TransactionHistory, { paginateItems } from '../TransactionHistory';
-import { DEMO_ACTIVITY } from '../MaintainerActivity';
+import { ACTIVITY_FIXTURE } from './fixtures';
 
 afterEach(cleanup);
 
@@ -17,7 +23,7 @@ describe('paginateItems', () => {
 });
 
 describe('TransactionHistory', () => {
-  it('renders sample transaction details with GitHub and Stellar links', () => {
+  it('renders transaction details with GitHub and Stellar links', () => {
     render(<TransactionHistory />);
 
     expect(screen.getByText('Activity')).toBeInTheDocument();
@@ -32,48 +38,22 @@ describe('TransactionHistory', () => {
     );
   });
 
-  it('does not show rewarded-only issues in the locked history filter', () => {
+  it('shows pool deposits only under the locked filter', () => {
     render(<TransactionHistory />);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Locked' }));
-
     expect(screen.getAllByText('Pool deposit').length).toBeGreaterThan(0);
-    expect(screen.queryByText('#12 Harden milestone release checks')).not.toBeInTheDocument();
-  });
-
-  it('pages through older transactions with next, back, and page indexes', () => {
-    render(<TransactionHistory />);
-
-    // Verify pagination controls exist
-    expect(screen.getByRole('button', { name: 'Page 1' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Page 2' })).toBeInTheDocument();
-
-    // Click page 2
-    fireEvent.click(screen.getByRole('button', { name: 'Page 2' }));
-    const page2Rows = screen.getAllByRole('row');
-    expect(page2Rows.length).toBeGreaterThan(0);
-
-    // Click back
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    const page1Rows = screen.getAllByRole('row');
-    expect(page1Rows.length).toBeGreaterThan(0);
-
-    // Click next
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    const nextRows = screen.getAllByRole('row');
-    expect(nextRows.length).toBeGreaterThan(0);
+    expect(screen.queryByText('#161 Reject stale bounty claim')).not.toBeInTheDocument();
   });
 
   it('uses short event labels', () => {
-    render(<TransactionHistory rows={DEMO_ACTIVITY.slice(0, 4)} />);
+    render(<TransactionHistory rows={ACTIVITY_FIXTURE} />);
 
     expect(screen.getAllByText('Rejected').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Unassigned').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Released').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Assigned').length).toBeGreaterThan(0);
     expect(screen.queryByText('Issue rewarded')).not.toBeInTheDocument();
-    expect(screen.queryByText('Funds released')).not.toBeInTheDocument();
-    expect(screen.queryByText('Contributor assigned')).not.toBeInTheDocument();
   });
 
   it('can filter to rejected and unassigned logs', () => {

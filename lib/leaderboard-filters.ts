@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from '@/app/components/dashboard/MaintainerActivity';
+import type { LeaderboardEntry } from '@/app/components/dashboard/activity';
 
 export const LEADERBOARD_SORTS = [
   { value: 'earned', label: 'Highest earned', group: 'sort' },

@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { ArrowRight, GitMerge, GitPullRequest, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +14,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import GithubUserLink from '@/app/components/dashboard/GithubUserLink';
-import {
-  DEMO_ACTIVITY,
-  buildLeaderboard,
-  formatUsdc,
-  type ActivityRow,
-  type LeaderboardEntry,
-} from '@/app/components/dashboard/MaintainerActivity';
+import { formatUsdc, type LeaderboardEntry } from '@/app/components/dashboard/activity';
+import { fetchPublicLeaderboard } from '@/lib/dashboard-api';
 
 const RANK_STYLE: Record<number, string> = {
   1: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
@@ -86,10 +84,24 @@ export default function ContributorLeaderboard({
   limit,
   expandHref,
   hidePodium,
-  rows = DEMO_ACTIVITY,
-}: ContributorLeaderboardProps & { rows?: ActivityRow[] }) {
-  // Use entries if provided (paginated), otherwise build from rows (home preview)
-  const leaderboard = entries || buildLeaderboard(rows);
+}: ContributorLeaderboardProps) {
+  // When entries are passed (the paginated /leaderboard page) render them directly.
+  // Otherwise this is the home preview: fetch the public, grand-total leaderboard.
+  const [fetched, setFetched] = useState<LeaderboardEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (entries) return;
+    let active = true;
+    fetchPublicLeaderboard(1, limit ?? 5)
+      .then((p) => active && setFetched(p.items))
+      .catch((e) => active && setError(e?.message || 'Failed to load leaderboard.'));
+    return () => {
+      active = false;
+    };
+  }, [entries, limit]);
+
+  const leaderboard = entries ?? fetched ?? [];
   const podium = entries ? [] : leaderboard.slice(0, 3);
   const visible = limit != null ? leaderboard.slice(0, limit) : leaderboard;
   const hasMore = limit != null && leaderboard.length > limit;
@@ -118,7 +130,15 @@ export default function ContributorLeaderboard({
 
       <Card className="rounded-3xl py-0">
         <CardContent className="px-0 pb-0">
-          {leaderboard.length === 0 ? (
+          {error ? (
+            <p className="px-6 py-16 text-center text-base font-semibold text-destructive">
+              {error}
+            </p>
+          ) : !entries && fetched == null ? (
+            <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
+              Loading leaderboard…
+            </p>
+          ) : leaderboard.length === 0 ? (
             <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
               No contributors yet.
             </p>

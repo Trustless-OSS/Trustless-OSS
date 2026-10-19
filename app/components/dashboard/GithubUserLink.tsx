@@ -1,6 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { githubAvatarUrl, githubProfileUrl } from '@/app/components/dashboard/MaintainerActivity';
+import { githubAvatarUrl, githubProfileUrl } from '@/app/components/dashboard/activity';
 import { cn } from '@/lib/utils';
 
 export default function GithubUserLink({
