@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
+import { handleError, notifySuccess } from '@/lib/notifications';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
 
@@ -22,11 +23,9 @@ export default function DeployEscrowButton({
   className = '',
 }: DeployEscrowButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleDeploy() {
     setLoading(true);
-    setError('');
 
     try {
       const kit = await getWalletKit();
@@ -68,31 +67,29 @@ export default function DeployEscrowButton({
           errorData?.error || errorData?.message || 'Failed to submit escrow deployment'
         );
       }
+      notifySuccess('Escrow deployed', 'Your escrow contract has been successfully deployed.');
       window.location.reload();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to deploy');
+      handleError(err, 'Deploy escrow');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex w-full flex-col items-stretch">
-      <Button
-        variant="solid"
-        onClick={handleDeploy}
-        disabled={loading || !token}
-        className={`w-full gap-1.5 ${className}`}
-      >
-        <Settings
-          size={17}
-          strokeWidth={2.5}
-          aria-hidden="true"
-          className={loading ? 'animate-spin' : ''}
-        />
-        <span aria-live="polite">{loading ? loadingLabel : label}</span>
-      </Button>
-      {error && <div className="mt-2 text-left text-xs text-red-600">{error}</div>}
-    </div>
+    <Button
+      variant="solid"
+      onClick={handleDeploy}
+      disabled={loading || !token}
+      className={`w-full gap-1.5 ${className}`}
+    >
+      <Settings
+        size={17}
+        strokeWidth={2.5}
+        aria-hidden="true"
+        className={loading ? 'animate-spin' : ''}
+      />
+      <span aria-live="polite">{loading ? loadingLabel : label}</span>
+    </Button>
   );
 }

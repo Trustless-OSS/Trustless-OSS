@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, ExternalLink, Plus, X } from 'lucide-react';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
+import { handleError, notifySuccess } from '@/lib/notifications';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
@@ -196,11 +197,16 @@ export default function FundEscrowButton({
       }
       setTransactionHash(nextHash);
       setPhase('success');
+      notifySuccess(
+        'Escrow funded',
+        `Successfully deposited ${formatUsdc(parsedAmount)} USDC to the escrow.`
+      );
       router.refresh();
     } catch (err: unknown) {
       setOpen(true);
       setPhase('error');
       setError(err instanceof Error ? err.message : 'Failed to fund');
+      handleError(err, 'Fund escrow');
     } finally {
       setLoading(false);
     }
