@@ -43,13 +43,13 @@ const bountySteps = [
     title: 'Contributor assigned',
     detail: 'Wallet linked to the issue',
     icon: WalletCards,
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
+    className: 'bg-primary/15 text-primary dark:bg-primary/20 dark:text-primary',
   },
   {
     title: 'Merge releases payout',
     detail: 'The pull request is the proof',
     icon: GitPullRequest,
-    className: 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300',
+    className: 'bg-accent text-accent-foreground dark:bg-accent dark:text-accent-foreground',
   },
 ];
 
@@ -187,14 +187,14 @@ export default function HeroSection({ user }: HeroSectionProps) {
                   />
                 </span>
                 <div>
-                  <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-blue-100 uppercase">
+                  <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-primary-foreground/80 uppercase">
                     Secured reward
                   </p>
                   <p className="mt-1 text-4xl font-extrabold tracking-tight">500 USDC</p>
                 </div>
               </div>
               <div className="hidden text-right sm:block">
-                <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-blue-100 uppercase">
+                <p className="text-[0.65rem] font-semibold tracking-[0.18em] text-primary-foreground/80 uppercase">
                   Settlement asset
                 </p>
                 <p className="mt-1 text-sm font-semibold">USD Coin</p>

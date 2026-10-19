@@ -392,12 +392,12 @@ export default function SupportPage() {
                   </button>
 
                   {/* Response Time Note */}
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 rounded-lg bg-blue-50 p-3 sm:p-4 dark:bg-blue-500/10 text-xs sm:text-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 rounded-lg bg-accent p-3 sm:p-4 text-xs sm:text-sm">
                     <Clock
-                      className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 text-blue-600 dark:text-blue-400 mt-0.5"
+                      className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0 text-primary mt-0.5"
                       aria-hidden="true"
                     />
-                    <p className="text-blue-800 dark:text-blue-200">
+                    <p className="text-foreground">
                       <span className="font-semibold">Response Time:</span> We respond within 24
                       hours on business days. For urgent matters, reach out via community.
                     </p>

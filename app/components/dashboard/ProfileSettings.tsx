@@ -394,9 +394,9 @@ export default function ProfileSettings({ user }: { user: User }) {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-6">
           <Card className="overflow-hidden rounded-3xl py-0">
-            <div className="relative h-40 overflow-hidden bg-gradient-to-br from-blue-700 via-primary to-violet-600">
+            <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#3f5bff] via-primary to-[#0618a8]">
               <span className="absolute -top-10 -right-6 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
-              <span className="absolute -bottom-8 left-16 h-28 w-28 rounded-full bg-cyan-300/25 blur-xl" />
+              <span className="absolute -bottom-8 left-16 h-28 w-28 rounded-full bg-white/15 blur-xl" />
             </div>
             <CardContent className="relative pb-6">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">

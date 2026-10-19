@@ -29,11 +29,7 @@ export default async function DashboardPage(props: DashboardProps) {
         </div>
         <div className="animate-hero-in hero-stagger-5 grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3">
           <Button href="/dashboard/repos" variant="outline" className="w-full justify-center">
-            <GitBranch
-              className="h-5 w-5 text-blue-600 dark:text-blue-400"
-              strokeWidth={2.5}
-              aria-hidden="true"
-            />
+            <GitBranch className="h-5 w-5 text-primary" strokeWidth={2.5} aria-hidden="true" />
             Repositories
           </Button>
           <Button

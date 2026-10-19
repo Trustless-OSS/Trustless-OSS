@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as SupportRequest;
 
-    // Validate required fields
     if (
       !body.name ||
       !body.email ||
@@ -30,13 +29,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(body.email)) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
 
-    // Validate GitHub username (basic check)
     if (body.githubUsername.trim().length === 0) {
       return NextResponse.json({ error: 'GitHub username is required' }, { status: 400 });
     }
@@ -64,6 +61,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  // Get all support requests (admin only - add auth in production)
   return NextResponse.json({ requests: supportRequests });
 }

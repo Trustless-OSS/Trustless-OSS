@@ -48,11 +48,11 @@ export default function FundsMovementChart() {
       <CardContent>
         <div className="mb-3 flex items-center gap-3">
           <div className="inline-flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full bg-cyan-400" />
+            <span className="inline-block h-3 w-3 rounded-full bg-[#061fd4]" />
             <span className="text-xs text-muted-foreground">Escrow TVL Locked ($)</span>
           </div>
           <div className="inline-flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full bg-violet-500" />
+            <span className="inline-block h-3 w-3 rounded-full bg-[#0618a8]" />
             <span className="text-xs text-muted-foreground">Payouts Released ($)</span>
           </div>
         </div>
@@ -61,18 +61,18 @@ export default function FundsMovementChart() {
             <AreaChart data={SAMPLE} margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
               <defs>
                 <linearGradient id="fundsTvlFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.04} />
+                  <stop offset="5%" stopColor="#061fd4" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#061fd4" stopOpacity={0.04} />
                 </linearGradient>
                 <linearGradient id="fundsPayoutsFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.04} />
+                  <stop offset="5%" stopColor="#0618a8" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#0618a8" stopOpacity={0.04} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
-              <YAxis yAxisId="left" stroke="#06b6d4" />
-              <YAxis yAxisId="right" orientation="right" stroke="#8b5cf6" />
+              <YAxis yAxisId="left" stroke="#061fd4" />
+              <YAxis yAxisId="right" orientation="right" stroke="#0618a8" />
               <Tooltip />
               <Legend wrapperStyle={{ paddingLeft: 8 }} />
               <Area
@@ -80,7 +80,7 @@ export default function FundsMovementChart() {
                 type="monotone"
                 dataKey="tvl"
                 name="Escrow TVL Locked ($)"
-                stroke="#06b6d4"
+                stroke="#061fd4"
                 fill="url(#fundsTvlFill)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
@@ -91,7 +91,7 @@ export default function FundsMovementChart() {
                 type="monotone"
                 dataKey="payouts"
                 name="Payouts Released ($)"
-                stroke="#8b5cf6"
+                stroke="#0618a8"
                 fill="url(#fundsPayoutsFill)"
                 strokeWidth={2}
                 dot={{ r: 3 }}

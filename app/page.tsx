@@ -87,7 +87,7 @@ export default async function HomePage() {
 
         <section className="relative mb-20 pt-4 md:mb-28 md:pt-8" aria-labelledby="workflow-title">
           <GitMerge
-            className="landing-watermark -right-14 top-6 h-52 w-52 rotate-12 text-blue-600 md:h-72 md:w-72"
+            className="landing-watermark -right-14 top-6 h-52 w-52 rotate-12 text-primary md:h-72 md:w-72"
             strokeWidth={1.2}
             aria-hidden="true"
           />
@@ -153,7 +153,7 @@ export default async function HomePage() {
           />
           <div className="relative z-10 grid gap-7 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)] lg:items-center">
             <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-blue-300 uppercase">
+              <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
                 Repository-native rewards
               </p>
               <h2
@@ -204,7 +204,7 @@ export default async function HomePage() {
             alt=""
             width={220}
             height={220}
-            className="landing-watermark -left-14 top-0 h-48 w-48 -rotate-12 text-blue-600 md:h-56 md:w-56"
+            className="landing-watermark -left-14 top-0 h-48 w-48 -rotate-12 text-primary md:h-56 md:w-56"
             aria-hidden="true"
           />
           <div className="relative z-10 mb-0 pt-4 md:mb-12 md:pt-8">
@@ -348,7 +348,7 @@ export default async function HomePage() {
           <div className="relative z-10 flex flex-col items-center text-center">
             <p
               id="partners-title"
-              className="text-xs font-semibold tracking-[0.22em] text-blue-950 uppercase"
+              className="text-xs font-semibold tracking-[0.22em] text-primary uppercase"
             >
               Supported by
             </p>

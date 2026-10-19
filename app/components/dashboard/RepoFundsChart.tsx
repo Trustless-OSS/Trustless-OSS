@@ -59,7 +59,7 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
           <XAxis dataKey="name" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} width={52} />
           <Tooltip content={<FundsTooltip />} />
-          <Bar dataKey="released" name="Released" stackId="funds" fill="#8b5cf6" maxBarSize={48} />
+          <Bar dataKey="released" name="Released" stackId="funds" fill="#0618a8" maxBarSize={48} />
           <Bar
             dataKey="remaining"
             name="Still locked"

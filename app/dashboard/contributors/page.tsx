@@ -19,7 +19,7 @@ export default function ContributorsPage() {
             href="/dashboard"
             variant="outline"
             size="lg"
-            className="w-full border-slate-200 bg-slate-50 text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 dark:border-white/15 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 sm:w-auto"
+            className="w-full border-border bg-card text-foreground hover:border-primary/40 hover:bg-accent sm:w-auto"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
             Back to dashboard

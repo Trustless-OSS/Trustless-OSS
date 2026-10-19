@@ -21,7 +21,7 @@ export default function LoadingLogo({
   if (variant === 'circle') {
     return (
       <span
-        className={`${sizeClasses[size]} inline-block rounded-full border-slate-200 border-t-blue-600 animate-spin`}
+        className={`${sizeClasses[size]} inline-block rounded-full border-border border-t-primary animate-spin`}
         aria-hidden="true"
       />
     );
@@ -34,11 +34,11 @@ export default function LoadingLogo({
         <Logo size={size} />
       </div>
       <div className="flex flex-col items-center gap-3">
-        <p className="text-sm font-medium tracking-wide text-slate-500">{message}</p>
+        <p className="text-sm font-medium tracking-wide text-muted-foreground">{message}</p>
         <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-bounce [animation-delay:-0.2s]" />
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.1s]" />
-          <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-bounce" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.2s]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce [animation-delay:-0.1s]" />
+          <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce" />
         </div>
       </div>
     </div>

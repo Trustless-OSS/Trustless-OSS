@@ -249,7 +249,7 @@ const KIND_META: Record<ActivityKind, { label: string; className: string }> = {
   locked: {
     label: 'Locked',
     className:
-      'bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/15',
+      'bg-primary/15 text-primary hover:bg-primary/15 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/20',
   },
   released: {
     label: 'Released',
@@ -449,7 +449,7 @@ export default function MaintainerActivity({ rows = DEMO_ACTIVITY }: { rows?: Ac
                 Released
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
                 Still locked
               </span>
             </div>
