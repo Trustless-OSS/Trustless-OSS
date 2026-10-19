@@ -1,0 +1,20 @@
+/* HUMANS.TXT */
+/* humanstxt.org */
+
+/* TEAM */
+Role: Development Team
+Name: Trustless OSS
+Site: https://www.trustless-oss.xyz
+
+/* SITE */
+Last Updated: 2026-10-19
+Language: English
+Standards: HTML5, CSS3, TypeScript
+Components: Next.js, React, Tailwind CSS, shadcn/ui
+Build: Next.js 16 with TypeScript
+
+/* THANKS */
+Thanks to all open-source contributors and the broader OSS community.
+
+/* SITE LOCATION */
+Url: https://www.trustless-oss.xyz

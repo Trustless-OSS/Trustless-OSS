@@ -1,0 +1,6 @@
+Contact: security@www.trustless-oss.xyz
+Expires: 2027-10-19T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://www.trustless-oss.xyz/.well-known/security.txt
+Policy: https://www.trustless-oss.xyz/security-policy
+Acknowledgments: https://www.trustless-oss.xyz/acknowledgments

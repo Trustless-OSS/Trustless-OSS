@@ -14,9 +14,56 @@ import { Analytics } from '@vercel/analytics/next';
 const jbMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
-  title: 'Trustless OSS',
+  title: 'Trustless OSS | Milestone-Based Rewards for Contributors',
   description:
     'Trustless, milestone-based rewards for OSS contributors. GitHub PR merged → funds automatically released via Trustless Work escrow.',
+  keywords: 'open source, OSS, rewards, contributions, GitHub, escrow, trustless, cryptocurrency',
+  authors: [{ name: 'Trustless OSS' }],
+  creator: 'Trustless OSS',
+  publisher: 'GrantFox',
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      noimageindex: false,
+      'max-snippet': -1,
+      'max-image-preview': 'large',
+      'max-video-preview': -1,
+    },
+  },
+  alternates: {
+    canonical: 'https://www.trustless-oss.xyz',
+  },
+  openGraph: {
+    type: 'website',
+    url: 'https://www.trustless-oss.xyz',
+    title: 'Trustless OSS | Milestone-Based Rewards for Contributors',
+    description:
+      'Milestone-based rewards for open-source contributors. Automated, trustless fund release via escrow.',
+    siteName: 'Trustless OSS',
+    images: [
+      {
+        url: 'https://www.trustless-oss.xyz/trustless-OSS.png',
+        width: 1200,
+        height: 630,
+        alt: 'Trustless OSS - Rewards for Open Source Contributors',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Trustless OSS | Rewards for Contributors',
+    description:
+      'Milestone-based rewards for open-source contributors. Trustless escrow, automatic fund release.',
+    creator: '@trustlessoss',
+    images: ['https://www.trustless-oss.xyz/trustless-OSS.png'],
+  },
+  verification: {
+    google: '', // Add Google Search Console ID if available
+  },
 };
 
 export const viewport = {

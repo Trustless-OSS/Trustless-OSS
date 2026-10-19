@@ -1,0 +1,40 @@
+# Trustless OSS Crawler Rules
+# Allow search engines to index public pages
+
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /login
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /*.tsx$
+Disallow: /_next/
+Disallow: /.*\?*
+
+# Specific crawlers
+User-agent: Googlebot
+Allow: /
+Disallow: /dashboard
+Disallow: /login
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /dashboard
+Disallow: /login
+Disallow: /profile
+Disallow: /auth/
+Disallow: /api/
+
+# Slow crawlers - be polite
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: DotBot
+Crawl-delay: 10
+
+# Sitemap location
+Sitemap: https://www.trustless-oss.xyz/sitemap.xml
