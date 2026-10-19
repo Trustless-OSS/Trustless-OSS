@@ -173,7 +173,18 @@ export function formatWhen(iso: string) {
 }
 
 export function txExplorerUrl(hash: string) {
-  return `https://stellar.expert/explorer/public/tx/${hash}`;
+  // Sanitize the hash: trim whitespace and only allow hex characters
+  const clean = hash.trim();
+  if (!clean || !/^[a-fA-F0-9]+$/.test(clean)) {
+    console.warn(`[txExplorerUrl] Invalid tx hash: "${hash}"`);
+    return '#';
+  }
+  // Use the NEXT_PUBLIC_STELLAR_NETWORK env var (mainnet or testnet; defaults to public/mainnet)
+  const network =
+    typeof window !== 'undefined'
+      ? (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'public')
+      : (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'public');
+  return `https://stellar.expert/explorer/${network}/tx/${clean}`;
 }
 
 export function githubIssueUrl(repo: string, issueNumber: number) {

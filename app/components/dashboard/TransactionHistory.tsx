@@ -86,9 +86,18 @@ function IssueCell({ row }: { row: ActivityRow }) {
 }
 
 function TxCell({ hash }: { hash: string }) {
+  const href = txExplorerUrl(hash);
+  // If the URL is invalid (#), show it as plain text instead of a broken link
+  if (href === '#') {
+    return (
+      <span className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-muted-foreground">
+        {shortenHash(hash)}
+      </span>
+    );
+  }
   return (
     <a
-      href={txExplorerUrl(hash)}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-primary hover:underline"

@@ -58,12 +58,13 @@ export async function fetchActivity(): Promise<ActivityRow[]> {
     id: String(r.id),
     at: String(r.at),
     repo: String(r.repo),
-    issueNumber: (r.issueNumber as number | null) ?? null,
-    issueTitle: (r.issueTitle as string | null) ?? null,
-    kind: r.kind as ActivityRow['kind'],
-    amountUsdc: amount(r.amountUsdc),
-    contributor: (r.contributor as string | null) ?? null,
-    txHash: (r.txHash as string | null) ?? null,
+    issueNumber: ((r.issueNumber as number | null) || (r.issue_number as number | null)) ?? null,
+    issueTitle: ((r.issueTitle as string | null) || (r.issue_title as string | null)) ?? null,
+    kind: (r.kind || r.type) as ActivityRow['kind'],
+    amountUsdc: amount(r.amountUsdc || r.amount_usdc),
+    contributor: ((r.contributor as string | null) || (r.user as string | null)) ?? null,
+    // Try camelCase first, then snake_case
+    txHash: ((r.txHash as string | null) || (r.tx_hash as string | null)) ?? null,
   }));
 }
 
