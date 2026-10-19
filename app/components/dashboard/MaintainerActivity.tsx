@@ -38,7 +38,11 @@ export default function MaintainerActivity() {
                 Still locked
               </span>
             </div>
-            {loading ? <Skeleton className="h-64 w-full" /> : <RepoFundsChart points={chartPoints} />}
+            {loading ? (
+              <Skeleton className="h-64 w-full" />
+            ) : (
+              <RepoFundsChart points={chartPoints} />
+            )}
           </CardContent>
         </Card>
 

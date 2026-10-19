@@ -205,17 +205,23 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
         </CardHeader>
         <CardContent className="px-0 pb-0">
           {error ? (
-            <p className="px-6 py-16 text-center text-base font-semibold text-destructive">
-              {error}
-            </p>
+            <div className="flex min-h-[400px] items-center justify-center">
+              <p className="px-6 py-16 text-center text-base font-semibold text-destructive">
+                {error}
+              </p>
+            </div>
           ) : loading ? (
-            <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
-              Loading activity…
-            </p>
+            <div className="flex min-h-[400px] items-center justify-center">
+              <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
+                Loading activity…
+              </p>
+            </div>
           ) : paged.items.length === 0 ? (
-            <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
-              No activity in this filter.
-            </p>
+            <div className="flex min-h-[400px] items-center justify-center">
+              <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
+                No activity in this filter.
+              </p>
+            </div>
           ) : (
             <>
               <div className="divide-y md:hidden">

@@ -3,12 +3,7 @@
 // leaderboard page) can import these without the client/server boundary error.
 
 export type ActivityKind =
-  | 'rewarded'
-  | 'locked'
-  | 'released'
-  | 'assigned'
-  | 'unassigned'
-  | 'rejected';
+  'rewarded' | 'locked' | 'released' | 'assigned' | 'unassigned' | 'rejected';
 export type ActivityFilter = ActivityKind | 'all';
 
 export type ActivityRow = {
