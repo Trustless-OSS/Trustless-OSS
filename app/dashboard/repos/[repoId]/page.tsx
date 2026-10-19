@@ -468,7 +468,8 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                   <span className="font-semibold text-foreground">high</span>
                 </>
               )}
-              , or comment <span className="font-semibold text-foreground">@toss /50</span> on an
+              , or comment{' '}
+              <span className="font-semibold text-foreground">@trustless-oss 50 USDC</span> on an
               issue.
             </p>
           </div>

@@ -187,50 +187,6 @@ export function TransactionsPageSkeleton() {
   );
 }
 
-export function ContributorsPageSkeleton() {
-  return (
-    <div className="w-full" aria-busy="true" aria-live="polite">
-      <ScreenReaderStatus label="Loading contributors" />
-      <div className="mb-10 flex flex-col justify-between gap-7 md:mb-14 md:flex-row md:items-end">
-        <div className="space-y-3">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-12 w-64 sm:h-14" />
-        </div>
-        <Skeleton className="h-12 w-full rounded-md sm:w-44" />
-      </div>
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Card key={index} className="rounded-3xl">
-            <CardHeader className="space-y-4">
-              <Skeleton className="h-9 w-9 rounded-md" />
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-10 w-10 rounded-md" />
-                <Skeleton className="h-5 w-28" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Skeleton className="h-8 w-32" />
-              <Skeleton className="h-6 w-40 rounded-md" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <Card className="rounded-3xl">
-        <CardHeader className="space-y-3">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-72" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 export function ReposCardSkeletonGrid({ count = 15 }: { count?: number }) {
   return (
     <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite">

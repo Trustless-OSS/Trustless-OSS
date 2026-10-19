@@ -227,17 +227,68 @@ export const DEMO_ACTIVITY: ActivityRow[] = [
     contributor: null,
     txHash: '17f3b9a0c5d8246e1a8c0f2d7b4e9035c6d1a8e0b5f2c479a3e6d1b8f0c45729',
   },
-  ...Array.from({ length: 8 }, (_, index) => ({
-    id: `act_archive_${index + 1}`,
-    at: `2026-08-${String(17 - index).padStart(2, '0')}T12:00:00.000Z`,
-    repo: index % 2 === 0 ? 'trustless-oss/web' : 'trustless-oss/sdk',
-    issueNumber: 60 + index,
-    issueTitle: `Archive bounty notes ${index + 1}`,
-    kind: 'assigned' as const,
-    amountUsdc: null,
-    contributor: null,
-    txHash: null,
-  })),
+  // Test data: 40 fake contributors
+  ...Array.from({ length: 40 }, (_, index) => {
+    const i = index + 1;
+    const names = [
+      'alice-dev',
+      'bob-builder',
+      'charlie-code',
+      'diana-dev',
+      'eve-eng',
+      'frank-fix',
+      'grace-git',
+      'henry-hack',
+      'iris-infra',
+      'jack-js',
+      'kate-kick',
+      'leo-logic',
+      'mia-merge',
+      'noah-node',
+      'olivia-ops',
+      'paul-pro',
+      'quinn-query',
+      'roger-repo',
+      'sarah-sync',
+      'tina-test',
+      'uri-user',
+      'vince-ver',
+      'walter-web',
+      'xena-x',
+      'yara-yeah',
+      'zeke-zip',
+      'alex-all',
+      'beth-best',
+      'cole-code',
+      'dana-day',
+      'eden-edge',
+      'finn-fine',
+      'gina-go',
+      'hector-hero',
+      'ivy-i',
+      'jude-jump',
+      'kira-keen',
+      'liam-light',
+      'maya-make',
+      'nora-note',
+    ];
+    const name = names[i % names.length];
+    const amount = Math.floor(Math.random() * 500) + 50;
+    const isReleased = Math.random() > 0.3;
+    const kind: ActivityKind = isReleased ? 'released' : 'assigned';
+
+    return {
+      id: `test_${i}`,
+      at: new Date(Date.now() - i * 3600000).toISOString(),
+      repo: ['trustless-oss/web', 'trustless-oss/sdk', 'trustless-oss/contracts'][i % 3],
+      issueNumber: 100 + i,
+      issueTitle: `Test issue ${i}`,
+      kind,
+      amountUsdc: isReleased ? amount : null,
+      contributor: name,
+      txHash: isReleased ? `tx_${i.toString().padStart(64, '0')}` : null,
+    } as ActivityRow;
+  }),
 ];
 
 const KIND_META: Record<ActivityKind, { label: string; className: string }> = {

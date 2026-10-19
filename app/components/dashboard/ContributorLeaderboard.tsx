@@ -1,6 +1,7 @@
-import { GitMerge, GitPullRequest, Trophy } from 'lucide-react';
+import { ArrowRight, GitMerge, GitPullRequest, Trophy } from 'lucide-react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -67,13 +68,35 @@ function PodiumCard({ entry }: { entry: LeaderboardEntry }) {
   );
 }
 
-export default function ContributorLeaderboard({ rows = DEMO_ACTIVITY }: { rows?: ActivityRow[] }) {
-  const leaderboard = buildLeaderboard(rows);
-  const podium = leaderboard.slice(0, 3);
+export type ContributorLeaderboardProps = {
+  /** List of already-paginated entries to display in the table. */
+  entries?: LeaderboardEntry[];
+  /** Preview mode: show only the top N rows and a "See more" button. */
+  limit?: number;
+  /** Href for "See more" expand links (home preview only). */
+  expandHref?: string;
+  /** Show "See more" button (home preview). */
+  showSeeMore?: boolean;
+  /** Hide podium cards (leaderboard paginated pages). */
+  hidePodium?: boolean;
+};
+
+export default function ContributorLeaderboard({
+  entries,
+  limit,
+  expandHref,
+  hidePodium,
+  rows = DEMO_ACTIVITY,
+}: ContributorLeaderboardProps & { rows?: ActivityRow[] }) {
+  // Use entries if provided (paginated), otherwise build from rows (home preview)
+  const leaderboard = entries || buildLeaderboard(rows);
+  const podium = entries ? [] : leaderboard.slice(0, 3);
+  const visible = limit != null ? leaderboard.slice(0, limit) : leaderboard;
+  const hasMore = limit != null && leaderboard.length > limit;
 
   return (
     <div className="space-y-6">
-      {podium.length > 0 ? (
+      {!hidePodium && podium.length > 0 ? (
         <section aria-labelledby="leaderboard-podium-heading">
           <h2 id="leaderboard-podium-heading" className="sr-only">
             Top contributors
@@ -94,14 +117,6 @@ export default function ContributorLeaderboard({ rows = DEMO_ACTIVITY }: { rows?
       ) : null}
 
       <Card className="rounded-3xl py-0">
-        <CardHeader className="border-b border-border/70 pt-6">
-          <CardTitle className="font-display text-2xl font-extrabold tracking-tight">
-            Leaderboard
-          </CardTitle>
-          <CardDescription className="text-base">
-            Ranked by USDC earned from merged pull requests.
-          </CardDescription>
-        </CardHeader>
         <CardContent className="px-0 pb-0">
           {leaderboard.length === 0 ? (
             <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
@@ -127,12 +142,12 @@ export default function ContributorLeaderboard({ rows = DEMO_ACTIVITY }: { rows?
                     Assigned
                   </TableHead>
                   <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Repositories
+                    Top Repository
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leaderboard.map((entry) => (
+                {visible.map((entry) => (
                   <TableRow key={entry.name} className="hover:bg-muted/40">
                     <TableCell className="px-6 py-5">
                       <RankBadge rank={entry.rank} />
@@ -158,14 +173,37 @@ export default function ContributorLeaderboard({ rows = DEMO_ACTIVITY }: { rows?
                         {entry.assigned}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-5 text-muted-foreground">
-                      {entry.repos.join(', ')}
+                    <TableCell className="px-6 py-5">
+                      {entry.repos.length > 0 ? (
+                        <a
+                          href={`https://github.com/${entry.repos[0]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-semibold"
+                        >
+                          {entry.repos[0]}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
+
+          {hasMore && expandHref ? (
+            <div className="border-t border-border/70 px-6 py-5 flex justify-center">
+              <Link
+                href={expandHref}
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
+              >
+                View full leaderboard
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

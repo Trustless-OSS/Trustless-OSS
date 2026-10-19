@@ -1,4 +1,4 @@
-import { ArrowLeftRight, GitBranch, Trophy } from 'lucide-react';
+import { ArrowLeftRight, GitBranch } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import DashboardMetrics from '@/app/components/dashboard/DashboardMetrics';
@@ -27,7 +27,7 @@ export default async function DashboardPage(props: DashboardProps) {
             Dashboard
           </h1>
         </div>
-        <div className="animate-hero-in hero-stagger-5 grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3">
+        <div className="animate-hero-in hero-stagger-5 grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
           <Button href="/dashboard/repos" variant="outline" className="w-full justify-center">
             <GitBranch className="h-5 w-5 text-primary" strokeWidth={2.5} aria-hidden="true" />
             Repositories
@@ -43,18 +43,6 @@ export default async function DashboardPage(props: DashboardProps) {
               aria-hidden="true"
             />
             Activity
-          </Button>
-          <Button
-            href="/dashboard/contributors"
-            variant="outline"
-            className="w-full justify-center"
-          >
-            <Trophy
-              className="h-5 w-5 text-amber-500 dark:text-amber-400"
-              strokeWidth={2.5}
-              aria-hidden="true"
-            />
-            Leaderboard
           </Button>
         </div>
       </div>

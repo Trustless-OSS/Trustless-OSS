@@ -18,7 +18,8 @@ const variantClass: Record<Variant, string> = {
   solid: '',
   outline: 'border-border bg-card shadow-sm',
   ghost: 'border-border bg-card',
-  danger: 'border-destructive bg-destructive text-white hover:bg-destructive/90',
+  danger:
+    'border-red-600 bg-red-600 text-white hover:bg-red-700 hover:border-red-700 shadow-sm shadow-red-500/20',
   warning:
     'border-amber-500/30 bg-amber-500 text-white shadow-sm hover:bg-amber-600 hover:text-white dark:border-amber-400/20 dark:bg-amber-500 dark:hover:bg-amber-600',
 };

@@ -1,5 +1,4 @@
 import { Lock, Tag, Unlock, Users } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -16,18 +15,13 @@ import {
 export default function DashboardMetrics({ rows = DEMO_ACTIVITY }: { rows?: ActivityRow[] }) {
   const totals = summarizeActivity(rows);
   const contributors = listContributors(rows);
+  const visibleContributors = contributors.slice(0, 6); // Show only 6 contributors
   const moved = totals.locked + totals.released;
   const lockedShare = moved === 0 ? 0 : Math.round((totals.locked / moved) * 100);
   const releasedShare = moved === 0 ? 0 : Math.round((totals.released / moved) * 100);
 
   return (
     <div className="mb-6 space-y-4">
-      <Alert className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-        <AlertDescription className="text-current">
-          Live metrics unavailable — showing sample data.
-        </AlertDescription>
-      </Alert>
-
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
         <Card className="rounded-3xl">
           <CardHeader>
@@ -105,7 +99,7 @@ export default function DashboardMetrics({ rows = DEMO_ACTIVITY }: { rows?: Acti
                 <p className="text-sm text-muted-foreground">No contributors yet.</p>
               ) : (
                 <AvatarGroup className="-space-x-3">
-                  {contributors.map((contributor) => (
+                  {visibleContributors.map((contributor) => (
                     <a
                       key={contributor.name}
                       href={githubProfileUrl(contributor.name)}

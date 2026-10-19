@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import Navbar from './components/layout/Navbar';
 import HeroSection from './components/home/HeroSection';
 import EscrowEventLog from './components/escrow/EscrowEventLog';
+import ContributorLeaderboard from './components/dashboard/ContributorLeaderboard';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -194,6 +195,24 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <section className="relative mb-20 md:mb-28" aria-labelledby="leaderboard-title">
+          <div className="mb-9 max-w-5xl md:mb-12">
+            <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
+              Across every repository
+            </p>
+            <h2
+              id="leaderboard-title"
+              className="font-display mt-4 text-3xl font-extrabold leading-[0.98] tracking-tight text-foreground sm:text-4xl md:text-5xl"
+            >
+              Top contributors,
+              <br />
+              paid in USDC.
+            </h2>
+          </div>
+
+          <ContributorLeaderboard limit={4} expandHref="/leaderboard/1" showSeeMore />
+        </section>
+
         <div className="relative mb-20 md:mb-28">
           <EscrowEventLog />
         </div>
@@ -209,9 +228,14 @@ export default async function HomePage() {
           />
           <div className="relative z-10 mb-0 pt-4 md:mb-12 md:pt-8">
             <div className="max-w-5xl">
-              <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
-                Cross-chain payout routes
-              </p>
+              <div className="flex items-center gap-3 mb-4">
+                <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
+                  Cross-chain payout routes
+                </p>
+                <Badge className="h-auto rounded-full bg-amber-100 px-2.5 py-1 text-[0.65rem] font-bold tracking-wider text-amber-900 dark:bg-amber-500/20 dark:text-amber-300 uppercase">
+                  Coming soon
+                </Badge>
+              </div>
               <h2
                 id="payout-routes-title"
                 className="font-display mt-4 text-3xl font-extrabold leading-[0.98] tracking-tight text-foreground sm:text-4xl md:text-5xl"

@@ -53,7 +53,7 @@ describe('Button', () => {
       'data-variant',
       'destructive'
     );
-    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass('bg-destructive');
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass('bg-red-600');
     expect(screen.getByRole('button', { name: 'Withdraw' })).toHaveClass('bg-amber-500');
   });
 });

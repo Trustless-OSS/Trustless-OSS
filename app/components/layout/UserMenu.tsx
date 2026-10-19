@@ -10,6 +10,7 @@ import {
   LifeBuoy,
   LogOut,
   Menu,
+  Trophy,
 } from 'lucide-react';
 import { DOCS_URL } from '@/lib/links';
 import { FaGithub, FaXTwitter } from 'react-icons/fa6';
@@ -96,6 +97,12 @@ export default function UserMenu({ user }: { user: User }) {
             <Link href="/dashboard">
               <LayoutDashboard aria-hidden="true" />
               Dashboard
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/leaderboard/1">
+              <Trophy aria-hidden="true" />
+              Leaderboard
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
