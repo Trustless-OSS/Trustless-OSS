@@ -25,23 +25,23 @@ vi.mock('@/lib/backend', () => ({
 const NOTICES = [
   {
     id: 'n1',
-    kind: 'released',
+    event_type: 'PULL_REQUEST_MERGED',
     title: 'Payout released',
     body: '220 USDC sent to @gaearon',
-    isRead: false,
+    read: false,
     refId: null,
     data: { repoId: 'repo_9' },
-    createdAt: '2026-10-01T12:00:00.000Z',
+    at: '2026-10-01T12:00:00.000Z',
   },
 ];
 
-function mockFetch() {
+function mockFetch(notices: Array<{ id: string; [key: string]: unknown }> = NOTICES) {
   return vi.fn((url: string) => {
     if (url.includes('/notifications/unread-count')) {
       return Promise.resolve({ ok: true, json: async () => ({ count: 1 }) });
     }
     if (url.endsWith('/notifications')) {
-      return Promise.resolve({ ok: true, json: async () => NOTICES });
+      return Promise.resolve({ ok: true, json: async () => notices });
     }
     // read-all / read-one
     return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -64,7 +64,7 @@ describe('NotificationBell', () => {
     ).toBeInTheDocument();
   });
 
-  it('loads notifications when opened and can mark all read', async () => {
+  it('uses event-specific icons and loads backend-shaped notifications', async () => {
     const fetchMock = mockFetch();
     vi.stubGlobal('fetch', fetchMock);
     render(<NotificationBell token="tok" />);
@@ -73,6 +73,7 @@ describe('NotificationBell', () => {
 
     expect(await screen.findByText('Payout released')).toBeInTheDocument();
     expect(screen.getByText('220 USDC sent to @gaearon')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-git-merge')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
 
@@ -86,5 +87,30 @@ describe('NotificationBell', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /unread/ })).not.toBeInTheDocument()
     );
+  });
+
+  it('shows specific icons for assigned, unassigned, and insufficient-funds notifications', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch([
+        { id: 'n2', kind: 'bounty_assigned', title: 'Assigned', body: '', read: false },
+        { id: 'n3', kind: 'bounty_unassigned', title: 'Unassigned', body: '', read: false },
+        {
+          id: 'n4',
+          kind: 'insufficient_funds',
+          title: 'Insufficient funds',
+          body: '',
+          read: false,
+        },
+      ])
+    );
+    render(<NotificationBell token="tok" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Notifications/ }));
+
+    expect(await screen.findByText('Insufficient funds')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-user-plus')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-user-minus')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-circle-alert')).toBeInTheDocument();
   });
 });

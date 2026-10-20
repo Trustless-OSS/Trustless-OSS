@@ -6,6 +6,7 @@ import {
   Bell,
   Check,
   CheckCheck,
+  CircleAlert,
   DollarSign,
   GitMerge,
   Lock,
@@ -41,6 +42,7 @@ const KIND_ICON: Record<string, typeof Bell> = {
   assigned: UserPlus, // assigned to an issue
   unassigned: UserMinus, // removed from an issue
   rejected: XCircle, // claim rejected
+  insufficient_funds: CircleAlert,
 };
 
 // Each kind gets a distinct circle tint + icon colour so types are glanceable.
@@ -51,7 +53,37 @@ const KIND_TONE: Record<string, string> = {
   assigned: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
   unassigned: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  insufficient_funds: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 };
+
+const KIND_ALIASES: Record<string, string> = {
+  bounty_rewarded: 'rewarded',
+  issue_rewarded: 'rewarded',
+  funds_deposited: 'locked',
+  funds_locked: 'locked',
+  escrow_funded: 'locked',
+  milestone_locked: 'locked',
+  payout_released: 'released',
+  funds_released: 'released',
+  milestone_released: 'released',
+  pull_request_merged: 'released',
+  pr_merged: 'released',
+  contributor_assigned: 'assigned',
+  issue_assigned: 'assigned',
+  bounty_assigned: 'assigned',
+  contributor_unassigned: 'unassigned',
+  issue_unassigned: 'unassigned',
+  bounty_unassigned: 'unassigned',
+  claim_rejected: 'rejected',
+};
+
+function normalizeKind(value: unknown): string {
+  const kind = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[.\s-]+/g, '_');
+  return KIND_ALIASES[kind] ?? kind;
+}
 
 function iconFor(kind: string) {
   const Icon = KIND_ICON[kind];
@@ -71,16 +103,16 @@ function toneFor(kind: string) {
 function normalizeNotice(raw: Record<string, unknown>): Notice {
   return {
     id: String(raw.id ?? ''),
-    kind: String(raw.kind ?? ''),
+    kind: normalizeKind(raw.kind ?? raw.type ?? raw.notification_type ?? raw.event_type),
     title: String(raw.title ?? ''),
     body: String(raw.body ?? ''),
-    isRead: Boolean(raw.isRead ?? raw.is_read ?? false),
+    isRead: Boolean(raw.isRead ?? raw.is_read ?? raw.read ?? false),
     refId: raw.refId != null ? String(raw.refId) : null,
     data:
       raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data)
         ? (raw.data as Record<string, unknown>)
         : null,
-    createdAt: String(raw.createdAt ?? raw.created_at ?? ''),
+    createdAt: String(raw.createdAt ?? raw.created_at ?? raw.at ?? ''),
   };
 }
 
