@@ -55,7 +55,7 @@ const KIND_TONE: Record<string, string> = {
 
 function iconFor(kind: string) {
   const Icon = KIND_ICON[kind];
-  
+
   if (!Icon && kind) {
     console.warn(`[NotificationBell] Unknown notification kind: "${kind}"`);
   }

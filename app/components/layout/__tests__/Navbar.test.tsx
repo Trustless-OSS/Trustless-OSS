@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Navbar from '../Navbar';
 import type { User } from '@supabase/supabase-js';
@@ -121,5 +121,13 @@ describe('Navbar', () => {
     expect(screen.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument();
     expect(screen.queryByRole('menuitemcheckbox', { name: /dark mode/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('menuitem', { name: 'Repositories' })).not.toBeInTheDocument();
+
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockClear();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/auth/signout', { method: 'POST' });
+    });
   });
 });

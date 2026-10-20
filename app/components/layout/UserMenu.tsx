@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   BookText,
@@ -28,11 +29,29 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { STATUS_PAGE_URL } from '@/lib/health';
+import { toast } from 'sonner';
 
 export default function UserMenu({ user }: { user: User }) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const name = user.user_metadata?.user_name ?? user.email?.split('@')[0] ?? 'Account';
   const avatar = user.user_metadata?.avatar_url as string | undefined;
   const initial = name[0]?.toUpperCase() ?? 'U';
+
+  async function handleSignOut() {
+    setIsSigningOut(true);
+
+    try {
+      const response = await fetch('/auth/signout', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error('Sign-out request failed');
+      }
+
+      window.location.assign('/');
+    } catch {
+      setIsSigningOut(false);
+      toast.error('Unable to sign out. Please try again.');
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -143,14 +162,14 @@ export default function UserMenu({ user }: { user: User }) {
         <DropdownMenuLabel className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
           Account
         </DropdownMenuLabel>
-        <form action="/auth/signout" method="post">
-          <DropdownMenuItem variant="destructive" asChild>
-            <button type="submit" className="w-full">
-              <LogOut aria-hidden="true" />
-              Sign out
-            </button>
-          </DropdownMenuItem>
-        </form>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={isSigningOut}
+          onSelect={() => void handleSignOut()}
+        >
+          <LogOut aria-hidden="true" />
+          {isSigningOut ? 'Signing out…' : 'Sign out'}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
