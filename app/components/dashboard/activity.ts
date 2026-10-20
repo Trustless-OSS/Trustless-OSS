@@ -104,6 +104,13 @@ export function summarizeActivity(rows: ActivityRow[]) {
   };
 }
 
+export function summarizeCurrentlyLocked(rows: ActivityRow[]) {
+  return rollupByRepo(rows).reduce(
+    (sum, repo) => sum + Math.max(0, repo.locked - repo.released),
+    0
+  );
+}
+
 export function listContributors(rows: ActivityRow[]) {
   return buildLeaderboard(rows).map((contributor) => ({
     name: contributor.name,

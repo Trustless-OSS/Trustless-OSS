@@ -27,6 +27,7 @@ import {
   filterActivity,
   listContributors,
   rollupByRepo,
+  summarizeCurrentlyLocked,
   toRepoChartPoints,
 } from '../activity';
 import { ACTIVITY_FIXTURE } from './fixtures';
@@ -86,6 +87,37 @@ describe('rollupByRepo', () => {
         released: expect.any(Number),
       })
     );
+  });
+});
+
+describe('summarizeCurrentlyLocked', () => {
+  it('subtracts released payouts from locked funds within each repository', () => {
+    expect(
+      summarizeCurrentlyLocked([
+        {
+          id: 'lock',
+          at: '2026-09-04T10:00:00.000Z',
+          repo: 'trustless-oss/web',
+          issueNumber: 142,
+          issueTitle: 'Bounty',
+          kind: 'locked',
+          amountUsdc: 300,
+          contributor: null,
+          txHash: null,
+        },
+        {
+          id: 'release',
+          at: '2026-09-04T11:00:00.000Z',
+          repo: 'trustless-oss/web',
+          issueNumber: 142,
+          issueTitle: 'Bounty',
+          kind: 'released',
+          amountUsdc: 120,
+          contributor: 'octocat',
+          txHash: null,
+        },
+      ])
+    ).toBe(180);
   });
 });
 

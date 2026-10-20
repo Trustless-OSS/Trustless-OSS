@@ -1,40 +1,65 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Lock, Tag, Unlock, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { fetchDeployedEscrowBalance } from '@/lib/dashboard-api';
 import {
   formatUsdc,
   githubAvatarUrl,
   githubProfileUrl,
   listContributors,
+  summarizeCurrentlyLocked,
   summarizeActivity,
 } from '@/app/components/dashboard/activity';
 import { useActivity } from '@/app/components/dashboard/useActivity';
 
 export default function DashboardMetrics() {
   const { data, loading, error } = useActivity();
+  const [escrowBalance, setEscrowBalance] = useState<number | null>(null);
+  const [escrowBalanceError, setEscrowBalanceError] = useState<string | null>(null);
 
-  if (loading) {
-    return <Skeleton className="mb-6 h-56 w-full rounded-3xl" />;
-  }
-  if (error) {
+  useEffect(() => {
+    let active = true;
+    fetchDeployedEscrowBalance()
+      .then((balance) => active && setEscrowBalance(balance))
+      .catch((reason: unknown) => {
+        if (active) {
+          setEscrowBalanceError(
+            reason instanceof Error ? reason.message : 'Failed to load deployed escrow balances.'
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (error || escrowBalanceError) {
     return (
       <p className="mb-6 rounded-3xl border border-border bg-card px-6 py-4 text-sm font-medium text-destructive">
-        {error}
+        {error ?? escrowBalanceError}
       </p>
     );
+  }
+  if (loading || escrowBalance === null) {
+    return <Skeleton className="mb-6 h-56 w-full rounded-3xl" />;
   }
 
   const rows = data ?? [];
   const totals = summarizeActivity(rows);
+  const currentlyLocked = summarizeCurrentlyLocked(rows);
   const contributors = listContributors(rows);
   const visibleContributors = contributors.slice(0, 6); // Show only 6 contributors
-  const moved = totals.locked + totals.released;
-  const lockedShare = moved === 0 ? 0 : Math.round((totals.locked / moved) * 100);
-  const releasedShare = moved === 0 ? 0 : Math.round((totals.released / moved) * 100);
+  const lockedInEscrow = Math.min(currentlyLocked, escrowBalance);
+  const lockedShare = escrowBalance === 0 ? 0 : Math.round((lockedInEscrow / escrowBalance) * 100);
+  const releasedTotal = escrowBalance + totals.released;
+  const releasedShare =
+    releasedTotal === 0 ? 0 : Math.round((totals.released / releasedTotal) * 100);
 
   return (
     <div className="mb-6 space-y-4">
@@ -49,22 +74,38 @@ export default function DashboardMetrics() {
             <div>
               <div className="mb-2 flex items-end justify-between gap-3">
                 <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Lock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  Funds locked
+                  <Lock className="h-4 w-4 text-blue-500" aria-hidden="true" />
+                  Total Balance
                 </span>
                 <span className="text-2xl font-black tracking-tight">
-                  {formatUsdc(totals.locked)}
+                  {formatUsdc(escrowBalance)}
                 </span>
               </div>
-              <Progress value={lockedShare} className="h-2" aria-label="Funds locked share" />
-              <p className="mt-2 text-xs font-medium text-muted-foreground">
-                {lockedShare}% of escrowed funds
-              </p>
+              <div
+                role="img"
+                aria-label={`Escrow balance: ${formatUsdc(escrowBalance)} held, including ${formatUsdc(lockedInEscrow)} currently locked`}
+                className="relative h-2 w-full overflow-hidden rounded-full bg-blue-500"
+              >
+                <span
+                  className="absolute inset-y-0 right-0 bg-violet-500"
+                  style={{ width: `${lockedShare}%` }}
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-blue-500" aria-hidden="true" />
+                  Total held: {formatUsdc(escrowBalance)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-violet-500" aria-hidden="true" />
+                  Currently locked: {formatUsdc(lockedInEscrow)}
+                </span>
+              </div>
             </div>
             <div>
               <div className="mb-2 flex items-end justify-between gap-3">
                 <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Unlock className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                  <Unlock className="h-4 w-4 text-violet-500" aria-hidden="true" />
                   Funds released
                 </span>
                 <span className="text-2xl font-black tracking-tight">
@@ -77,7 +118,7 @@ export default function DashboardMetrics() {
                 aria-label="Funds released share"
               />
               <p className="mt-2 text-xs font-medium text-muted-foreground">
-                {releasedShare}% paid out to contributors
+                {releasedShare}% of current escrow balance plus released payouts
               </p>
             </div>
           </CardContent>

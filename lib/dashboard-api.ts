@@ -68,6 +68,30 @@ export async function fetchActivity(): Promise<ActivityRow[]> {
   }));
 }
 
+export async function fetchDeployedEscrowBalance(): Promise<number> {
+  const response = await getAuthed<unknown>('/repos');
+  const repos = Array.isArray(response)
+    ? response
+    : response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)
+      ? response.data
+      : response &&
+          typeof response === 'object' &&
+          'repos' in response &&
+          Array.isArray(response.repos)
+        ? response.repos
+        : null;
+
+  if (!repos) throw new Error('Unexpected repositories response from the server.');
+
+  return repos.reduce((total, repo) => {
+    if (!repo || typeof repo !== 'object') return total;
+    const record = repo as Record<string, unknown>;
+    const contractId = record.escrow_contract_id ?? record.escrowContractId;
+    if (typeof contractId !== 'string' || !contractId.trim()) return total;
+    return total + (amount(record.escrow_balance ?? record.escrowBalance) ?? 0);
+  }, 0);
+}
+
 export async function fetchFundsMovement(): Promise<FundsMovementPoint[]> {
   const points = await getAuthed<Record<string, unknown>[]>('/dashboard/funds-movement');
   if (!Array.isArray(points))
