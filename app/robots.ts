@@ -7,17 +7,17 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/leaderboard', '/support', '/connect', '/login'],
+        allow: ['/', '/leaderboard', '/support', '/login'],
         disallow: ['/dashboard', '/profile', '/auth/', '/api/', '/*.json$', '/*.tsx$', '/_next/'],
       },
       {
         userAgent: 'Googlebot',
-        allow: ['/', '/leaderboard', '/support', '/connect', '/login'],
+        allow: ['/', '/leaderboard', '/support', '/login'],
         disallow: ['/dashboard', '/profile', '/auth/', '/api/'],
       },
       {
         userAgent: 'Bingbot',
-        allow: ['/', '/leaderboard', '/support', '/connect', '/login'],
+        allow: ['/', '/leaderboard', '/support', '/login'],
         disallow: ['/dashboard', '/profile', '/auth/', '/api/'],
       },
       // Rate limiting for aggressive crawlers
