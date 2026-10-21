@@ -17,30 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { getActorUsername } from '@/lib/issues';
 import { remoteBackendUrl } from '@/lib/backend';
-
-// CREATE TABLE "repositories"(
-//   "id" UUID NOT NULL,
-//   "github_repo_id" BIGINT NOT NULL,
-//   "github_install_id" BIGINT,
-//   "full_name" TEXT NOT NULL,
-//   "escrow_contract_id" TEXT,
-//   "escrow_balance" NUMERIC,
-//   "balance_synced_at" TIMESTAMPTZ(6),
-//   "created_at" TIMESTAMPTZ(6) NOT NULL,
-//   PRIMARY KEY("id")
-// );
-// pub(crate) struct RepoDetails {
-//   pub(crate) repo: Repo,
-//     pub(crate) is_maintainer: bool,
-//       pub(crate) escrow_deployed: bool,
-//         pub(crate) escrow_status: & 'static str,
-//   pub(crate) can_deploy_escrow: bool,
-//     pub(crate) can_fund_escrow: bool,
-//       pub(crate) can_close_escrow: bool,
-//         pub(crate) can_refund_escrow: bool,
-// }
 
 type Repo = {
   id: string;
@@ -497,15 +474,12 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                     id: string;
                     github_issue_number: number;
                     title: string;
-                    difficulty_label: string | null;
+                    reward_level_label: string | null;
                     reward_amount: number;
                     status: string;
-                    assignments?: unknown;
+                    assignee?: { username?: string } | null;
                   }) => {
-                    const assignment = Array.isArray(issue.assignments)
-                      ? issue.assignments[0]
-                      : issue.assignments;
-                    const actorUsername = getActorUsername(issue);
+                    const actorUsername = issue.assignee?.username ?? null;
                     const issueUrl = `https://github.com/${repo?.full_name}/issues/${issue.github_issue_number}`;
                     return (
                       <TableRow
@@ -537,9 +511,9 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
 
                         {/* Level */}
                         <TableCell className="px-4 py-4 md:px-8">
-                          {issue.difficulty_label ? (
-                            <span className={levelBadge(issue.difficulty_label)}>
-                              {issue.difficulty_label}
+                          {issue.reward_level_label ? (
+                            <span className={levelBadge(issue.reward_level_label)}>
+                              {issue.reward_level_label}
                             </span>
                           ) : (
                             <span className="font-bold text-muted-foreground">—</span>
@@ -554,17 +528,21 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
 
                         {/* Status */}
                         <TableCell className="px-4 py-4 md:px-8">
-                          {(() => {
-                            const StatusIcon = statusIcon(issue.status);
-                            return (
-                              <span
-                                className={`${statusBadge(issue.status)} inline-flex items-center gap-1 font-bold capitalize`}
-                              >
-                                <StatusIcon className="h-3 w-3" aria-hidden="true" />
-                                {issue.status}
-                              </span>
-                            );
-                          })()}
+                          {issue.status ? (
+                            (() => {
+                              const StatusIcon = statusIcon(issue.status);
+                              return (
+                                <span
+                                  className={`${statusBadge(issue.status)} inline-flex items-center gap-1 font-bold capitalize`}
+                                >
+                                  <StatusIcon className="h-3 w-3" aria-hidden="true" />
+                                  {issue.status}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            <span className="font-bold text-muted-foreground">—</span>
+                          )}
                         </TableCell>
 
                         {/* Contributor — avatar + handle */}
@@ -604,16 +582,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               issueId={issue.id}
                               token={session?.access_token ?? ''}
                               status={issue.status}
-                              payoutStatus={
-                                assignment &&
-                                typeof assignment === 'object' &&
-                                'payout_status' in assignment
-                                  ? String(
-                                      (assignment as { payout_status?: string }).payout_status ??
-                                        'pending'
-                                    )
-                                  : 'pending'
-                              }
+                              payoutStatus="pending"
                             />
                           ) : (
                             <span className="text-xs font-semibold text-muted-foreground">—</span>

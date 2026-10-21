@@ -78,13 +78,11 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
         id: 'issue-1',
         github_issue_number: 77,
         title: 'Bounty Actor display bug',
-        difficulty_label: 'high',
+        reward_level_label: 'high',
         reward_amount: 50,
         status: 'active',
-        assignments: {
-          contributors: {
-            github_username: 'ryzen-xp',
-          },
+        assignee: {
+          username: 'ryzen-xp',
         },
       },
     ];
@@ -122,10 +120,10 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
         id: 'issue-2',
         github_issue_number: 78,
         title: 'Unassigned bounty issue',
-        difficulty_label: 'medium',
+        reward_level_label: 'medium',
         reward_amount: 25,
         status: 'active',
-        assignments: null,
+        assignee: null,
       },
     ];
 
@@ -148,8 +146,12 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     const PageJSX = await RepoDetailPage({ params: Promise.resolve({ repoId: 'repo-123' }) });
     render(PageJSX);
 
-    expect(screen.getByText('—')).toBeInTheDocument();
+    // Get all dashes on page (there are multiple: Level column, Actions column)
+    const allDashes = screen.getAllByText('—');
+    expect(allDashes.length).toBeGreaterThan(0);
     expect(screen.queryByText('null')).not.toBeInTheDocument();
+    // Verify "Not assigned" is shown in the contributor cell
+    expect(screen.getByText('Not assigned')).toBeInTheDocument();
   });
 
   it('renders backend-provided reward levels instead of fixed low/medium/high labels', async () => {
@@ -169,13 +171,10 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
             json: async () => ({
               data: {
                 ...mockRepo,
-                repo: {
-                  ...mockRepo,
-                  rewards: [
-                    { label: 'starter', amount: 15 },
-                    { label: 'advanced', amount: 60 },
-                  ],
-                },
+                rewards: [
+                  { label: 'starter', amount: 15 },
+                  { label: 'advanced', amount: 60 },
+                ],
               },
             }),
           });
