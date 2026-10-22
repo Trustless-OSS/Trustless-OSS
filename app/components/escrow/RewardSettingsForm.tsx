@@ -314,7 +314,7 @@ export default function RewardSettingsForm({
                 className="h-8 gap-1.5 rounded-lg border-dashed px-3 text-xs font-semibold text-muted-foreground hover:border-primary/50 hover:text-foreground"
               >
                 <Plus className="size-3.5" strokeWidth={2.5} />
-                Add tier
+                Label
               </Button>
             </>
           )}
@@ -532,7 +532,7 @@ export default function RewardSettingsForm({
             </span>
             <div className="space-y-1">
               <DialogTitle className="font-display text-lg font-extrabold tracking-tight">
-                Add a reward tier
+                New Label Tier
               </DialogTitle>
               <DialogDescription className="text-sm leading-5">
                 Map a repository label to a fixed USDC payout.
@@ -681,7 +681,7 @@ export default function RewardSettingsForm({
               disabled={saving}
               className="w-full sm:w-auto"
             >
-              Cancel
+              Discard
             </AppButton>
             <AppButton
               variant="solid"
@@ -696,7 +696,7 @@ export default function RewardSettingsForm({
                   Saving
                 </>
               ) : (
-                'Add tier'
+                'Save'
               )}
             </AppButton>
           </DialogFooter>
