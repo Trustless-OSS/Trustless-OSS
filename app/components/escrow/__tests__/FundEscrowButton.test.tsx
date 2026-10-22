@@ -120,7 +120,7 @@ describe('FundEscrowButton', () => {
     expect(screen.getByRole('button', { name: /^Close$/i })).toBeEnabled();
   });
 
-  it('keeps the success state visible until the user closes it', async () => {
+  it('auto-closes the dialog after successful funding', async () => {
     vi.mocked(walletKit.getWalletKit).mockResolvedValue({
       authModal: vi.fn().mockResolvedValue({ address: 'wallet-address' }),
       signTransaction: vi.fn().mockResolvedValue({ signedTxXdr: 'signed-xdr' }),
@@ -153,6 +153,15 @@ describe('FundEscrowButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 
     expect(await screen.findByText(/Deposit confirmed/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Done$/i })).toBeEnabled();
+
+    // Wait for auto-close (1.5 seconds)
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      },
+      { timeout: 2000 }
+    );
+
+    expect(refresh).toHaveBeenCalled();
   });
 });

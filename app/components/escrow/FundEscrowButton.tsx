@@ -108,11 +108,6 @@ export default function FundEscrowButton({
     if (!nextOpen) resetState();
   }
 
-  function handleCloseAndRefresh() {
-    setOpen(false);
-    router.refresh();
-  }
-
   async function handleFund() {
     setSubmitAttempted(true);
     setError('');
@@ -128,7 +123,7 @@ export default function FundEscrowButton({
     try {
       const kit = await getWalletKit();
 
-      // Radix dialog overlay (z-50) sits above Stellar Wallets Kit and blocks wallet UI clicks.
+      // Close dialog so wallet extension can receive clicks
       setOpen(false);
 
       const { address } = await withTimeout(
@@ -138,6 +133,7 @@ export default function FundEscrowButton({
       );
       if (!address) throw new Error('No public key returned');
 
+      // Reopen dialog for transaction signing
       setOpen(true);
       setPhase('sign');
 
@@ -162,13 +158,15 @@ export default function FundEscrowButton({
 
       const { unsignedTransaction } = await res1.json();
 
-      setOpen(false);
+      // Keep dialog closed for wallet signing interaction
       setPhase('sign');
       const { signedTxXdr } = await withTimeout(
         kit.signTransaction(unsignedTransaction),
         WALLET_OPERATION_TIMEOUT_MS,
         'Transaction signing timed out. Please close the wallet modal and try again.'
       );
+
+      // Reopen dialog after signing
       setOpen(true);
       setPhase('processing');
 
@@ -201,7 +199,11 @@ export default function FundEscrowButton({
         'Escrow funded',
         `Successfully deposited ${formatUsdc(parsedAmount)} USDC to the escrow.`
       );
-      router.refresh();
+      // Auto-close and reload after 1.5 seconds
+      setTimeout(() => {
+        setOpen(false);
+        router.refresh();
+      }, 1500);
     } catch (err: unknown) {
       setOpen(true);
       setPhase('error');
@@ -405,13 +407,27 @@ export default function FundEscrowButton({
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-border/70 bg-muted/40 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-          <Button variant="ghost" onClick={() => closeDialog(false)} disabled={loading}>
-            {phase === 'success' || phase === 'error' ? 'Close' : 'Cancel'}
+          <Button
+            variant="ghost"
+            onClick={() => closeDialog(false)}
+            disabled={loading || phase === 'success'}
+          >
+           {phase === 'error' ? 'Close' : 'Cancel'}
           </Button>
-          {phase === 'error' ? null : (
+          {phase === 'error' ? (
             <Button
               variant="solid"
-              onClick={phase === 'success' ? handleCloseAndRefresh : handleFund}
+              onClick={handleFund}
+              disabled={loading}
+              className="min-w-28 gap-1.5"
+            >
+              Retry
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          ) : phase !== 'success' ? (
+            <Button
+              variant="solid"
+              onClick={handleFund}
               disabled={loading}
               className="min-w-28 gap-1.5"
             >
@@ -420,8 +436,6 @@ export default function FundEscrowButton({
                   <LoadingLogo size="tiny" variant="circle" />
                   Waiting…
                 </>
-              ) : phase === 'success' ? (
-                'Done'
               ) : (
                 <>
                   Continue
@@ -429,7 +443,7 @@ export default function FundEscrowButton({
                 </>
               )}
             </Button>
-          )}
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>

@@ -244,6 +244,27 @@ async function getIssues(repoId: string, token: string) {
   }
 }
 
+async function getEscrowBalance(
+  repoId: string,
+  token: string
+): Promise<{ locked: number; pool: number } | null> {
+  try {
+    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}/escrow/balance`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return {
+      locked: toNumber(data.locked ?? data.lockedAmount ?? 0),
+      pool: toNumber(data.pool ?? data.poolBalance ?? data.escrow_balance ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending: 'status-pending',
@@ -301,15 +322,17 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
   } = await supabase.auth.getSession();
 
   const token = session?.access_token ?? '';
-  const [repoDetails, issues, repoRewards] = await Promise.all([
+  const [repoDetails, issues, repoRewards, escrowBalance] = await Promise.all([
     getRepo(repoId, token),
     getIssues(repoId, token),
     getRepoRewards(repoId, token),
+    getEscrowBalance(repoId, token),
   ]);
   const repo = repoDetails?.repo;
   const rewardLevels = repo?.rewards?.length ? repo.rewards : (repoRewards ?? []);
   const hasEscrow = Boolean(repoDetails?.escrow_deployed && repo?.escrow_contract_id);
   const isRepoMaintainer = repoDetails?.is_maintainer ?? false;
+  const poolBalance = escrowBalance?.pool ?? repo?.escrow_balance ?? 0;
 
   return (
     <div className="w-full space-y-10">
@@ -368,14 +391,16 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
 
           {hasEscrow && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
-              <div className="sm:pr-2">
-                <p className="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-                  Balance
-                </p>
-                <p className="text-2xl font-black tracking-tight text-foreground">
-                  {repo.escrow_balance.toFixed(2)}{' '}
-                  <span className="text-sm  font-semibold text-muted-foreground">USDC</span>
-                </p>
+              <div className="flex flex-row gap-6 sm:pr-2">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+                    Balance
+                  </p>
+                  <p className="text-2xl font-black tracking-tight text-foreground">
+                    {poolBalance.toFixed(2)}{' '}
+                    <span className="text-sm font-semibold text-muted-foreground">USDC</span>
+                  </p>
+                </div>
               </div>
               {(repoDetails?.can_fund_escrow ||
                 repoDetails?.can_refund_escrow ||
@@ -386,17 +411,16 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                       repoId={repoId}
                       token={session?.access_token ?? ''}
                       repoName={repo.full_name}
-                      currentBalance={repo.escrow_balance}
+                      currentBalance={poolBalance}
                     />
                   )}
-                  {repo.escrow_balance > 0 && repoDetails?.can_refund_escrow ? (
+                  {poolBalance > 0 && repoDetails?.can_refund_escrow ? (
                     <RefundFundButton
                       repoId={repoId}
                       token={session?.access_token ?? ''}
-                      currentBalance={repo.escrow_balance}
-                      destinationAddress={repo.escrow_funder_wallet}
+                      currentBalance={poolBalance}
                     />
-                  ) : repo.escrow_balance === 0 && isRepoMaintainer ? (
+                  ) : poolBalance === 0 && isRepoMaintainer ? (
                     <DeleteRepoButton repoId={repoId} token={session?.access_token ?? ''} />
                   ) : null}
                 </div>
@@ -477,6 +501,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                     reward_level_label: string | null;
                     reward_amount: number;
                     status: string;
+                    milestone_index?: number | null;
                     assignee?: { username?: string } | null;
                   }) => {
                     const actorUsername = issue.assignee?.username ?? null;
@@ -582,7 +607,7 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
                               issueId={issue.id}
                               token={session?.access_token ?? ''}
                               status={issue.status}
-                              payoutStatus="pending"
+                              milestoneIndex={issue.milestone_index ?? null}
                             />
                           ) : (
                             <span className="text-xs font-semibold text-muted-foreground">—</span>

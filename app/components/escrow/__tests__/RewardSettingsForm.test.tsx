@@ -50,7 +50,7 @@ describe('RewardSettingsForm', () => {
     expect(screen.getByText('high')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add tier' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Label' })).toBeInTheDocument();
   });
 
   it('turns every tier into an editable input in edit mode', () => {
