@@ -328,7 +328,7 @@ export default async function HomePage() {
               <Image
                 src="/stellar-xlm-logo.svg"
                 alt="Stellar logo"
-                width={52}
+                width={44}
                 height={44}
                 className="h-11 w-11 object-contain"
               />

@@ -412,7 +412,7 @@ export default function FundEscrowButton({
             onClick={() => closeDialog(false)}
             disabled={loading || phase === 'success'}
           >
-           {phase === 'error' ? 'Close' : 'Cancel'}
+            {phase === 'error' ? 'Close' : 'Cancel'}
           </Button>
           {phase === 'error' ? (
             <Button
