@@ -113,4 +113,28 @@ describe('NotificationBell', () => {
     expect(document.querySelector('svg.lucide-user-minus')).toBeInTheDocument();
     expect(document.querySelector('svg.lucide-circle-alert')).toBeInTheDocument();
   });
+
+  it('normalizes backend workflow notification kinds without warnings', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'fetch',
+      mockFetch([
+        { id: 'n5', kind: 'amount_missing', title: 'Amount missing', body: '', read: false },
+        { id: 'n6', kind: 'amount_updated', title: 'Amount updated', body: '', read: false },
+        { id: 'n7', kind: 'bounty_locked', title: 'Bounty locked', body: '', read: false },
+        { id: 'n8', kind: 'bounty_cancelled', title: 'Bounty cancelled', body: '', read: false },
+        { id: 'n9', kind: 'wallet_required', title: 'Wallet required', body: '', read: false },
+      ])
+    );
+    render(<NotificationBell token="tok" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Notifications/ }));
+
+    expect(await screen.findByText('Wallet required')).toBeInTheDocument();
+    expect(document.querySelectorAll('svg.lucide-circle-alert')).toHaveLength(2);
+    expect(document.querySelector('svg.lucide-dollar-sign')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-lock')).toBeInTheDocument();
+    expect(document.querySelector('svg.lucide-circle-x')).toBeInTheDocument();
+    expect(warn).not.toHaveBeenCalled();
+  });
 });

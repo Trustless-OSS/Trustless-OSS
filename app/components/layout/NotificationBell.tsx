@@ -57,7 +57,11 @@ const KIND_TONE: Record<string, string> = {
 };
 
 const KIND_ALIASES: Record<string, string> = {
+  amount_missing: 'insufficient_funds',
+  amount_updated: 'rewarded',
   bounty_rewarded: 'rewarded',
+  bounty_locked: 'locked',
+  bounty_cancelled: 'rejected',
   issue_rewarded: 'rewarded',
   funds_deposited: 'locked',
   funds_locked: 'locked',
@@ -75,6 +79,7 @@ const KIND_ALIASES: Record<string, string> = {
   issue_unassigned: 'unassigned',
   bounty_unassigned: 'unassigned',
   claim_rejected: 'rejected',
+  wallet_required: 'insufficient_funds',
 };
 
 function normalizeKind(value: unknown): string {
