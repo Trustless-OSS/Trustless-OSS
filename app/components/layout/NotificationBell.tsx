@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatWhen } from '@/app/components/dashboard/activity';
 import { cn } from '@/lib/utils';
 import { authHeaders, backendUrl } from '@/lib/backend';
@@ -248,21 +249,28 @@ export default function NotificationBell({ token }: { token: string }) {
 
   return (
     <div ref={panelRef} className="relative">
-      <button
-        type="button"
-        onClick={handleToggle}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-        className="relative flex size-9 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-sm transition-colors hover:border-primary/40 hover:bg-accent hover:shadow-md"
-      >
-        <Bell className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden="true" />
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
-            {unread > 9 ? '9+' : unread}
-          </span>
-        )}
-      </button>
+      <TooltipProvider delayDuration={400}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleToggle}
+              aria-expanded={open}
+              aria-haspopup="dialog"
+              aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+              className="relative flex size-9 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-sm transition-colors hover:border-primary/40 hover:bg-accent hover:shadow-md"
+            >
+              <Bell className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden="true" />
+              {unread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground ring-2 ring-background">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Notifications</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       {open && (
         <div

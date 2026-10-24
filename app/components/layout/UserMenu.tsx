@@ -29,10 +29,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { STATUS_PAGE_URL } from '@/lib/health';
+import { NETWORKS, useNetwork } from '@/lib/network-config';
+import { Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function UserMenu({ user }: { user: User }) {
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [network, setNetwork] = useNetwork();
   const name = user.user_metadata?.user_name ?? user.email?.split('@')[0] ?? 'Account';
   const avatar = user.user_metadata?.avatar_url as string | undefined;
   const initial = name[0]?.toUpperCase() ?? 'U';
@@ -156,6 +159,31 @@ export default function UserMenu({ user }: { user: User }) {
             </a>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+
+        {/* Network — only in the menu on mobile; a standalone button handles desktop */}
+        <div className="sm:hidden">
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            Network
+          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            {NETWORKS.map(({ value, label }) => (
+              <DropdownMenuItem
+                key={value}
+                onSelect={() => setNetwork(value)}
+                className="justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <Globe aria-hidden="true" />
+                  {label}
+                </span>
+                {network === value ? (
+                  <Check className="size-4 text-primary" aria-hidden="true" />
+                ) : null}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        </div>
 
         <DropdownMenuSeparator />
 

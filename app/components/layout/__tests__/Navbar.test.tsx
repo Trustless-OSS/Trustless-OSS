@@ -105,6 +105,7 @@ describe('Navbar', () => {
       'Open settings for ryzen-xp',
       'Notifications, 3 unread',
       'Switch to dark mode',
+      'Network config',
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));

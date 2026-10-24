@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, GitMerge, GitPullRequest, Trophy } from 'lucide-react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Table,
@@ -14,7 +13,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import GithubUserLink from '@/app/components/dashboard/GithubUserLink';
-import { formatUsdc, type LeaderboardEntry } from '@/app/components/dashboard/activity';
+import {
+  formatUsdc,
+  githubAvatarUrl,
+  githubProfileUrl,
+  type LeaderboardEntry,
+} from '@/app/components/dashboard/activity';
 import { fetchPublicLeaderboard } from '@/lib/dashboard-api';
 
 const RANK_STYLE: Record<number, string> = {
@@ -40,7 +44,7 @@ function PodiumCard({ entry }: { entry: LeaderboardEntry }) {
 
   return (
     <Card
-      className={`rounded-3xl ${raised ? 'ring-2 ring-amber-300/80 dark:ring-amber-500/40 md:-mt-3' : ''}`}
+      className={`escrow-event-log-feed overflow-hidden rounded-3xl ${raised ? 'ring-2 ring-amber-300/80 dark:ring-amber-500/40 md:-mt-3' : ''}`}
     >
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
@@ -49,18 +53,26 @@ function PodiumCard({ entry }: { entry: LeaderboardEntry }) {
             <Trophy className="h-5 w-5 text-amber-500" aria-hidden="true" />
           ) : null}
         </div>
-        <GithubUserLink name={entry.name} size="lg" className="text-lg" />
+        {/* Large, centered avatar so each top-3 contributor stands out */}
+        <a
+          href={githubProfileUrl(entry.name)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`@${entry.name} on GitHub`}
+          className="flex flex-col items-center gap-3 font-semibold text-foreground hover:text-primary"
+        >
+          <img
+            src={githubAvatarUrl(entry.name)}
+            alt=""
+            className={`rounded-full object-cover ring-2 ring-border ${raised ? 'size-24' : 'size-20'}`}
+          />
+          <span className="text-lg">@{entry.name}</span>
+        </a>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-3xl font-black tracking-tight">{formatUsdc(entry.earnedUsdc)}</p>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="h-auto rounded-full px-3 py-1 text-sm">
-            {entry.mergedPrs} merged PR{entry.mergedPrs === 1 ? '' : 's'}
-          </Badge>
-          <Badge variant="outline" className="h-auto rounded-full px-3 py-1 text-sm">
-            {entry.assigned} assigned
-          </Badge>
-        </div>
+      <CardContent>
+        <p className="text-center text-3xl font-black tracking-tight">
+          {formatUsdc(entry.earnedUsdc)}
+        </p>
       </CardContent>
     </Card>
   );
@@ -128,7 +140,7 @@ export default function ContributorLeaderboard({
         </section>
       ) : null}
 
-      <Card className="rounded-3xl py-0">
+      <Card className="escrow-event-log-feed overflow-hidden rounded-3xl py-0">
         <CardContent className="px-0 pb-0">
           {error ? (
             <p className="px-6 py-16 text-center text-base font-semibold text-destructive">

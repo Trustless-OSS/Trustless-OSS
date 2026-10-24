@@ -1,12 +1,18 @@
+import { getNetwork } from '@/lib/network-config';
+
 type WalletKit = typeof import('@creit.tech/stellar-wallets-kit').StellarWalletsKit;
 
 let walletKitPromise: Promise<WalletKit> | null = null;
+let walletKitNetwork: string | null = null;
 
 export const WALLET_OPERATION_TIMEOUT_MS = 120000;
 
 export async function getWalletKit(): Promise<WalletKit> {
-  if (!walletKitPromise) {
-    walletKitPromise = loadWalletKit();
+  const network = getNetwork();
+   
+  if (!walletKitPromise || walletKitNetwork !== network) {
+    walletKitNetwork = network;
+    walletKitPromise = loadWalletKit(network);
   }
 
   return walletKitPromise;
@@ -33,7 +39,7 @@ export async function withTimeout<T>(
   }
 }
 
-async function loadWalletKit(): Promise<WalletKit> {
+async function loadWalletKit(network: string): Promise<WalletKit> {
   if (typeof window === 'undefined') {
     throw new Error('Stellar Wallets Kit can only be initialized in the browser.');
   }
@@ -57,7 +63,7 @@ async function loadWalletKit(): Promise<WalletKit> {
   ]);
 
   StellarWalletsKit.init({
-    network: Networks.TESTNET,
+    network: network === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET,
     modules: [
       new FreighterModule(),
       new xBullModule(),
