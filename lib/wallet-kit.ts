@@ -9,7 +9,7 @@ export const WALLET_OPERATION_TIMEOUT_MS = 120000;
 
 export async function getWalletKit(): Promise<WalletKit> {
   const network = getNetwork();
-   
+
   if (!walletKitPromise || walletKitNetwork !== network) {
     walletKitNetwork = network;
     walletKitPromise = loadWalletKit(network);

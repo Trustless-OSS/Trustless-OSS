@@ -1,48 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-interface SupportRequest {
-  name: string;
-  email: string;
-  githubUsername: string;
-  companyOrProject?: string;
-  subject: string;
-  category: string;
-  message: string;
-  attachment?: string;
-}
+import { isSupportCategory, type StoredSupportRequest } from '@/lib/support';
 
 // In-memory storage (replace with database in production)
-const supportRequests: SupportRequest[] = [];
+const supportRequests: StoredSupportRequest[] = [];
 
 export async function POST(request: NextRequest) {
+  let body: unknown;
+
   try {
-    const body = (await request.json()) as SupportRequest;
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON request body' }, { status: 400 });
+  }
 
+  try {
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid support request' }, { status: 400 });
+    }
+
+    const payload = body as Record<string, unknown>;
     if (
-      !body.name ||
-      !body.email ||
-      !body.githubUsername ||
-      !body.subject ||
-      !body.message ||
-      !body.category
+      typeof payload.subject !== 'string' ||
+      payload.subject.trim().length === 0 ||
+      typeof payload.message !== 'string' ||
+      payload.message.trim().length === 0 ||
+      typeof payload.category !== 'string' ||
+      !isSupportCategory(payload.category) ||
+      (payload.org !== undefined && typeof payload.org !== 'string') ||
+      (payload.attachment !== undefined &&
+        (typeof payload.attachment !== 'string' ||
+          !/^data:(image|video)\/[^;]+;base64,/.test(payload.attachment)))
     ) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Missing or invalid support request fields' },
+        { status: 400 }
+      );
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.email)) {
-      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
-    }
-
-    if (body.githubUsername.trim().length === 0) {
-      return NextResponse.json({ error: 'GitHub username is required' }, { status: 400 });
-    }
-
-    // Store the request (in production, save to database)
-    const supportRequest = {
-      ...body,
+    const supportRequest: StoredSupportRequest = {
+      category: payload.category,
+      subject: payload.subject.trim(),
+      message: payload.message.trim(),
+      ...(typeof payload.org === 'string' && payload.org.trim() ? { org: payload.org.trim() } : {}),
+      ...(typeof payload.attachment === 'string' ? { attachment: payload.attachment } : {}),
       timestamp: new Date().toISOString(),
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
     };
     supportRequests.push(supportRequest);
 
