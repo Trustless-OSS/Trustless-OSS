@@ -1,13 +1,27 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
+
+const fetchDashboardReposMock = vi.hoisted(() => vi.fn());
 
 vi.mock('recharts', () => {
   return {
     ResponsiveContainer: (props: { children?: React.ReactNode }) =>
       React.createElement('div', null, props.children),
-    BarChart: (props: { children?: React.ReactNode }) =>
-      React.createElement('div', { 'data-testid': 'bar-chart' }, props.children),
+    BarChart: (props: {
+      children?: React.ReactNode;
+      data?: Array<{ locked: number; rewarded: number }>;
+    }) =>
+      React.createElement(
+        'div',
+        {
+          'data-testid': 'bar-chart',
+          'data-point-count': props.data?.length,
+          'data-locked': props.data?.[0]?.locked,
+          'data-rewarded': props.data?.[0]?.rewarded,
+        },
+        props.children
+      ),
     Bar: () => React.createElement('div', { 'data-testid': 'bar' }),
     XAxis: () => React.createElement('div', { 'data-testid': 'xaxis' }),
     YAxis: () => React.createElement('div', { 'data-testid': 'yaxis' }),
@@ -16,9 +30,8 @@ vi.mock('recharts', () => {
   };
 });
 
-// MaintainerActivity now self-fetches via useActivity; stub it with the fixture.
-vi.mock('../useActivity', () => ({
-  useActivity: () => ({ data: ACTIVITY_FIXTURE, loading: false, error: null }),
+vi.mock('@/lib/dashboard-api', () => ({
+  fetchDashboardRepos: fetchDashboardReposMock,
 }));
 
 import MaintainerActivity from '../MaintainerActivity';
@@ -28,11 +41,26 @@ import {
   listContributors,
   rollupByRepo,
   summarizeCurrentlyLocked,
-  toRepoChartPoints,
 } from '../activity';
 import { ACTIVITY_FIXTURE } from './fixtures';
 
-afterEach(cleanup);
+beforeEach(() => {
+  fetchDashboardReposMock.mockResolvedValue([
+    {
+      name: 'web',
+      repo: 'trustless-oss/web',
+      locked: 300,
+      released: 120,
+      remaining: 180,
+      rewarded: 2,
+    },
+  ]);
+});
+
+afterEach(() => {
+  cleanup();
+  fetchDashboardReposMock.mockReset();
+});
 
 describe('filterActivity', () => {
   it('keeps every row for all and only matching kinds otherwise', () => {
@@ -121,29 +149,71 @@ describe('summarizeCurrentlyLocked', () => {
   });
 });
 
-describe('toRepoChartPoints', () => {
-  it('maps each maintainer repo to locked, released, and remaining funds', () => {
-    const points = toRepoChartPoints(ACTIVITY_FIXTURE);
-    expect(points.length).toBeGreaterThan(0);
-    expect(points[0]).toEqual(
-      expect.objectContaining({
-        name: expect.any(String),
-        repo: expect.any(String),
-        locked: expect.any(Number),
-        released: expect.any(Number),
-        remaining: expect.any(Number),
-      })
-    );
-  });
-});
-
 describe('MaintainerActivity', () => {
-  it('renders funds and rewarded charts from the activity feed', () => {
+  it('renders funds and rewarded charts from the repositories API', async () => {
     render(<MaintainerActivity />);
 
+    expect(await screen.findByText('Repository funds')).toBeInTheDocument();
+    expect(screen.getByText('Explore Bounties')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('bar-chart')).toHaveLength(2);
+    expect(screen.queryByText('Activity')).not.toBeInTheDocument();
+  });
+
+  it('shows graph skeletons in both cards when there are no repository amounts', async () => {
+    fetchDashboardReposMock.mockResolvedValueOnce([]);
+    render(<MaintainerActivity />);
+
+    expect(await screen.findByText('Repository funds')).toBeInTheDocument();
+    expect(screen.getByText('Explore Bounties')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('empty-chart-skeleton')).toHaveLength(2);
+    expect(screen.queryByTestId('bar-chart')).not.toBeInTheDocument();
+  });
+
+  it('shows the funds chart and a graph skeleton for empty bounties', async () => {
+    fetchDashboardReposMock.mockResolvedValueOnce([
+      {
+        name: 'funded',
+        repo: 'trustless-oss/funded',
+        locked: 1,
+        released: 0,
+        remaining: 1,
+        rewarded: 0,
+      },
+    ]);
+    render(<MaintainerActivity />);
+
+    expect(await screen.findByTestId('bar-chart')).toBeInTheDocument();
+    expect(await screen.findByTestId('empty-chart-skeleton')).toHaveAttribute(
+      'aria-label',
+      'Explore Bounties chart; waiting for data'
+    );
     expect(screen.getByText('Repository funds')).toBeInTheDocument();
     expect(screen.getByText('Explore Bounties')).toBeInTheDocument();
-    expect(screen.getAllByTestId('bar-chart')).toHaveLength(2);
-    expect(screen.queryByText('Activity')).not.toBeInTheDocument();
+  });
+
+  it('shows both chart cards when both charts have matching values', async () => {
+    fetchDashboardReposMock.mockResolvedValueOnce([
+      {
+        name: 'funded',
+        repo: 'trustless-oss/funded',
+        locked: 1,
+        released: 0,
+        remaining: 1,
+        rewarded: 2,
+      },
+    ]);
+    render(<MaintainerActivity />);
+
+    expect(await screen.findByText('Repository funds')).toBeInTheDocument();
+    expect(screen.getByText('Explore Bounties')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('bar-chart')).toHaveLength(2);
+  });
+
+  it('shows a repository API error instead of empty chart states', async () => {
+    fetchDashboardReposMock.mockRejectedValueOnce(new Error('API unavailable'));
+    render(<MaintainerActivity />);
+
+    expect(await screen.findAllByRole('alert')).toHaveLength(2);
+    expect(screen.getAllByText('API unavailable')).toHaveLength(2);
   });
 });

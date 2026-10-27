@@ -8,13 +8,34 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   CartesianGrid,
+  ReferenceDot,
+  ReferenceLine,
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { fetchFundsMovement, type FundsMovementPoint } from '@/lib/dashboard-api';
+import {
+  completeFundsMovementSeries,
+  fetchFundsMovement,
+  type FundsMovementPoint,
+} from '@/lib/dashboard-api';
+
+const TVL_COLOR = '#2563eb';
+const PAYOUTS_COLOR = '#8b5cf6';
+
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 2,
+});
+
+const compactCurrencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
 
 export default function FundsMovementChart() {
   const [data, setData] = React.useState<FundsMovementPoint[] | null>(null);
@@ -24,88 +45,197 @@ export default function FundsMovementChart() {
     let active = true;
     fetchFundsMovement()
       .then((points) => active && setData(points))
-      .catch((e) => active && setError(e?.message || 'Failed to load funds movement.'));
+      .catch((reason: unknown) => {
+        if (active) {
+          setError(reason instanceof Error ? reason.message : 'Failed to load funds movement.');
+        }
+      });
     return () => {
       active = false;
     };
   }, []);
+
+  const chartData = data === null ? null : completeFundsMovementSeries(data, data.at(-1)?.tvl ?? 0);
+  const currentPoint = chartData?.at(-1);
+  const currentMonthLabel = currentPoint
+    ? `${currentPoint.month} ${currentPoint.period.slice(0, 4)}`
+    : '';
+
   return (
-    <Card className="overflow-visible rounded-3xl">
+    <Card className="overflow-hidden rounded-3xl border-border/70 bg-gradient-to-br from-card to-muted/20 shadow-sm">
       <CardHeader>
-        <div className="flex items-center justify-between gap-4">
-          <CardTitle className="inline-flex items-center gap-2 font-display text-xl font-extrabold tracking-tight">
-            <TrendingUp className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            Funds movement
-          </CardTitle>
-          <CardDescription className="hidden sm:block">
-            Escrow TVL Locked ($) / Payouts Released ($)
-          </CardDescription>
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="inline-flex items-center gap-2 font-display text-xl font-extrabold tracking-tight">
+              <TrendingUp className="h-5 w-5 text-primary" aria-hidden="true" />
+              Funds movement
+            </CardTitle>
+          </div>
+          <CardDescription>Escrow balance and payouts released over time.</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-3 flex items-center gap-3">
-          <div className="inline-flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full bg-[#061fd4]" />
-            <span className="text-xs text-muted-foreground">Escrow TVL Locked ($)</span>
+        <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2">
+          <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <span className="inline-block size-2.5 rounded-full bg-[#2563eb]" aria-hidden="true" />
+            Escrow TVL locked
           </div>
-          <div className="inline-flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full bg-[#0618a8]" />
-            <span className="text-xs text-muted-foreground">Payouts Released ($)</span>
+          <div className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <span className="inline-block size-2.5 rounded-full bg-[#8b5cf6]" aria-hidden="true" />
+            Payouts released
           </div>
+          {currentPoint ? (
+            <div className="inline-flex items-center gap-2 text-xs font-semibold text-foreground">
+              <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+              Current month: {currentMonthLabel}
+            </div>
+          ) : null}
         </div>
-        <div className="h-[320px] w-full min-h-[320px]">
+        <div className="h-[clamp(18rem,42vw,25rem)] min-h-72 w-full min-w-0">
           {error ? (
-            <p className="flex h-full items-center justify-center text-sm font-medium text-destructive">
+            <p
+              role="alert"
+              className="flex h-full items-center justify-center text-sm font-medium text-destructive"
+            >
               {error}
             </p>
-          ) : data == null ? (
+          ) : chartData == null ? (
             <Skeleton className="h-full w-full" />
-          ) : data.length === 0 ? (
-            <p className="flex h-full items-center justify-center text-sm font-medium text-muted-foreground">
-              No funds movement yet.
-            </p>
           ) : (
-            <ResponsiveContainer width="100%" height={320}>
-              <AreaChart data={data} margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={chartData}
+                accessibilityLayer
+                margin={{ top: 12, right: 4, left: 0, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="fundsTvlFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#061fd4" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#061fd4" stopOpacity={0.04} />
+                    <stop offset="0%" stopColor={TVL_COLOR} stopOpacity={0.24} />
+                    <stop offset="95%" stopColor={TVL_COLOR} stopOpacity={0.01} />
                   </linearGradient>
                   <linearGradient id="fundsPayoutsFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0618a8" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0618a8" stopOpacity={0.04} />
+                    <stop offset="0%" stopColor={PAYOUTS_COLOR} stopOpacity={0.2} />
+                    <stop offset="95%" stopColor={PAYOUTS_COLOR} stopOpacity={0.01} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="4 5" />
                 <XAxis
                   dataKey="period"
-                  tickFormatter={(period) => data.find((p) => p.period === period)?.month ?? period}
+                  tickFormatter={(period: string) =>
+                    chartData.find((point) => point.period === period)?.month ?? period
+                  }
+                  tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  minTickGap={18}
                 />
-                <YAxis yAxisId="left" stroke="#061fd4" />
-                <YAxis yAxisId="right" orientation="right" stroke="#0618a8" />
-                <Tooltip />
-                <Legend wrapperStyle={{ paddingLeft: 8 }} />
+                <YAxis
+                  yAxisId="left"
+                  domain={[0, (max: number) => Math.max(max, 1)]}
+                  width={52}
+                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value: number) => compactCurrencyFormatter.format(value)}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={[0, (max: number) => Math.max(max, 1)]}
+                  width={52}
+                  tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value: number) => compactCurrencyFormatter.format(value)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--popover)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 24px rgb(0 0 0 / 12%)',
+                  }}
+                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                  itemStyle={{ fontSize: 12 }}
+                  formatter={(value, name) => [currencyFormatter.format(Number(value)), name]}
+                />
+                {currentPoint ? (
+                  <>
+                    <ReferenceLine
+                      x={currentPoint.period}
+                      stroke="var(--muted-foreground)"
+                      strokeDasharray="3 5"
+                      strokeOpacity={0.55}
+                    />
+                    <ReferenceDot
+                      x={currentPoint.period}
+                      y={currentPoint.tvl}
+                      yAxisId="left"
+                      r={9}
+                      fill="transparent"
+                      stroke="none"
+                      shape={(props) => (
+                        <g
+                          transform={`translate(${props.cx ?? 0}, ${props.cy ?? 0})`}
+                          aria-label={`Current month escrow TVL: ${currencyFormatter.format(currentPoint.tvl)}`}
+                        >
+                          <circle className="chart-live-point__pulse" r={7} fill={TVL_COLOR} />
+                          <circle
+                            r={4}
+                            fill={TVL_COLOR}
+                            stroke="var(--background)"
+                            strokeWidth={2}
+                          />
+                        </g>
+                      )}
+                    />
+                    <ReferenceDot
+                      x={currentPoint.period}
+                      y={currentPoint.payouts}
+                      yAxisId="right"
+                      r={9}
+                      fill="transparent"
+                      stroke="none"
+                      shape={(props) => (
+                        <g
+                          transform={`translate(${props.cx ?? 0}, ${props.cy ?? 0})`}
+                          aria-label={`Current month payouts released: ${currencyFormatter.format(currentPoint.payouts)}`}
+                        >
+                          <circle className="chart-live-point__pulse" r={7} fill={PAYOUTS_COLOR} />
+                          <circle
+                            r={4}
+                            fill={PAYOUTS_COLOR}
+                            stroke="var(--background)"
+                            strokeWidth={2}
+                          />
+                        </g>
+                      )}
+                    />
+                  </>
+                ) : null}
                 <Area
                   yAxisId="left"
                   type="monotone"
                   dataKey="tvl"
-                  name="Escrow TVL Locked ($)"
-                  stroke="#061fd4"
+                  name="Escrow TVL locked"
+                  stroke={TVL_COLOR}
                   fill="url(#fundsTvlFill)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
                   isAnimationActive
                 />
                 <Area
                   yAxisId="right"
                   type="monotone"
                   dataKey="payouts"
-                  name="Payouts Released ($)"
-                  stroke="#0618a8"
+                  name="Payouts released"
+                  stroke={PAYOUTS_COLOR}
                   fill="url(#fundsPayoutsFill)"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
                   isAnimationActive
                 />
               </AreaChart>

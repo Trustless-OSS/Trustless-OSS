@@ -28,6 +28,15 @@ export type LeaderboardEntry = {
   repos: string[];
 };
 
+export type RepoChartPoint = {
+  name: string;
+  repo: string;
+  locked: number;
+  released: number;
+  remaining: number;
+  rewarded: number;
+};
+
 const KIND_META: Record<ActivityKind, { label: string; className: string }> = {
   rewarded: {
     label: 'Rewarded',
@@ -210,15 +219,4 @@ export const ACTIVITY_FILTERS: { value: ActivityFilter; label: string }[] = [
 
 export function formatUsdc(amount: number) {
   return `${amount.toLocaleString('en-US')} USDC`;
-}
-
-export function toRepoChartPoints(rows: ActivityRow[]) {
-  return rollupByRepo(rows).map((repo) => ({
-    name: repo.repo.split('/')[1] ?? repo.repo,
-    repo: repo.repo,
-    locked: repo.locked,
-    released: repo.released,
-    remaining: Math.max(0, repo.locked - repo.released),
-    rewarded: repo.rewarded,
-  }));
 }

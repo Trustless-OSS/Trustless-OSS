@@ -1,15 +1,12 @@
 'use client';
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { RepoChartPoint } from './activity';
 
-export type RepoChartPoint = {
-  name: string;
-  repo: string;
-  locked: number;
-  released: number;
-  remaining: number;
-  rewarded: number;
-};
+const compactAmountFormatter = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
 
 function formatUsdc(amount: number) {
   return `${amount.toLocaleString('en-US')} USDC`;
@@ -51,22 +48,53 @@ function RewardedTooltip({
 }
 
 export default function RepoFundsChart({ points }: { points: RepoChartPoint[] }) {
+  if (points.length === 0) return null;
+
+  const chartPoints = points;
+  const chartHeight = Math.max(256, chartPoints.length * 44);
+
   return (
-    <div className="h-72 w-full min-h-72">
+    <div
+      role="group"
+      aria-label="Repository locked and released funds"
+      className="w-full min-w-0 overflow-hidden rounded-xl bg-muted/20"
+      style={{ height: chartHeight }}
+    >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} width={52} />
-          <Tooltip content={<FundsTooltip />} />
-          <Bar dataKey="released" name="Released" stackId="funds" fill="#0618a8" maxBarSize={48} />
+        <BarChart
+          data={chartPoints}
+          layout="vertical"
+          accessibilityLayer
+          margin={{ top: 8, right: 16, left: 4, bottom: 8 }}
+        >
+          <CartesianGrid vertical stroke="var(--border)" strokeDasharray="4 5" />
+          <XAxis
+            type="number"
+            domain={[0, (max: number) => Math.max(max, 1)]}
+            tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value: number) => compactAmountFormatter.format(value)}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={96}
+            tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(name: string) => (name.length > 14 ? `${name.slice(0, 13)}…` : name)}
+          />
+          <Tooltip content={<FundsTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.45 }} />
+          <Bar dataKey="released" name="Released" stackId="funds" fill="#8b5cf6" maxBarSize={26} />
           <Bar
             dataKey="remaining"
             name="Still locked"
             stackId="funds"
             fill="#3b82f6"
-            radius={[6, 6, 0, 0]}
-            maxBarSize={48}
+            radius={[0, 6, 6, 0]}
+            maxBarSize={26}
           />
         </BarChart>
       </ResponsiveContainer>
@@ -75,20 +103,51 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
 }
 
 export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
+  if (points.length === 0) return null;
+
+  const chartPoints = points;
+  const chartHeight = Math.max(256, chartPoints.length * 44);
+
   return (
-    <div className="h-72 w-full min-h-72">
+    <div
+      role="group"
+      aria-label="Rewarded issues by repository"
+      className="w-full min-w-0 overflow-hidden rounded-xl bg-muted/20"
+      style={{ height: chartHeight }}
+    >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={28} />
-          <Tooltip content={<RewardedTooltip />} />
+        <BarChart
+          data={chartPoints}
+          layout="vertical"
+          accessibilityLayer
+          margin={{ top: 8, right: 16, left: 4, bottom: 8 }}
+        >
+          <CartesianGrid vertical stroke="var(--border)" strokeDasharray="4 5" />
+          <XAxis
+            type="number"
+            domain={[0, (max: number) => Math.max(max, 1)]}
+            allowDecimals={false}
+            tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={96}
+            tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(name: string) => (name.length > 14 ? `${name.slice(0, 13)}…` : name)}
+          />
+          <Tooltip content={<RewardedTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.45 }} />
           <Bar
             dataKey="rewarded"
             name="Explore Bounties"
             fill="#10b981"
-            radius={[6, 6, 0, 0]}
-            maxBarSize={48}
+            radius={[0, 6, 6, 0]}
+            maxBarSize={26}
           />
         </BarChart>
       </ResponsiveContainer>
