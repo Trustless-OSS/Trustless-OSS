@@ -15,12 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import Navbar from '@/app/components/layout/Navbar';
 import { createClient } from '@/lib/supabase/client';
-import {
-  isSupportCategory,
-  SUPPORT_CATEGORIES,
-  type SupportCategory,
-  type SupportRequest,
-} from '@/lib/support';
+import { isSupportCategory, SUPPORT_CATEGORIES, type SupportCategory } from '@/lib/support';
 
 import type { User } from '@supabase/supabase-js';
 
@@ -110,16 +105,87 @@ export default function SupportPage() {
     setIsSubmitting(true);
 
     try {
-      const requestBody: SupportRequest = {
+      // Get the auth token
+      const supabase = await createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to send a support ticket');
+      }
+
+      // Validate field lengths
+      if (formData.category.trim().length === 0 || formData.category.trim().length > 100) {
+        throw new Error('Category is required and must be 100 characters or less');
+      }
+      if (formData.subject.trim().length === 0 || formData.subject.trim().length > 200) {
+        throw new Error('Subject is required and must be 200 characters or less');
+      }
+      if (formData.message.trim().length === 0 || formData.message.trim().length > 10000) {
+        throw new Error('Message is required and must be 10,000 characters or less');
+      }
+      if (formData.org.trim().length > 200) {
+        throw new Error('Project name must be 200 characters or less');
+      }
+
+      let attachmentKey: string | undefined;
+
+      // Upload attachment if present
+      if (attachment) {
+        const uploadFormData = new FormData();
+
+        // Convert base64 data URL to blob
+        const [header, data] = attachment.split(',');
+        const mimeType = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const binary = atob(data);
+        const array = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          array[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([array], { type: mimeType });
+
+        const fileName = `support-${Date.now()}${mimeType === 'image/png' ? '.png' : mimeType === 'image/jpeg' ? '.jpg' : mimeType === 'video/mp4' ? '.mp4' : '.dat'}`;
+        uploadFormData.append('file', blob, fileName);
+
+        const uploadResponse = await fetch('/api/backend/upload', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload attachment');
+        }
+
+        const uploadResult = (await uploadResponse.json()) as Record<string, unknown>;
+        attachmentKey = (uploadResult.key || uploadResult.url || uploadResult.path) as
+          string | undefined;
+
+        if (!attachmentKey || attachmentKey.length > 1024) {
+          throw new Error('Attachment key is invalid or too long (max 1024 chars)');
+        }
+      }
+
+      const requestBody = {
         category: formData.category,
         subject: formData.subject.trim(),
         message: formData.message.trim(),
-        ...(formData.org.trim() ? { org: formData.org.trim() } : {}),
-        ...(attachment ? { attachment } : {}),
+        bountyId: null,
+        ...(formData.org.trim().length > 0 && formData.org.trim().length <= 200
+          ? { org: formData.org.trim() }
+          : {}),
+        ...(attachmentKey && attachmentKey.length <= 1024 ? { attachmentKey } : {}),
       };
-      const response = await fetch('/api/support', {
+
+      const response = await fetch('/api/backend/tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(requestBody),
       });
 
@@ -139,7 +205,7 @@ export default function SupportPage() {
         description: "Thanks for reaching out. We'll get back to you shortly.",
       });
     } catch (error) {
-      toast.error('We couldn’t send your request', {
+      toast.error("We couldn't send your request", {
         description: error instanceof Error ? error.message : 'Please try again in a moment.',
       });
     } finally {
@@ -168,10 +234,10 @@ export default function SupportPage() {
               </div>
               <div className="space-y-3">
                 <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                  Let’s get you <span className="text-primary">unstuck.</span>
+                  Let's get you <span className="text-primary">unstuck.</span>
                 </h1>
                 <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                  Tell us what’s going on and our team will help you get back to building.
+                  Tell us what's going on and our team will help you get back to building.
                 </p>
               </div>
             </section>
@@ -210,9 +276,13 @@ export default function SupportPage() {
                           name="org"
                           value={formData.org}
                           onChange={handleChange}
+                          maxLength={200}
                           placeholder="Your project or org. name (optional)"
                           className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder-muted-foreground shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formData.org.length}/200
+                        </p>
                       </div>
 
                       <div>
@@ -252,10 +322,13 @@ export default function SupportPage() {
                         value={formData.subject}
                         onChange={handleChange}
                         required
-                        maxLength={120}
+                        maxLength={200}
                         placeholder="What is this about?"
                         className="mt-1.5 block w-full rounded-lg border border-border bg-background px-4 py-3 text-base text-foreground placeholder-muted-foreground shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formData.subject.length}/200
+                      </p>
                     </div>
 
                     <div>
@@ -273,9 +346,12 @@ export default function SupportPage() {
                         required
                         placeholder="Tell us what you need..."
                         rows={5}
-                        maxLength={5000}
+                        maxLength={10000}
                         className="mt-1.5 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder-muted-foreground shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formData.message.length}/10000
+                      </p>
                     </div>
 
                     <div>
@@ -380,7 +456,7 @@ export default function SupportPage() {
                   <div>
                     <h3 className="font-semibold text-foreground">Your information stays safe</h3>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      Only share what’s needed to resolve your request. Never include passwords,
+                      Only share what's needed to resolve your request. Never include passwords,
                       recovery phrases, or private keys.
                     </p>
                   </div>
