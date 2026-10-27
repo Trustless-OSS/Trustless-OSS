@@ -384,12 +384,12 @@ export default async function HomePage() {
               <figure className="partner-logo-mark">
                 <Image
                   src="/partners/trustless-escrow.png"
-                  alt="Trustless Escrow"
+                  alt="Trustless Work"
                   width={495}
                   height={434}
                   className="h-20 w-20 object-contain sm:h-24 sm:w-24"
                 />
-                <figcaption>Trustless Escrow</figcaption>
+                <figcaption>Trustless Work</figcaption>
               </figure>
               <figure className="partner-logo-mark">
                 <Image
