@@ -21,6 +21,13 @@ import { createClient } from '@/lib/supabase/client';
 import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
 import { authHeaders, backendUrl } from '@/lib/backend';
 import { handleError, notifySuccess } from '@/lib/notifications';
+import {
+  checkUsdcTrustline,
+  buildEnableUsdcTx,
+  submitEnableUsdcTx,
+  formatUsdc,
+  type UsdcBalance,
+} from '@/lib/stellar-usdc';
 import Button from '@/app/components/ui/Button';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,6 +44,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
+import { getNetwork } from '@/lib/network-config';
 
 const BIO_MAX_LENGTH = 280;
 
@@ -235,9 +243,21 @@ export default function ProfileSettings({ user }: { user: User }) {
   const [connecting, setConnecting] = useState(false);
   const [copiedField, setCopiedField] = useState<'email' | 'wallet' | null>(null);
   const [token, setToken] = useState('');
+  const [usdcBalance, setUsdcBalance] = useState<UsdcBalance | null>(null);
+  const [enablingUsdc, setEnablingUsdc] = useState(false);
   const copiedTimer = useRef<number>(0);
 
-  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+  // Show toast when trustline is missing
+  useEffect(() => {
+    if (form.stellarAddress && usdcBalance && !usdcBalance.hasTrustline) {
+      handleError(
+        new Error(
+          'USDC trustline required to receive payouts. Click "Add USDC Now" to activate it.'
+        ),
+        'Action Required'
+      );
+    }
+  }, [form.stellarAddress, usdcBalance?.hasTrustline]);
 
   // Load the token, then hydrate the form from the backend (source of truth).
   useEffect(() => {
@@ -330,13 +350,30 @@ export default function ProfileSettings({ user }: { user: User }) {
         'Wallet authorization timed out. Close the wallet modal and try again.'
       );
       if (!address) throw new Error('No Stellar public key returned');
+
+      // Check USDC trustline status first
+      const usdcStatus = await checkUsdcTrustline(address);
+
+      if (!usdcStatus.hasTrustline) {
+        // Set wallet address and show trustline button instead of connecting to backend
+        const next = { ...form, stellarAddress: address };
+        setForm(next);
+        setSaved(next);
+        setUsdcBalance(usdcStatus);
+        notifySuccess('Wallet connected', 'Now add USDC trustline to complete setup.');
+        return;
+      }
+
       if (!token) throw new Error('Not signed in — refresh and try again.');
 
       await connectWalletBackend(token, address);
       const next = { ...form, stellarAddress: address };
       setForm(next);
       setSaved(next);
-      notifySuccess('Stellar wallet connected', 'This address will be used for USDC payouts.');
+      // Refresh USDC balance
+      const balance = await checkUsdcTrustline(address);
+      setUsdcBalance(balance);
+      notifySuccess('Stellar wallet connected', 'Ready for USDC payouts.');
     } catch (error) {
       handleError(error, 'Connect wallet');
     } finally {
@@ -364,6 +401,39 @@ export default function ProfileSettings({ user }: { user: User }) {
       );
     } catch (error) {
       handleError(error, 'Copy');
+    }
+  }
+
+  async function handleEnableUsdc() {
+    if (!form.stellarAddress) return;
+    setEnablingUsdc(true);
+    try {
+      const kit = await getWalletKit();
+      const unsignedXdr = await buildEnableUsdcTx(form.stellarAddress);
+      const { signedTxXdr } = await withTimeout(
+        kit.signTransaction(unsignedXdr),
+        WALLET_OPERATION_TIMEOUT_MS,
+        'Transaction signing timed out. Close the wallet modal and try again.'
+      );
+      const txId = await submitEnableUsdcTx(signedTxXdr);
+      notifySuccess('USDC activated', `Transaction ${txId.slice(0, 8)}...`);
+
+      // Wait for Horizon to index the transaction, then refresh balance
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const balance = await checkUsdcTrustline(form.stellarAddress);
+      setUsdcBalance(balance);
+
+      // Now connect wallet to backend since USDC trustline is ready
+      if (token) {
+        await connectWalletBackend(token, form.stellarAddress);
+        const next = { ...form, stellarAddress: form.stellarAddress };
+        setSaved(next);
+        notifySuccess('Wallet setup complete', 'Ready for USDC payouts.');
+      }
+    } catch (error) {
+      handleError(error, 'Enable USDC trustline');
+    } finally {
+      setEnablingUsdc(false);
     }
   }
 
@@ -541,45 +611,111 @@ export default function ProfileSettings({ user }: { user: User }) {
             </CardHeader>
             <CardContent>
               {form.stellarAddress ? (
-                <div className="rounded-2xl bg-emerald-50 px-4 py-4 dark:bg-emerald-500/10">
-                  <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/15">
-                    Connected
-                  </Badge>
-                  <p className="mt-2 font-mono text-sm font-semibold break-all text-foreground">
-                    {shortenAddress(form.stellarAddress)}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                <div
+                  className={`rounded-2xl px-6 py-6 space-y-4 ${
+                    usdcBalance?.hasTrustline
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10'
+                      : 'bg-red-50 dark:bg-red-500/10'
+                  }`}
+                >
+                  <div className="flex items-end justify-between gap-2 sm:gap-4">
+                    <div className="min-w-0 flex-1">
+                      <Badge
+                        className={
+                          usdcBalance?.hasTrustline
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/15'
+                            : 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/15'
+                        }
+                      >
+                        {usdcBalance?.hasTrustline ? 'Connected' : 'Connected - Action Required'}
+                      </Badge>
+                      <p className="mt-2 font-mono text-sm font-semibold break-all text-foreground">
+                        {shortenAddress(form.stellarAddress)}
+                      </p>
+                    </div>
+                    {usdcBalance?.hasTrustline ? (
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                          USDC Balance
+                        </p>
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          <Image
+                            src="/usd-coin-usdc-logo.svg"
+                            alt=""
+                            width={24}
+                            height={24}
+                            className="size-6"
+                          />
+                          <span className="text-2xl font-black tracking-tight sm:text-3xl">
+                            {formatUsdc(usdcBalance.balance ?? 0)}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleEnableUsdc}
+                        disabled={enablingUsdc}
+                        size="sm"
+                        className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 w-fit"
+                      >
+                        {enablingUsdc ? (
+                          <>
+                            <LoadingLogo size="tiny" variant="circle" />
+                            Enabling…
+                          </>
+                        ) : (
+                          <>
+                            <Image
+                              src="/usd-coin-usdc-logo.svg"
+                              alt=""
+                              width={12}
+                              height={12}
+                              className="size-3"
+                            />
+                            Add USDC<span className="hidden sm:inline"> Trustline</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
                     <Button
                       onClick={() => handleCopy('wallet', form.stellarAddress, 'Address copied')}
                       variant="outline"
+                      size="sm"
+                      className="flex-1 min-w-[80px]"
                     >
                       {copiedField === 'wallet' ? (
                         <>
-                          <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                          <Check className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
                           Copied
                         </>
                       ) : (
                         <>
-                          <Copy className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                          Copy address
+                          <Copy className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+                          Copy
                         </>
                       )}
                     </Button>
-                    <Button onClick={handleConnectWallet} disabled={connecting} variant="outline">
-                      {connecting ? (
-                        <>
-                          <LoadingLogo size="tiny" variant="circle" />
-                          Connecting
-                        </>
-                      ) : (
-                        <>
-                          <Wallet className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                          Change wallet
-                        </>
-                      )}
-                    </Button>
-                    <Button variant="ghost" onClick={handleDisconnectWallet} disabled={saving}>
-                      <Unplug className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                    <a
+                      href={`https://stellar.expert/explorer/${getNetwork() == 'mainnet' ? 'public' : 'testnet'}/account/${form.stellarAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="View on Stellar Expert"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground transition hover:border-primary/40 hover:text-primary flex-1 min-w-[80px]"
+                    >
+                      <ExternalLink className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+                      <span className="hidden sm:inline">Expert</span>
+                    </a>
+                    <Button
+                      variant="ghost"
+                      onClick={handleDisconnectWallet}
+                      disabled={saving}
+                      size="sm"
+                      className="flex-1 min-w-[80px]"
+                    >
+                      <Unplug className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
                       Disconnect
                     </Button>
                   </div>
@@ -850,7 +986,7 @@ export default function ProfileSettings({ user }: { user: User }) {
               />
             </div>
           </CardContent>
-          <CardFooter className="justify-end gap-2 rounded-b-3xl">
+          <CardFooter className="justify-end gap-2 rounded-b-3xl bg-muted/30 border-t border-border/50">
             {dirty ? (
               <Button
                 variant="danger"

@@ -158,12 +158,12 @@ describe('ProfileSettings', () => {
     expect(screen.getByText('Ready for payouts')).toBeInTheDocument();
     expect(screen.getByText('Payout wallet')).toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Copy address' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Connect Stellar wallet' })
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy address' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCD');
