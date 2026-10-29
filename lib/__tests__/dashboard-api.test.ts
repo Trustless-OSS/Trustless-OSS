@@ -183,7 +183,9 @@ describe('fetchFundsMovement', () => {
     expect(points.at(-1)?.period).toBe('2026-10');
   });
 
-  it('surfaces an invalid funds movement response', async () => {
+  it('skips invalid entries and fills missing months with zeros', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-27T12:00:00.000Z'));
     const fetchMock = mockAuthenticatedFetch({ data: [] });
     fetchMock.mockImplementation((input: RequestInfo | URL) =>
       Promise.resolve(
@@ -195,7 +197,10 @@ describe('fetchFundsMovement', () => {
       )
     );
 
-    await expect(fetchFundsMovement()).rejects.toThrow('Invalid month in funds-movement response.');
+    const points = await fetchFundsMovement();
+    // Should still return 12 months, just skipping the invalid entry
+    expect(points).toHaveLength(12);
+    expect(points.every((point) => point.tvl === 0 && point.payouts === 0)).toBe(true);
   });
 });
 
