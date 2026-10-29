@@ -11,8 +11,7 @@ export type Repo = {
   full_name: string;
   escrow_contract_id: string | null;
   escrow_balance: number;
-  xlm_balance?: number;
-  stellar_balance?: number;
+  bounty_count?: number;
   owner_username?: string;
   is_private?: boolean;
   created_at?: string;

@@ -148,15 +148,14 @@ export async function fetchFundsMovement(): Promise<FundsMovementPoint[]> {
   ]);
   const points = responseRows(response, 'Unexpected funds-movement response from the server.');
   const pointsByPeriod = new Map<string, FundsMovementPoint>();
-  
+
   for (const point of points) {
-  
     const period = (point.period as string | null) ?? (point.month as string | null);
 
     if (typeof period !== 'string' || !/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
       continue;
     }
-    
+
     const date = new Date(`${period}-01T00:00:00Z`);
     pointsByPeriod.set(period, {
       month:

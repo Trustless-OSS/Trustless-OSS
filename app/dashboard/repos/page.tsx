@@ -39,10 +39,28 @@ function normalizeRepo(data: unknown): DashboardRepo | null {
     github_installation_id:
       Number.isInteger(installationId) && installationId > 0 ? installationId : null,
     escrow_balance: toNumber(repo.escrow_balance),
-    xlm_balance: repo.xlm_balance === undefined ? undefined : toNumber(repo.xlm_balance),
-    stellar_balance:
-      repo.stellar_balance === undefined ? undefined : toNumber(repo.stellar_balance),
   };
+}
+
+// Same source the repo detail page uses for its "tracked" bounties list.
+// ponytail: one request per card on the current page (max REPO_PAGE_SIZE); switch to a count field on /repos if the backend adds one.
+async function getBountyCount(
+  repoId: string,
+  token: string,
+  network: StellarNetwork
+): Promise<number | undefined> {
+  try {
+    const res = await fetch(`${remoteBackendUrl(network)}/api/v1/repos/${repoId}/issues`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as { data?: unknown; issues?: unknown };
+    const issues = data.data ?? data.issues;
+    return Array.isArray(issues) ? issues.length : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function isDashboardRepo(repo: DashboardRepo | null): repo is DashboardRepo {
@@ -135,13 +153,15 @@ export default async function ReposPage({ searchParams }: ReposProps) {
   } = await supabase.auth.getSession();
 
   const token = session?.access_token ?? '';
-  const [{ repos, error: reposError }] = await Promise.all([
-    getRepos(token, await getServerNetwork()),
-  ]);
+  const network = await getServerNetwork();
+  const { repos, error: reposError } = await getRepos(token, network);
   const query = parseRepoQuery(paramsObj?.q);
   const sort = parseRepoSort(paramsObj?.sort);
   const filtered = filterAndSortRepos(repos, query, sort);
   const paged = paginateItems(filtered, pageFromSearchParams(paramsObj), REPO_PAGE_SIZE);
+  const bountyCounts = await Promise.all(
+    paged.items.map((repo) => getBountyCount(repo.id, token, network))
+  );
   const isInstallSyncing = installationIdFromSearchParams(paramsObj) != null;
 
   const isNew = (createdAt: string) => {
@@ -234,12 +254,15 @@ export default async function ReposPage({ searchParams }: ReposProps) {
       ) : (
         <>
           <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3">
-            {paged.items.map((repo) => (
+            {paged.items.map((repo, index) => (
               <div key={repo.id} className="relative">
                 {isNew(repo.created_at) && (
                   <Badge className="absolute -top-3 -right-3 z-10">New</Badge>
                 )}
-                <RepositoryEscrowCard repo={repo} token={token} xlmUsdPrice={undefined} />
+                <RepositoryEscrowCard
+                  repo={{ ...repo, bounty_count: bountyCounts[index] }}
+                  token={token}
+                />
               </div>
             ))}
           </div>

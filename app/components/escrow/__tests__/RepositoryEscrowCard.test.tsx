@@ -16,7 +16,7 @@ const repo: Repo = {
   full_name: 'trustless-oss/nftxlend',
   escrow_contract_id: 'contract_123',
   escrow_balance: 12500.5,
-  xlm_balance: 36000,
+  bounty_count: 3,
   is_private: false,
 };
 
@@ -24,15 +24,21 @@ afterEach(cleanup);
 
 describe('RepositoryEscrowCard', () => {
   it('renders secured repository metadata and formatted balances', () => {
-    render(<RepositoryEscrowCard repo={repo} xlmUsdPrice={0.1} />);
+    render(<RepositoryEscrowCard repo={repo} />);
 
     expect(screen.getByText('nftxlend')).toBeInTheDocument();
     expect(screen.getByText('trustless-oss / git:main')).toBeInTheDocument();
     expect(screen.getByText('Public')).toBeInTheDocument();
     expect(screen.getByText('Escrow Secured')).toBeInTheDocument();
     expect(screen.getByText('12,500.5')).toBeInTheDocument();
-    expect(screen.getByText('36,000')).toBeInTheDocument();
-    expect(screen.getByText('$16,100.50')).toBeInTheDocument();
+    expect(screen.getByText('Rewarded')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('issues')).toBeInTheDocument();
+    expect(screen.queryByText('Bounties')).not.toBeInTheDocument();
+    expect(screen.getByText('USD Value')).toBeInTheDocument();
+    expect(screen.getByText('$12,500.50')).toBeInTheDocument();
+    expect(screen.queryByText('XLM Balance')).not.toBeInTheDocument();
+    expect(screen.queryByText('Combined Value')).not.toBeInTheDocument();
     expect(screen.queryByText('Contributors Whitelisted')).not.toBeInTheDocument();
     expect(screen.queryByText('No whitelist setup')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Manage' })).toHaveAttribute(
@@ -51,8 +57,7 @@ describe('RepositoryEscrowCard', () => {
           ...repo,
           escrow_contract_id: null,
           escrow_balance: 0,
-          stellar_balance: 0,
-          xlm_balance: undefined,
+          bounty_count: 0,
           is_private: true,
         }}
       />
@@ -62,6 +67,7 @@ describe('RepositoryEscrowCard', () => {
     expect(screen.getByText('Unconfigured')).toBeInTheDocument();
     expect(screen.queryByText('No whitelist setup')).not.toBeInTheDocument();
     expect(screen.getAllByText('0')).toHaveLength(2);
+    expect(screen.getByText('$0.00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'QUICK INITIALIZE' })).toBeDisabled();
     expect(
       screen.queryByRole('link', { name: 'Open trustless-oss/nftxlend on GitHub' })
@@ -85,15 +91,17 @@ describe('RepositoryEscrowCard', () => {
           full_name: 'owner/',
           owner_username: 'maintainer',
           escrow_balance: Number.NaN,
-          xlm_balance: undefined,
-          stellar_balance: undefined,
+          bounty_count: undefined,
         }}
       />
     );
 
     expect(screen.getByText('maintainer / git:main')).toBeInTheDocument();
     expect(screen.getByText('?')).toBeInTheDocument();
-    expect(screen.getAllByText('0')).toHaveLength(2);
+    expect(screen.getByText('0')).toBeInTheDocument();
+    // Unknown bounty count renders a dash instead of a misleading zero
+    expect(screen.getByText(/—/)).toBeInTheDocument();
+    expect(screen.getByText('$0.00')).toBeInTheDocument();
   });
 
   it('renders a non-interactive loading skeleton', () => {

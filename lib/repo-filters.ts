@@ -17,8 +17,6 @@ export type FilterableRepo = {
   created_at?: string;
   escrow_contract_id?: string | null;
   escrow_balance?: number;
-  xlm_balance?: number;
-  stellar_balance?: number;
 };
 
 export function repoPageHref(page: number, query: { q?: string; sort?: RepoSort | string } = {}) {
@@ -55,18 +53,8 @@ function numericAmount(value: unknown) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
-function escrowAmount(repo: FilterableRepo) {
-  return numericAmount(repo.escrow_balance);
-}
-
-function extraBalance(repo: FilterableRepo) {
-  return numericAmount(repo.xlm_balance ?? repo.stellar_balance);
-}
-
 function compareBalance(left: FilterableRepo, right: FilterableRepo) {
-  const byEscrow = escrowAmount(right) - escrowAmount(left);
-  if (byEscrow !== 0) return byEscrow;
-  return extraBalance(right) - extraBalance(left);
+  return numericAmount(right.escrow_balance) - numericAmount(left.escrow_balance);
 }
 
 export function filterAndSortRepos<T extends FilterableRepo>(

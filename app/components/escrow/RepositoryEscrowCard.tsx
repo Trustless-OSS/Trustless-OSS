@@ -11,7 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface RepositoryEscrowCardProps {
   repo: Repo;
   token?: string;
-  xlmUsdPrice?: number | null;
   onManage?: (repo: Repo) => void;
   isLoading?: boolean;
 }
@@ -23,20 +22,17 @@ function formatBalance(value: number | undefined): string {
   }).format(balance);
 }
 
-function formatUsd(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—';
-
+function formatUsd(value: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(Number.isFinite(value) ? value : 0);
 }
 
 export default function RepositoryEscrowCard({
   repo,
   token = '',
-  xlmUsdPrice = null,
   onManage,
   isLoading = false,
 }: RepositoryEscrowCardProps) {
@@ -66,13 +62,7 @@ export default function RepositoryEscrowCard({
   const owner = repo.owner_username ?? ownerFromName ?? 'UNKNOWN_OWNER';
   const repoName = repoNameFromFullName ?? repo.full_name;
   const isSecured = Boolean(repo.escrow_contract_id);
-  const xlmBalance = repo.xlm_balance ?? repo.stellar_balance;
-  const hasLiveXlmPrice = typeof xlmUsdPrice === 'number' && Number.isFinite(xlmUsdPrice);
-  const combinedValueUsd = hasLiveXlmPrice
-    ? repo.escrow_balance + (xlmBalance ?? 0) * xlmUsdPrice
-    : xlmBalance
-      ? null
-      : repo.escrow_balance;
+  const bountyCount = repo.bounty_count;
 
   return (
     <Card className="flex flex-col rounded-3xl py-0">
@@ -122,15 +112,17 @@ export default function RepositoryEscrowCard({
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-sm font-semibold text-muted-foreground">XLM Balance</dt>
+            <dt className="text-sm font-semibold text-muted-foreground">Rewarded</dt>
             <dd className="text-lg font-black tracking-tight text-foreground sm:text-xl">
-              {formatBalance(xlmBalance)} <span className="text-sm font-bold">XLM</span>
+              {typeof bountyCount === 'number' ? formatBalance(bountyCount) : '—'}{' '}
+              <span className="text-sm font-bold">{bountyCount === 1 ? 'issue' : 'issues'}</span>
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-            <dt className="text-sm font-semibold text-muted-foreground">Combined Value</dt>
+            <dt className="text-sm font-semibold text-muted-foreground">USD Value</dt>
             <dd className="text-base font-black tracking-tight text-primary sm:text-lg">
-              {formatUsd(combinedValueUsd)}
+              {/* USDC is pegged 1:1 to USD */}
+              {formatUsd(repo.escrow_balance)}
             </dd>
           </div>
         </dl>
