@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { handleError, notifySuccess } from '@/lib/notifications';
 import { authHeaders, backendUrl } from '@/lib/backend';
+import { githubAppSlug } from '@/lib/network';
 import Button from '@/app/components/ui/Button';
 
 async function readError(response: Response, fallback: string) {
@@ -89,7 +90,7 @@ async function fetchInstallationIdsFromGitHub(): Promise<number[]> {
   const payload = (await response.json()) as {
     installations?: Array<{ id?: number; app_slug?: string }>;
   };
-  const appSlug = (process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || '').toLowerCase();
+  const appSlug = githubAppSlug().toLowerCase();
   const ids = [
     ...new Set(
       (payload.installations ?? [])

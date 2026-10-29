@@ -44,7 +44,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { getNetwork } from '@/lib/network-config';
+import { getNetwork, stellarExpertNetwork } from '@/lib/network';
 
 const BIO_MAX_LENGTH = 280;
 
@@ -699,7 +699,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                       )}
                     </Button>
                     <a
-                      href={`https://stellar.expert/explorer/${getNetwork() == 'mainnet' ? 'public' : 'testnet'}/account/${form.stellarAddress}`}
+                      href={`https://stellar.expert/explorer/${stellarExpertNetwork(getNetwork())}/account/${form.stellarAddress}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="View on Stellar Expert"

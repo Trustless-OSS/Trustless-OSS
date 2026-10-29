@@ -1,4 +1,5 @@
 import { authHeaders, backendUrl, remoteBackendUrl } from '@/lib/backend';
+import type { StellarNetwork } from '@/lib/network';
 import { createClient } from '@/lib/supabase/client';
 import {
   githubAvatarUrl,
@@ -211,10 +212,11 @@ function toEntries(items: Record<string, unknown>[]): LeaderboardEntry[] {
 // because that proxy forces an /api/v1 prefix; this endpoint lives at /api/leaderboard.
 export async function fetchPublicLeaderboard(
   page: number,
-  pageSize: number
+  pageSize: number,
+  network?: StellarNetwork
 ): Promise<LeaderboardPage> {
   const res = await fetch(
-    `${remoteBackendUrl()}/api/leaderboard?page=${page}&pageSize=${pageSize}`,
+    `${remoteBackendUrl(network)}/api/leaderboard?page=${page}&pageSize=${pageSize}`,
     { next: { revalidate: 180 } }
   );
   if (!res.ok) {

@@ -18,6 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { remoteBackendUrl } from '@/lib/backend';
+import { getServerNetwork } from '@/lib/network-server';
 
 type Repo = {
   id: string;
@@ -200,9 +201,9 @@ function repoDisplayName(fullName: string): string {
   return name || fullName;
 }
 
-async function getRepo(repoId: string, token: string): Promise<RepoDetails | null> {
+async function getRepo(repoId: string, token: string, base: string): Promise<RepoDetails | null> {
   try {
-    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}`, {
+    const res = await fetch(`${base}/api/v1/repos/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -215,9 +216,9 @@ async function getRepo(repoId: string, token: string): Promise<RepoDetails | nul
   }
 }
 
-async function getRepoRewards(repoId: string, token: string): Promise<Reward | null> {
+async function getRepoRewards(repoId: string, token: string, base: string): Promise<Reward | null> {
   try {
-    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/rewards/${repoId}`, {
+    const res = await fetch(`${base}/api/v1/repos/rewards/${repoId}`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -231,9 +232,9 @@ async function getRepoRewards(repoId: string, token: string): Promise<Reward | n
   }
 }
 
-async function getIssues(repoId: string, token: string) {
+async function getIssues(repoId: string, token: string, base: string) {
   try {
-    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}/issues`, {
+    const res = await fetch(`${base}/api/v1/repos/${repoId}/issues`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -246,10 +247,11 @@ async function getIssues(repoId: string, token: string) {
 
 async function getEscrowBalance(
   repoId: string,
-  token: string
+  token: string,
+  base: string
 ): Promise<{ locked: number; pool: number } | null> {
   try {
-    const res = await fetch(`${remoteBackendUrl()}/api/v1/repos/${repoId}/escrow/balance`, {
+    const res = await fetch(`${base}/api/v1/repos/${repoId}/escrow/balance`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
@@ -322,11 +324,12 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
   } = await supabase.auth.getSession();
 
   const token = session?.access_token ?? '';
+  const base = remoteBackendUrl(await getServerNetwork());
   const [repoDetails, issues, repoRewards, escrowBalance] = await Promise.all([
-    getRepo(repoId, token),
-    getIssues(repoId, token),
-    getRepoRewards(repoId, token),
-    getEscrowBalance(repoId, token),
+    getRepo(repoId, token, base),
+    getIssues(repoId, token, base),
+    getRepoRewards(repoId, token, base),
+    getEscrowBalance(repoId, token, base),
   ]);
   const repo = repoDetails?.repo;
   const rewardLevels = repo?.rewards?.length ? repo.rewards : (repoRewards ?? []);

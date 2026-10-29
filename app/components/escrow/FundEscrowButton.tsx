@@ -9,6 +9,7 @@ import { handleError, notifySuccess } from '@/lib/notifications';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
+import { stellarExpertNetwork } from '@/lib/network';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
@@ -391,7 +392,7 @@ export default function FundEscrowButton({
                   {error ? <span className="mt-1 block">{error}</span> : null}
                   {phase === 'success' && transactionHash ? (
                     <a
-                      href={`https://stellar.expert/explorer/public/tx/${transactionHash}`}
+                      href={`https://stellar.expert/explorer/${stellarExpertNetwork()}/tx/${transactionHash}`}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 inline-flex items-center gap-1 font-medium text-primary"

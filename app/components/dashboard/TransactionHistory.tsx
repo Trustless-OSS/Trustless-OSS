@@ -43,6 +43,7 @@ import {
 } from '@/app/components/dashboard/activity';
 import { useActivity } from '@/app/components/dashboard/useActivity';
 import { paginateItems } from '@/lib/paginate';
+import { useNetwork } from '@/lib/network-config';
 
 export const TX_PAGE_SIZE = 20;
 export { paginateItems };
@@ -86,7 +87,8 @@ function IssueCell({ row }: { row: ActivityRow }) {
 }
 
 function TxCell({ hash }: { hash: string }) {
-  const href = txExplorerUrl(hash);
+  const [network] = useNetwork(); // hook (not getNetwork) keeps SSR/hydration hrefs consistent
+  const href = txExplorerUrl(hash, network);
   // If the URL is invalid (#), show it as plain text instead of a broken link
   if (href === '#') {
     return (

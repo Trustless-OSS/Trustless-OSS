@@ -1,6 +1,7 @@
 // Pure, server-safe types and derivation helpers for the activity feed and leaderboard.
 // Kept out of the 'use client' component so server code (lib/dashboard-api.ts, the
 // leaderboard page) can import these without the client/server boundary error.
+import { stellarExpertNetwork, type StellarNetwork } from '@/lib/network';
 
 export type ActivityKind =
   'rewarded' | 'locked' | 'released' | 'assigned' | 'unassigned' | 'rejected';
@@ -188,19 +189,14 @@ export function formatWhen(iso: string) {
   });
 }
 
-export function txExplorerUrl(hash: string) {
+export function txExplorerUrl(hash: string, network: StellarNetwork) {
   // Sanitize the hash: trim whitespace and only allow hex characters
   const clean = hash.trim();
   if (!clean || !/^[a-fA-F0-9]+$/.test(clean)) {
     console.warn(`[txExplorerUrl] Invalid tx hash: "${hash}"`);
     return '#';
   }
-  // Use the NEXT_PUBLIC_STELLAR_NETWORK env var (mainnet or testnet; defaults to public/mainnet)
-  const network =
-    typeof window !== 'undefined'
-      ? (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'public')
-      : (process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'public');
-  return `https://stellar.expert/explorer/${network}/tx/${clean}`;
+  return `https://stellar.expert/explorer/${stellarExpertNetwork(network)}/tx/${clean}`;
 }
 
 export function githubIssueUrl(repo: string, issueNumber: number) {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, GitBranch } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { fetchBackendHealth } from '@/lib/health';
+import { githubAppSlug } from '@/lib/network';
 import Button from '@/app/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -16,7 +17,7 @@ export default function ConnectRepoPage() {
   }, []);
 
   const handleInstall = () => {
-    const slug = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'Trustless-OSS';
+    const slug = githubAppSlug() || 'Trustless-OSS';
     // Same tab — GitHub redirects back to the dApp setup URL after install.
     window.open(`https://github.com/apps/${slug}/installations/new`, '_self');
   };

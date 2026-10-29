@@ -30,7 +30,7 @@ describe('TransactionHistory', () => {
     expect(screen.getAllByText('#9 Add replay-safe release path').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: /c4f9…72a6/i })[0]).toHaveAttribute(
       'href',
-      'https://stellar.expert/explorer/public/tx/c4f91e2a8b7d03e156aa90c2f11b84d7e9c3a0b5d62f18e47a1c9b0d3e5f72a6'
+      'https://stellar.expert/explorer/testnet/tx/c4f91e2a8b7d03e156aa90c2f11b84d7e9c3a0b5d62f18e47a1c9b0d3e5f72a6'
     );
     expect(screen.getAllByRole('link', { name: '@octocat on GitHub' })[0]).toHaveAttribute(
       'href',

@@ -15,6 +15,10 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }));
 
+vi.mock('@/lib/network-server', () => ({
+  getServerNetwork: vi.fn().mockResolvedValue('testnet'),
+}));
+
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }));

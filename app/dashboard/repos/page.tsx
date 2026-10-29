@@ -12,6 +12,8 @@ import Button from '@/app/components/ui/Button';
 import type { Repo } from '@/app/types';
 import { Badge } from '@/components/ui/badge';
 import { remoteBackendUrl } from '@/lib/backend';
+import { getServerNetwork } from '@/lib/network-server';
+import type { StellarNetwork } from '@/lib/network';
 
 function toNumber(value: unknown): number {
   const numberValue = Number(value);
@@ -47,8 +49,11 @@ function isDashboardRepo(repo: DashboardRepo | null): repo is DashboardRepo {
   return repo !== null;
 }
 
-async function getRepos(token: string): Promise<{ repos: DashboardRepo[]; error: string | null }> {
-  const url = `${remoteBackendUrl()}/api/v1/repos`;
+async function getRepos(
+  token: string,
+  network: StellarNetwork
+): Promise<{ repos: DashboardRepo[]; error: string | null }> {
+  const url = `${remoteBackendUrl(network)}/api/v1/repos`;
   try {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
@@ -130,7 +135,9 @@ export default async function ReposPage({ searchParams }: ReposProps) {
   } = await supabase.auth.getSession();
 
   const token = session?.access_token ?? '';
-  const [{ repos, error: reposError }] = await Promise.all([getRepos(token)]);
+  const [{ repos, error: reposError }] = await Promise.all([
+    getRepos(token, await getServerNetwork()),
+  ]);
   const query = parseRepoQuery(paramsObj?.q);
   const sort = parseRepoSort(paramsObj?.sort);
   const filtered = filterAndSortRepos(repos, query, sort);

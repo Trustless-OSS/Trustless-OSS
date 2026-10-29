@@ -14,6 +14,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { fetchPublicLeaderboard } from '@/lib/dashboard-api';
+import { getServerNetwork } from '@/lib/network-server';
 import {
   filterAndSortLeaderboard,
   leaderboardPageHref,
@@ -52,7 +53,7 @@ export default async function LeaderboardPage(props: LeaderboardPageProps) {
   let page: Awaited<ReturnType<typeof fetchPublicLeaderboard>> | null = null;
   let loadError: string | null = null;
   try {
-    page = await fetchPublicLeaderboard(pageNum, LEADERBOARD_PAGE_SIZE);
+    page = await fetchPublicLeaderboard(pageNum, LEADERBOARD_PAGE_SIZE, await getServerNetwork());
   } catch (e) {
     loadError = e instanceof Error ? e.message : 'Failed to load leaderboard.';
   }

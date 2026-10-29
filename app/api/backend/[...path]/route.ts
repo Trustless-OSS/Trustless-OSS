@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { remoteBackendUrl } from '@/lib/backend';
+import { NETWORK_COOKIE, parseNetwork } from '@/lib/network';
 
 export const maxDuration = 180;
 
@@ -65,7 +66,8 @@ function isRetryableNetworkError(error: unknown, method: string) {
 
 async function proxy(request: NextRequest, path: string[]): Promise<Response> {
   const normalizedPath = normalizeBackendPath(path);
-  const target = `${remoteBackendUrl()}/${normalizedPath.join('/')}${request.nextUrl.search}`;
+  const base = remoteBackendUrl(parseNetwork(request.cookies.get(NETWORK_COOKIE)?.value));
+  const target = `${base}/${normalizedPath.join('/')}${request.nextUrl.search}`;
   const headers = new Headers();
   request.headers.forEach((value, key) => {
     if (!HOP_BY_HOP.has(key.toLowerCase())) {
@@ -117,8 +119,8 @@ async function proxy(request: NextRequest, path: string[]): Promise<Response> {
   return NextResponse.json(
     {
       error: timedOut
-        ? `${remoteBackendUrl()} did not respond in time.`
-        : `${remoteBackendUrl()} is waking up or temporarily unavailable.`,
+        ? `${base} did not respond in time.`
+        : `${base} is waking up or temporarily unavailable.`,
       detail,
     },
     { status: timedOut ? 504 : 502 }
