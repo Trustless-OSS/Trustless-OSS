@@ -89,6 +89,7 @@ export default function WaitlistSection() {
                 }}
                 placeholder="you@example.com"
                 required
+                maxLength={254}
                 disabled={status === 'loading'}
                 aria-describedby={status === 'error' ? 'waitlist-error' : undefined}
                 aria-invalid={status === 'error'}
