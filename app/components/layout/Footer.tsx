@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FaLinkedinIn, FaXTwitter } from 'react-icons/fa6';
+import { FaLinkedinIn, FaXTwitter, FaGithub } from 'react-icons/fa6';
 import Logo from './Logo';
 import FooterHealth from './FooterHealth';
 import { Separator } from '@/components/ui/separator';
@@ -17,6 +17,7 @@ const supportLinks = [
 ];
 
 const connectLinks = [
+  { label: 'GitHub', href: 'https://github.com/Trustless-OSS', icon: FaGithub },
   { label: 'LinkedIn', href: 'https://www.linkedin.com/company/trustless-oss', icon: FaLinkedinIn },
   { label: 'X (Twitter)', href: 'https://x.com/Trustless_OSS', icon: FaXTwitter },
 ];
