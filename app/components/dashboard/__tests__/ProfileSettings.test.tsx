@@ -1,7 +1,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { User } from '@supabase/supabase-js';
 import ProfileSettings from '../ProfileSettings';
+import { checkUsdcTrustline } from '@/lib/stellar-usdc';
+
+vi.mock('@/lib/stellar-usdc', () => ({
+  checkUsdcTrustline: vi.fn(),
+  buildEnableUsdcTx: vi.fn(),
+  submitEnableUsdcTx: vi.fn(),
+  formatUsdc: (amount: number) => amount.toFixed(2),
+}));
 
 const updateUser = vi.fn();
 const handleError = vi.fn();
@@ -63,6 +71,11 @@ function buildUser(overrides: Partial<User['user_metadata']> = {}): User {
 }
 
 describe('ProfileSettings', () => {
+  beforeEach(() => {
+    vi.mocked(checkUsdcTrustline)
+      .mockReset()
+      .mockResolvedValue({ hasTrustline: true, balance: 500 });
+  });
   afterEach(() => {
     cleanup();
     updateUser.mockReset();
@@ -155,7 +168,7 @@ describe('ProfileSettings', () => {
       />
     );
 
-    expect(screen.getByText('Ready for payouts')).toBeInTheDocument();
+    expect(await screen.findByText('Ready for payouts')).toBeInTheDocument();
     expect(screen.getByText('Payout wallet')).toBeInTheDocument();
     expect(screen.getByText('100%')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
@@ -169,5 +182,76 @@ describe('ProfileSettings', () => {
       expect(writeText).toHaveBeenCalledWith('GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCD');
       expect(notifySuccess).toHaveBeenCalledWith('Address copied');
     });
+  });
+  it('checks a saved wallet and never treats the initial loading state as missing USDC', async () => {
+    let resolve!: (value: { hasTrustline: boolean; balance: number }) => void;
+    vi.mocked(checkUsdcTrustline).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    render(<ProfileSettings user={buildUser({ stellar_address: 'GSAVED' })} />);
+    expect(screen.getByText('Checking USDC…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Add USDC/ })).not.toBeInTheDocument();
+    expect(handleError).not.toHaveBeenCalled();
+    resolve({ hasTrustline: true, balance: 500 });
+    expect(await screen.findByText('500.00')).toBeInTheDocument();
+    expect(checkUsdcTrustline).toHaveBeenCalledWith('GSAVED');
+    expect(screen.queryByText('Connected - Action Required')).not.toBeInTheDocument();
+  });
+
+  it('shows lookup failures without asking to add a trustline or displaying a refresh button', async () => {
+    vi.mocked(checkUsdcTrustline).mockRejectedValueOnce(new Error('Horizon unavailable'));
+    render(<ProfileSettings user={buildUser({ stellar_address: 'GSAVED' })} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to check USDC');
+    expect(screen.queryByRole('button', { name: /Add USDC/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Refresh balance' })).not.toBeInTheDocument();
+  });
+
+  it('only offers Add USDC after confirming the trustline is absent', async () => {
+    vi.mocked(checkUsdcTrustline).mockResolvedValueOnce({ hasTrustline: false, balance: null });
+    render(<ProfileSettings user={buildUser({ stellar_address: 'GSAVED' })} />);
+    expect(await screen.findByRole('button', { name: /Add USDC/ })).toBeInTheDocument();
+    expect(
+      screen.getByText(/No supported USDC trustline was found on Testnet/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Ready for payouts')).not.toBeInTheDocument();
+  });
+
+  it('ignores an in-flight balance result after the wallet is cleared', async () => {
+    let resolve!: (value: { hasTrustline: boolean; balance: number }) => void;
+    vi.mocked(checkUsdcTrustline).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    render(<ProfileSettings user={buildUser({ stellar_address: 'GSAVED' })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+    resolve({ hasTrustline: true, balance: 500 });
+    await waitFor(() => expect(screen.getByText('Wallet needed')).toBeInTheDocument());
+    expect(screen.queryByText('500.00')).not.toBeInTheDocument();
+  });
+  it('allows adding skills on mobile and detects an unsaved skill draft', () => {
+    render(<ProfileSettings user={buildUser()} />);
+    const input = screen.getByLabelText('Skills');
+    expect(screen.getByRole('button', { name: 'Add skill' })).toBeDisabled();
+    fireEvent.change(input, { target: { value: 'Solidity' } });
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Add skill' }));
+    expect(screen.getByText('Solidity')).toBeInTheDocument();
+    expect(input).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Save profile' })).toHaveAttribute('type', 'submit');
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.queryByText('Solidity')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeDisabled();
+  });
+  it('limits pasted bio text to 280 characters', () => {
+    render(<ProfileSettings user={buildUser()} />);
+    const bio = screen.getByLabelText('Bio');
+    fireEvent.change(bio, { target: { value: 'a'.repeat(400) } });
+    expect(bio).toHaveValue('a'.repeat(280));
+    expect(bio).toHaveAttribute('maxlength', '280');
+    expect(screen.getByText('280/280')).toBeInTheDocument();
+    expect(bio).toHaveAccessibleDescription('Keep it brief — up to 280 characters.');
   });
 });

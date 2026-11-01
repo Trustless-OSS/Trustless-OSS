@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowUpRight, Heart } from 'lucide-react';
 import { FaLinkedinIn, FaXTwitter, FaGithub } from 'react-icons/fa6';
 import Logo from './Logo';
 import FooterHealth from './FooterHealth';
@@ -77,7 +78,7 @@ export default function Footer() {
 
         <Separator className="my-8" />
 
-        <div className="flex flex-col items-center gap-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+        <div className="flex flex-col items-center gap-x-6 gap-y-4 text-xs text-muted-foreground md:flex-row md:flex-wrap md:justify-between">
           <p className="order-2 sm:order-1">
             © {new Date().getFullYear()} Trustless OSS. All rights reserved.
           </p>
@@ -86,16 +87,29 @@ export default function Footer() {
             <FooterHealth />
           </div>
 
-          <p className="order-3">
-            Built with <span className="text-red-500">♥</span> for OSS{' '}
-            <span className="text-muted-foreground/50">|</span>{' '}
+          <p className="order-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs leading-5">
+            <span className="inline-flex items-center gap-1.5">
+              Built with
+              <Heart
+                className="size-3.5 fill-primary/15 text-primary"
+                strokeWidth={1.75}
+                aria-label="love"
+                role="img"
+              />
+              for OSS
+            </span>
+            <span className="size-1 rounded-full bg-muted-foreground/40" aria-hidden="true" />
             <a
               href="https://github.com/ryzen-xp"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-foreground transition-colors hover:text-primary"
+              className="group inline-flex items-center gap-1 rounded-sm py-1 font-semibold text-foreground underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
             >
               ryzen-xp
+              <ArrowUpRight
+                className="size-3 text-muted-foreground transition-colors group-hover:text-primary"
+                aria-hidden="true"
+              />
             </a>
           </p>
         </div>

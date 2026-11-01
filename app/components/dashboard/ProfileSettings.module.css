@@ -1,0 +1,27 @@
+.profile
+  :where(
+    [data-slot='card'],
+    [data-slot='card-content'],
+    [data-slot='card-header'],
+    fieldset,
+    form
+  ) {
+  min-width: 0;
+}
+.profile :where(input, textarea) {
+  scroll-margin-top: 7rem;
+}
+.profile [data-slot='input'] {
+  min-height: 2.75rem;
+}
+.profile :where(p, h2) {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .profile :where(input, textarea) {
+    font-size: 1rem;
+  }
+  .profile [data-slot='button'] {
+    min-height: 2.75rem;
+  }
+}

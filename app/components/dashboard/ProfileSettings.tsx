@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import styles from './ProfileSettings.module.css';
 import Image from 'next/image';
 import {
   Check,
@@ -10,6 +11,7 @@ import {
   Mail,
   MapPin,
   Save,
+  ShieldCheck,
   Sparkles,
   Unplug,
   Wallet,
@@ -44,7 +46,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { getNetwork, stellarExpertNetwork } from '@/lib/network';
+import { stellarExpertNetwork } from '@/lib/network';
+import { useNetwork } from '@/lib/network-config';
 
 const BIO_MAX_LENGTH = 280;
 
@@ -233,6 +236,7 @@ async function connectWalletBackend(token: string, address: string) {
 }
 
 export default function ProfileSettings({ user }: { user: User }) {
+  const [network] = useNetwork();
   const githubName = user.user_metadata?.user_name ?? user.email?.split('@')[0] ?? 'developer';
   const avatar = user.user_metadata?.avatar_url as string | undefined;
   const initial = githubName[0]?.toUpperCase() ?? 'U';
@@ -243,37 +247,64 @@ export default function ProfileSettings({ user }: { user: User }) {
   const [connecting, setConnecting] = useState(false);
   const [copiedField, setCopiedField] = useState<'email' | 'wallet' | null>(null);
   const [token, setToken] = useState('');
-  const [usdcBalance, setUsdcBalance] = useState<UsdcBalance | null>(null);
+  const [walletCheck, setWalletCheck] = useState<{
+    address: string;
+    balance: UsdcBalance | null;
+    error: string | null;
+  } | null>(null);
+  const currentCheck = walletCheck?.address === form.stellarAddress ? walletCheck : null;
+  const usdcBalance = currentCheck?.balance ?? null;
+  const balanceError = currentCheck?.error ?? null;
+  const missingTrustline = usdcBalance?.hasTrustline === false;
+  const checkingBalance = Boolean(form.stellarAddress) && !usdcBalance && !balanceError;
+
   const [enablingUsdc, setEnablingUsdc] = useState(false);
   const copiedTimer = useRef<number>(0);
 
-  // Show toast when trustline is missing
+  // A saved address needs a fresh lookup too. Unknown and failed checks are not
+  // evidence of a missing trustline; ignore results for an address we left behind.
   useEffect(() => {
-    if (form.stellarAddress && usdcBalance && !usdcBalance.hasTrustline) {
-      handleError(
-        new Error(
-          'USDC trustline required to receive payouts. Click "Add USDC Now" to activate it.'
-        ),
-        'Action Required'
-      );
-    }
-  }, [form.stellarAddress, usdcBalance?.hasTrustline]);
+    const address = form.stellarAddress;
+    setWalletCheck(null);
+    if (!address) return;
+    let active = true;
+    checkUsdcTrustline(address)
+      .then((balance) => {
+        if (active) setWalletCheck({ address, balance, error: null });
+      })
+      .catch(() => {
+        if (active)
+          setWalletCheck({
+            address,
+            balance: null,
+            error: 'Unable to check USDC right now. Please reload the page to try again.',
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [form.stellarAddress]);
 
   // Load the token, then hydrate the form from the backend (source of truth).
   useEffect(() => {
     let active = true;
     const supabase = createClient();
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const t = session?.access_token ?? '';
-      if (!active) return;
-      setToken(t);
-      if (!t) return;
-      const contributor = await fetchContributor(t);
-      if (!active || !contributor) return;
-      const next = formFromContributor(contributor, profileFromUser(user));
-      setForm(next);
-      setSaved(next);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        const t = session?.access_token ?? '';
+        if (!active) return;
+        setToken(t);
+        if (!t) return;
+        const contributor = await fetchContributor(t);
+        if (!active || !contributor) return;
+        const next = formFromContributor(contributor, profileFromUser(user));
+        setForm(next);
+        setSaved(next);
+      })
+      .catch((error: unknown) => {
+        if (active) handleError(error, 'Load profile');
+      });
     return () => {
       active = false;
     };
@@ -282,7 +313,10 @@ export default function ProfileSettings({ user }: { user: User }) {
   const skills = useMemo(() => parseSkills(form.skills), [form.skills]);
   const githubEmail = user.email?.trim() ?? '';
   const completeness = useMemo(() => profileCompleteness(form, githubEmail), [form, githubEmail]);
-  const dirty = useMemo(() => !formsEqual(form, saved), [form, saved]);
+  const dirty = useMemo(
+    () => !formsEqual(form, saved) || Boolean(skillDraft.trim()),
+    [form, saved, skillDraft]
+  );
   const portfolio = websiteHref(form.website);
   const displayName = fullName(form) || githubName;
 
@@ -359,7 +393,7 @@ export default function ProfileSettings({ user }: { user: User }) {
         const next = { ...form, stellarAddress: address };
         setForm(next);
         setSaved(next);
-        setUsdcBalance(usdcStatus);
+        setWalletCheck({ address, balance: usdcStatus, error: null });
         notifySuccess('Wallet connected', 'Now add USDC trustline to complete setup.');
         return;
       }
@@ -370,9 +404,7 @@ export default function ProfileSettings({ user }: { user: User }) {
       const next = { ...form, stellarAddress: address };
       setForm(next);
       setSaved(next);
-      // Refresh USDC balance
-      const balance = await checkUsdcTrustline(address);
-      setUsdcBalance(balance);
+      setWalletCheck({ address, balance: usdcStatus, error: null });
       notifySuccess('Stellar wallet connected', 'Ready for USDC payouts.');
     } catch (error) {
       handleError(error, 'Connect wallet');
@@ -421,7 +453,9 @@ export default function ProfileSettings({ user }: { user: User }) {
       // Wait for Horizon to index the transaction, then refresh balance
       await new Promise((resolve) => setTimeout(resolve, 2000));
       const balance = await checkUsdcTrustline(form.stellarAddress);
-      setUsdcBalance(balance);
+      setWalletCheck({ address: form.stellarAddress, balance, error: null });
+      if (!balance.hasTrustline)
+        throw new Error('USDC is not confirmed yet. Please reload the page before continuing.');
 
       // Now connect wallet to backend since USDC trustline is ready
       if (token) {
@@ -438,7 +472,7 @@ export default function ProfileSettings({ user }: { user: User }) {
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className={`${styles.profile} w-full space-y-6`}>
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Account</p>
@@ -450,7 +484,8 @@ export default function ProfileSettings({ user }: { user: User }) {
           </p>
         </div>
         <div className="w-full max-w-sm space-y-2">
-          <div className="flex items-center justify-end gap-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            <span>Profile completeness</span>
             <span>{completeness.percent}%</span>
           </div>
           <Progress
@@ -461,15 +496,15 @@ export default function ProfileSettings({ user }: { user: User }) {
         </div>
       </div>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.1fr)]">
-        <div className="space-y-6">
+      <div className="grid items-start gap-6 xl:items-stretch xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
           <Card className="overflow-hidden rounded-3xl py-0">
-            <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#3f5bff] via-primary to-[#0618a8]">
+            <div className="relative h-28 overflow-hidden sm:h-36 bg-gradient-to-br from-[#3f5bff] via-primary to-[#0618a8]">
               <span className="absolute -top-10 -right-6 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
               <span className="absolute -bottom-8 left-16 h-28 w-28 rounded-full bg-white/15 blur-xl" />
             </div>
             <CardContent className="relative pb-6">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex min-w-0 flex-col items-start gap-4">
                 <div className="flex min-w-0 items-end gap-4">
                   <div className="relative -mt-12 shrink-0">
                     <Avatar className="h-24 w-24 ring-4 ring-card">
@@ -486,15 +521,18 @@ export default function ProfileSettings({ user }: { user: User }) {
                     />
                   </div>
                   <div className="min-w-0 pb-1">
-                    <h2 className="truncate text-2xl font-bold tracking-tight">{displayName}</h2>
+                    <h2 className="break-words text-xl font-bold tracking-tight sm:text-2xl">
+                      {displayName}
+                    </h2>
                     <a
                       href={`https://github.com/${githubName}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`@${githubName} on GitHub`}
-                      className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-primary"
+                      className="mt-1 inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-primary"
                     >
-                      <SiGithub className="h-3.5 w-3.5" aria-hidden="true" />@{githubName}
+                      <SiGithub className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">@{githubName}</span>
                     </a>
                   </div>
                 </div>
@@ -506,11 +544,15 @@ export default function ProfileSettings({ user }: { user: User }) {
                       : 'h-auto px-3 py-1'
                   }
                 >
-                  {form.stellarAddress ? 'Ready for payouts' : 'Wallet needed'}
+                  {usdcBalance?.hasTrustline
+                    ? 'Ready for payouts'
+                    : form.stellarAddress
+                      ? 'Wallet linked'
+                      : 'Wallet needed'}
                 </Badge>
               </div>
 
-              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+              <p className="mt-4 break-words text-sm leading-6 text-muted-foreground">
                 {form.bio.trim() ||
                   'Tell maintainers what you ship, the stacks you like, and how you work.'}
               </p>
@@ -519,9 +561,9 @@ export default function ProfileSettings({ user }: { user: User }) {
                 <button
                   type="button"
                   onClick={() => document.getElementById('location')?.focus()}
-                  className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-background ring-1 ring-border">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
@@ -536,9 +578,9 @@ export default function ProfileSettings({ user }: { user: User }) {
                 <button
                   type="button"
                   onClick={() => document.getElementById('skills')?.focus()}
-                  className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-background ring-1 ring-border">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <Sparkles className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
@@ -555,9 +597,9 @@ export default function ProfileSettings({ user }: { user: User }) {
                   onClick={() =>
                     document.getElementById('payout-wallet')?.scrollIntoView({ behavior: 'smooth' })
                   }
-                  className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-background ring-1 ring-border">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
@@ -572,9 +614,9 @@ export default function ProfileSettings({ user }: { user: User }) {
                 <button
                   type="button"
                   onClick={() => document.getElementById('email')?.focus()}
-                  className="flex items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-background ring-1 ring-border">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                   </span>
                   <span className="min-w-0">
@@ -590,11 +632,37 @@ export default function ProfileSettings({ user }: { user: User }) {
             </CardContent>
           </Card>
 
-          <Card id="payout-wallet" className="scroll-mt-28 rounded-3xl">
-            <CardHeader className="flex-row items-start justify-between gap-4">
+          <Card aria-labelledby="kyc-title" className="rounded-3xl">
+            <CardHeader className="flex! flex-row items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <ShieldCheck className="size-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 id="kyc-title" className="text-lg font-semibold tracking-tight">
+                    Identity verification
+                  </h2>
+                  <Badge variant="secondary" className="shrink-0 rounded-full text-xs font-medium">
+                    Coming soon
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs font-medium tracking-wide text-muted-foreground">
+                  Know your customer (KYC)
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Identity verification isn’t available yet. No documents are needed at this time.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card id="payout-wallet" className="scroll-mt-28 rounded-3xl xl:mt-auto">
+            <CardHeader className="flex! flex-row items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
-                  Stellar chain
+                  Stellar chain · {network === 'mainnet' ? 'Mainnet' : 'Testnet'}
                 </p>
                 <CardTitle className="mt-1 text-lg">Payout wallet</CardTitle>
                 <CardDescription className="mt-1">
@@ -606,39 +674,49 @@ export default function ProfileSettings({ user }: { user: User }) {
                 alt=""
                 width={36}
                 height={36}
-                className="h-9 w-9"
+                className="h-9 w-9 shrink-0"
               />
             </CardHeader>
             <CardContent>
               {form.stellarAddress ? (
                 <div
-                  className={`rounded-2xl px-6 py-6 space-y-4 ${
+                  className={`flex flex-col gap-4 rounded-2xl px-4 py-4 sm:px-5 sm:py-5 ${
                     usdcBalance?.hasTrustline
                       ? 'bg-emerald-50 dark:bg-emerald-500/10'
-                      : 'bg-red-50 dark:bg-red-500/10'
+                      : missingTrustline
+                        ? 'bg-red-50 dark:bg-red-500/10'
+                        : 'bg-muted/40'
                   }`}
                 >
-                  <div className="flex items-end justify-between gap-2 sm:gap-4">
+                  <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1">
                       <Badge
                         className={
                           usdcBalance?.hasTrustline
                             ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/15'
-                            : 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/15'
+                            : missingTrustline
+                              ? 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/15'
+                              : 'bg-muted text-muted-foreground'
                         }
                       >
-                        {usdcBalance?.hasTrustline ? 'Connected' : 'Connected - Action Required'}
+                        {usdcBalance?.hasTrustline
+                          ? 'Connected'
+                          : missingTrustline
+                            ? 'Connected - Action Required'
+                            : checkingBalance
+                              ? 'Checking USDC…'
+                              : 'Balance unavailable'}
                       </Badge>
                       <p className="mt-2 font-mono text-sm font-semibold break-all text-foreground">
                         {shortenAddress(form.stellarAddress)}
                       </p>
                     </div>
                     {usdcBalance?.hasTrustline ? (
-                      <div className="text-right shrink-0">
+                      <div className="min-w-0 max-w-full sm:text-right">
                         <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                           USDC Balance
                         </p>
-                        <div className="mt-3 flex items-center justify-end gap-2">
+                        <div className="mt-2 flex items-center gap-2 sm:justify-end">
                           <Image
                             src="/usd-coin-usdc-logo.svg"
                             alt=""
@@ -646,12 +724,12 @@ export default function ProfileSettings({ user }: { user: User }) {
                             height={24}
                             className="size-6"
                           />
-                          <span className="text-2xl font-black tracking-tight sm:text-3xl">
+                          <span className="break-all text-2xl font-black tracking-tight sm:text-3xl">
                             {formatUsdc(usdcBalance.balance ?? 0)}
                           </span>
                         </div>
                       </div>
-                    ) : (
+                    ) : missingTrustline ? (
                       <Button
                         onClick={handleEnableUsdc}
                         disabled={enablingUsdc}
@@ -676,10 +754,26 @@ export default function ProfileSettings({ user }: { user: User }) {
                           </>
                         )}
                       </Button>
-                    )}
+                    ) : null}
                   </div>
-
-                  <div className="flex flex-wrap gap-1.5">
+                  {checkingBalance && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      Checking your wallet’s USDC balance…
+                    </p>
+                  )}
+                  {balanceError && (
+                    <p role="alert" className="text-sm text-muted-foreground">
+                      {balanceError}
+                    </p>
+                  )}
+                  {missingTrustline && (
+                    <p className="text-sm text-muted-foreground">
+                      No supported USDC trustline was found on{' '}
+                      {network === 'mainnet' ? 'Mainnet' : 'Testnet'}. Make sure your wallet is
+                      using the same network.
+                    </p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 pt-2 sm:grid-cols-3">
                     <Button
                       onClick={() => handleCopy('wallet', form.stellarAddress, 'Address copied')}
                       variant="outline"
@@ -699,21 +793,21 @@ export default function ProfileSettings({ user }: { user: User }) {
                       )}
                     </Button>
                     <a
-                      href={`https://stellar.expert/explorer/${stellarExpertNetwork(getNetwork())}/account/${form.stellarAddress}`}
+                      href={`https://stellar.expert/explorer/${stellarExpertNetwork(network)}/account/${form.stellarAddress}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="View on Stellar Expert"
                       className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground transition hover:border-primary/40 hover:text-primary flex-1 min-w-[80px]"
                     >
                       <ExternalLink className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
-                      <span className="hidden sm:inline">Expert</span>
+                      <span>Explorer</span>
                     </a>
                     <Button
                       variant="ghost"
                       onClick={handleDisconnectWallet}
                       disabled={saving}
                       size="sm"
-                      className="flex-1 min-w-[80px]"
+                      className="col-span-2 sm:col-span-1"
                     >
                       <Unplug className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
                       Disconnect
@@ -727,7 +821,11 @@ export default function ProfileSettings({ user }: { user: User }) {
                     this profile.
                   </p>
                   <div className="mt-4">
-                    <Button onClick={handleConnectWallet} disabled={connecting}>
+                    <Button
+                      onClick={handleConnectWallet}
+                      disabled={connecting}
+                      className="w-full sm:w-auto"
+                    >
                       {connecting ? (
                         <>
                           <LoadingLogo size="tiny" variant="circle" />
@@ -747,276 +845,312 @@ export default function ProfileSettings({ user }: { user: User }) {
           </Card>
         </div>
 
-        <Card className="h-full rounded-3xl">
+        <Card className="min-w-0 rounded-3xl">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Contributor details</CardTitle>
             <CardDescription>
               This is what maintainers see when they assign a bounty.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="first-name">First name</Label>
-              <Input
-                id="first-name"
-                value={form.firstName}
-                onChange={(event) => update('firstName', event.target.value)}
-                autoComplete="given-name"
-                placeholder="Ada"
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="last-name">Last name</Label>
-              <Input
-                id="last-name"
-                value={form.lastName}
-                onChange={(event) => update('lastName', event.target.value)}
-                autoComplete="family-name"
-                placeholder="Lovelace"
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="github">GitHub</Label>
-              <div className="relative">
-                <Input
-                  id="github"
-                  value={`@${githubName}`}
-                  readOnly
-                  className="h-10 bg-muted pr-10"
-                />
-                <a
-                  href={`https://github.com/${githubName}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Open @${githubName} on GitHub`}
-                  className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground transition hover:text-primary"
-                >
-                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                </a>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <Label htmlFor="email">Email</Label>
-                {githubEmail ? (
-                  <Badge
-                    variant="secondary"
-                    className="h-5 bg-emerald-100 px-2 text-[0.65rem] font-semibold tracking-wide text-emerald-700 uppercase hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
-                  >
-                    Verified
-                  </Badge>
-                ) : null}
-              </div>
-              <div className="relative">
-                <Input id="email" value={githubEmail} readOnly className="h-10 bg-muted pr-10" />
-                {githubEmail ? (
-                  <button
-                    type="button"
-                    onClick={() => handleCopy('email', githubEmail, 'Email copied')}
-                    aria-label={copiedField === 'email' ? 'Email copied' : 'Copy email'}
-                    className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground transition hover:text-primary"
-                  >
-                    {copiedField === 'email' ? (
-                      <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-                    ) : (
-                      <Copy className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </button>
-                ) : null}
-              </div>
-              {!githubEmail && (
-                <p className="text-xs text-muted-foreground">
-                  Sign in with GitHub to attach a verified email.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="website">Website / portfolio</Label>
-              <div className="relative">
-                <Input
-                  id="website"
-                  type="url"
-                  value={form.website}
-                  onChange={(event) => update('website', event.target.value)}
-                  placeholder="https://"
-                  className="h-10 pr-10"
-                />
-                {portfolio ? (
-                  <a
-                    href={portfolio}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Open website"
-                    className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground transition hover:text-primary"
-                  >
-                    <Globe className="h-4 w-4" aria-hidden="true" />
-                  </a>
-                ) : null}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="telegram">Telegram</Label>
-              <div className="relative">
-                <SiTelegram
-                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="pointer-events-none absolute top-1/2 left-9 -translate-y-1/2 text-sm text-muted-foreground">
-                  @
-                </span>
-                <Input
-                  id="telegram"
-                  value={form.telegram}
-                  onChange={(event) => updateUsername('telegram', event.target.value)}
-                  placeholder="username"
-                  autoComplete="off"
-                  className="h-10 pl-14"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="discord">Discord</Label>
-              <div className="relative">
-                <SiDiscord
-                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  id="discord"
-                  value={form.discord}
-                  onChange={(event) => updateUsername('discord', event.target.value)}
-                  placeholder="username"
-                  autoComplete="off"
-                  className="h-10 pl-10"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="twitter">Twitter / X</Label>
-              <div className="relative">
-                <SiX
-                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="pointer-events-none absolute top-1/2 left-9 -translate-y-1/2 text-sm text-muted-foreground">
-                  @
-                </span>
-                <Input
-                  id="twitter"
-                  value={form.twitter}
-                  onChange={(event) => updateUsername('twitter', event.target.value)}
-                  placeholder="username"
-                  autoComplete="off"
-                  className="h-10 pl-14"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="location">Location</Label>
-              <div className="relative">
-                <MapPin
-                  className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  id="location"
-                  value={form.location}
-                  onChange={(event) => update('location', event.target.value)}
-                  placeholder="City, country, or timezone"
-                  autoComplete="address-level2"
-                  className="h-10 pl-10"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="skills">Skills</Label>
-              <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-lg border border-input px-2.5 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30">
-                {skills.map((skill) => (
-                  <Badge
-                    key={skill}
-                    variant="secondary"
-                    className="h-7 gap-1 rounded-md px-2.5 font-medium"
-                  >
-                    {skill}
+          <form
+            className="contents"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (dirty && !saving) void handleSave();
+            }}
+          >
+            <fieldset disabled={saving} className="contents">
+              <CardContent className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="first-name">First name</Label>
+                  <Input
+                    id="first-name"
+                    value={form.firstName}
+                    onChange={(event) => update('firstName', event.target.value)}
+                    autoComplete="given-name"
+                    placeholder="Ada"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="last-name">Last name</Label>
+                  <Input
+                    id="last-name"
+                    value={form.lastName}
+                    onChange={(event) => update('lastName', event.target.value)}
+                    autoComplete="family-name"
+                    placeholder="Lovelace"
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="github">GitHub</Label>
+                  <div className="relative">
+                    <Input
+                      id="github"
+                      value={`@${githubName}`}
+                      readOnly
+                      className="h-10 bg-muted pr-10"
+                    />
+                    <a
+                      href={`https://github.com/${githubName}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open @${githubName} on GitHub`}
+                      className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    {githubEmail ? (
+                      <Badge
+                        variant="secondary"
+                        className="h-5 bg-emerald-100 px-2 text-[0.65rem] font-semibold tracking-wide text-emerald-700 uppercase hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/15"
+                      >
+                        Verified
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      value={githubEmail}
+                      readOnly
+                      className="h-10 bg-muted pr-10"
+                    />
+                    {githubEmail ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy('email', githubEmail, 'Email copied')}
+                        aria-label={copiedField === 'email' ? 'Email copied' : 'Copy email'}
+                        className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                      >
+                        {copiedField === 'email' ? (
+                          <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                        ) : (
+                          <Copy className="h-4 w-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    ) : null}
+                  </div>
+                  {!githubEmail && (
+                    <p className="text-xs text-muted-foreground">
+                      Sign in with GitHub to attach a verified email.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="website">Website / portfolio</Label>
+                  <div className="relative">
+                    <Input
+                      id="website"
+                      type="text"
+                      inputMode="url"
+                      autoComplete="url"
+                      value={form.website}
+                      onChange={(event) => update('website', event.target.value)}
+                      placeholder="https://"
+                      className="h-10 pr-10"
+                    />
+                    {portfolio ? (
+                      <a
+                        href={portfolio}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Open website"
+                        className="absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                      >
+                        <Globe className="h-4 w-4" aria-hidden="true" />
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="telegram">Telegram</Label>
+                  <div className="relative">
+                    <SiTelegram
+                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="pointer-events-none absolute top-1/2 left-9 -translate-y-1/2 text-sm text-muted-foreground">
+                      @
+                    </span>
+                    <Input
+                      id="telegram"
+                      value={form.telegram}
+                      onChange={(event) => updateUsername('telegram', event.target.value)}
+                      placeholder="username"
+                      autoComplete="off"
+                      className="h-10 pl-14"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="discord">Discord</Label>
+                  <div className="relative">
+                    <SiDiscord
+                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      id="discord"
+                      value={form.discord}
+                      onChange={(event) => updateUsername('discord', event.target.value)}
+                      placeholder="username"
+                      autoComplete="off"
+                      className="h-10 pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="twitter">Twitter / X</Label>
+                  <div className="relative">
+                    <SiX
+                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="pointer-events-none absolute top-1/2 left-9 -translate-y-1/2 text-sm text-muted-foreground">
+                      @
+                    </span>
+                    <Input
+                      id="twitter"
+                      value={form.twitter}
+                      onChange={(event) => updateUsername('twitter', event.target.value)}
+                      placeholder="username"
+                      autoComplete="off"
+                      className="h-10 pl-14"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="location">Location</Label>
+                  <div className="relative">
+                    <MapPin
+                      className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      id="location"
+                      value={form.location}
+                      onChange={(event) => update('location', event.target.value)}
+                      placeholder="City, country, or timezone"
+                      autoComplete="address-level2"
+                      className="h-10 pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="skills">Skills</Label>
+                  <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-lg border border-input px-2.5 py-2 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 dark:bg-input/30">
+                    {skills.map((skill) => (
+                      <Badge
+                        key={skill}
+                        variant="secondary"
+                        className="h-auto max-w-full gap-1 rounded-md px-2 py-1 font-medium"
+                      >
+                        <span className="min-w-0 truncate" title={skill}>
+                          {skill}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(skill)}
+                          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-background hover:text-foreground"
+                          aria-label={`Remove ${skill}`}
+                        >
+                          <X className="h-3 w-3" aria-hidden="true" />
+                        </button>
+                      </Badge>
+                    ))}
+                    <input
+                      id="skills"
+                      value={skillDraft}
+                      onChange={(event) => setSkillDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ',') {
+                          event.preventDefault();
+                          addSkill();
+                        }
+                        if (event.key === 'Backspace' && !skillDraft && skills.length) {
+                          removeSkill(skills[skills.length - 1]);
+                        }
+                      }}
+                      placeholder={skills.length ? 'Add another' : 'TypeScript, Rust, Solidity'}
+                      className="min-w-0 w-32 flex-1 bg-transparent text-base sm:text-sm outline-none placeholder:text-muted-foreground"
+                    />
                     <button
                       type="button"
-                      onClick={() => removeSkill(skill)}
-                      className="rounded-full text-muted-foreground transition hover:text-foreground"
-                      aria-label={`Remove ${skill}`}
+                      onClick={() => addSkill()}
+                      disabled={!skillDraft.trim()}
+                      className="min-h-9 rounded-md bg-muted px-3 text-sm font-semibold text-foreground disabled:opacity-40"
+                      aria-label="Add skill"
                     >
-                      <X className="h-3 w-3" aria-hidden="true" />
+                      Add
                     </button>
-                  </Badge>
-                ))}
-                <input
-                  id="skills"
-                  value={skillDraft}
-                  onChange={(event) => setSkillDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ',') {
-                      event.preventDefault();
-                      addSkill();
-                    }
-                    if (event.key === 'Backspace' && !skillDraft && skills.length) {
-                      removeSkill(skills[skills.length - 1]);
-                    }
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Type a skill, then tap Add or press Enter.
+                  </p>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="bio">Bio</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {form.bio.length}/{BIO_MAX_LENGTH}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="bio"
+                    value={form.bio}
+                    onChange={(event) => update('bio', event.target.value.slice(0, BIO_MAX_LENGTH))}
+                    maxLength={BIO_MAX_LENGTH}
+                    aria-describedby="bio-limit"
+                    rows={5}
+                    placeholder="What you ship, the stacks you like, and how you work."
+                    className="h-32! min-h-32! max-h-32 resize-none! field-sizing-fixed! overflow-y-auto"
+                  />
+                  <p id="bio-limit" className="text-xs leading-5 text-muted-foreground">
+                    Keep it brief — up to {BIO_MAX_LENGTH} characters.
+                  </p>
+                </div>
+              </CardContent>
+            </fieldset>
+            <CardFooter className="mt-auto flex-wrap justify-end gap-2 rounded-b-3xl bg-muted/30 border-t border-border/50 [&>button]:flex-1 sm:[&>button]:flex-none">
+              {dirty ? (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setForm(saved);
+                    setSkillDraft('');
                   }}
-                  placeholder={skills.length ? 'Add another' : 'TypeScript, Rust, Solidity'}
-                  className="min-w-32 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="bio">Bio</Label>
-                <span className="text-xs text-muted-foreground">
-                  {form.bio.length}/{BIO_MAX_LENGTH}
-                </span>
-              </div>
-              <Textarea
-                id="bio"
-                value={form.bio}
-                onChange={(event) => update('bio', event.target.value.slice(0, BIO_MAX_LENGTH))}
-                maxLength={BIO_MAX_LENGTH}
-                rows={6}
-                placeholder="What you ship, the stacks you like, and how you work."
-                className="h-36 resize-none"
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="justify-end gap-2 rounded-b-3xl bg-muted/30 border-t border-border/50">
-            {dirty ? (
+                  disabled={saving}
+                >
+                  Discard
+                </Button>
+              ) : null}
               <Button
-                variant="danger"
-                onClick={() => {
-                  setForm(saved);
-                  setSkillDraft('');
-                }}
-                disabled={saving}
+                type="submit"
+                disabled={!dirty || saving}
+                className={!dirty ? 'opacity-50' : undefined}
               >
-                Discard
+                {saving ? (
+                  <>
+                    <LoadingLogo size="tiny" variant="circle" />
+                    Saving
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
+                    Save profile
+                  </>
+                )}
               </Button>
-            ) : null}
-            <Button
-              onClick={handleSave}
-              disabled={!dirty || saving}
-              className={!dirty ? 'opacity-50' : undefined}
-            >
-              {saving ? (
-                <>
-                  <LoadingLogo size="tiny" variant="circle" />
-                  Saving
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
-                  Save profile
-                </>
-              )}
-            </Button>
-          </CardFooter>
+            </CardFooter>
+          </form>
         </Card>
       </div>
     </div>

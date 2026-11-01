@@ -618,8 +618,7 @@ html {
 
 .landing-page-shell,
 .dashboard-page-shell,
-.home-navbar,
-.site-footer {
+.home-navbar {
   background: transparent;
 }
 
@@ -803,14 +802,21 @@ img.landing-watermark {
 }
 
 .supported-partners-band {
-  background: radial-gradient(ellipse at 50% 50%, rgba(226, 222, 198, 0.6), transparent 72%);
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    color-mix(in srgb, var(--muted) 60%, transparent),
+    transparent 72%
+  );
 }
 
 .supported-partners-band::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(6, 31, 212, 0.18) 1.2px, transparent 1.2px);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--primary) 18%, transparent) 1.2px,
+    transparent 1.2px
+  );
   background-size: 18px 18px;
   opacity: 0.28;
   mask-image: radial-gradient(ellipse at center, black 18%, transparent 76%);
@@ -819,7 +825,7 @@ img.landing-watermark {
 
 .supported-partners-orb {
   position: absolute;
-  border: 2px solid rgba(6, 31, 212, 0.2);
+  border: 2px solid color-mix(in srgb, var(--primary) 20%, transparent);
   border-radius: 9999px;
   pointer-events: none;
 }
@@ -838,10 +844,11 @@ img.landing-watermark {
   width: 17rem;
 }
 
+/* Continue the same page background through the footer in both themes. */
 .site-footer {
-  background: color-mix(in oklch, var(--card) 72%, transparent);
+  background: transparent;
+  color: var(--foreground);
   border-top: 1px solid var(--border);
-  backdrop-filter: blur(18px);
 }
 
 .site-footer::before {
