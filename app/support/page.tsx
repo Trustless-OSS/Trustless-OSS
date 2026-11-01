@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import Navbar from '@/app/components/layout/Navbar';
 import { createClient } from '@/lib/supabase/client';
+import { backendUrl } from '@/lib/backend';
 import { isSupportCategory, SUPPORT_CATEGORIES, type SupportCategory } from '@/lib/support';
 
 import type { User } from '@supabase/supabase-js';
@@ -33,8 +34,10 @@ export default function SupportPage() {
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachment, setAttachment] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachmentType, setAttachmentType] = useState<'image' | 'video' | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,6 +67,8 @@ export default function SupportPage() {
     }));
   };
 
+  const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024 * 1024; // 5 GiB
+
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -76,26 +81,24 @@ export default function SupportPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        toast.error('Could not read this file', {
-          description: 'Please try another image or video.',
-        });
-        return;
-      }
-      setAttachment(reader.result);
-      setAttachmentType(file.type.startsWith('image/') ? 'image' : 'video');
-    };
-    reader.onerror = () =>
-      toast.error('Could not read this file', {
-        description: 'Please try another image or video.',
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error('File too large', {
+        description: 'Maximum size is 5 GiB.',
       });
-    reader.readAsDataURL(file);
+      e.target.value = '';
+      return;
+    }
+
+    if (attachmentUrl) URL.revokeObjectURL(attachmentUrl);
+    setAttachment(file);
+    setAttachmentUrl(URL.createObjectURL(file));
+    setAttachmentType(file.type.startsWith('image/') ? 'image' : 'video');
   };
 
   const removeAttachment = () => {
+    if (attachmentUrl) URL.revokeObjectURL(attachmentUrl);
     setAttachment(null);
+    setAttachmentUrl(null);
     setAttachmentType(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -133,40 +136,102 @@ export default function SupportPage() {
 
       // Upload attachment if present
       if (attachment) {
-        const uploadFormData = new FormData();
-
-        // Convert base64 data URL to blob
-        const [header, data] = attachment.split(',');
-        const mimeType = header.match(/:(.*?);/)?.[1] || 'application/octet-stream';
-        const binary = atob(data);
-        const array = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-          array[i] = binary.charCodeAt(i);
-        }
-        const blob = new Blob([array], { type: mimeType });
-
-        const fileName = `support-${Date.now()}${mimeType === 'image/png' ? '.png' : mimeType === 'image/jpeg' ? '.jpg' : mimeType === 'video/mp4' ? '.mp4' : '.dat'}`;
-        uploadFormData.append('file', blob, fileName);
-
-        const uploadResponse = await fetch('/api/backend/upload', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: uploadFormData,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error('Failed to upload attachment');
+        if (attachment.size < 1 || attachment.size > MAX_ATTACHMENT_SIZE) {
+          throw new Error('Attachment must be between 1 byte and 5 GiB.');
         }
 
-        const uploadResult = (await uploadResponse.json()) as Record<string, unknown>;
-        attachmentKey = (uploadResult.key || uploadResult.url || uploadResult.path) as
-          string | undefined;
+        type PresignedUpload = {
+          key: string;
+          upload_url: string;
+          content_type: string;
+          headers: Record<string, string>;
+          expires_in: number;
+        };
 
-        if (!attachmentKey || attachmentKey.length > 1024) {
+        const requestUploadUrl = async (): Promise<PresignedUpload> => {
+          const response = await fetch(backendUrl('/api/v1/upload'), {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contentType: attachment.type || 'application/octet-stream',
+              size: attachment.size,
+              folder: 'trustless-oss',
+            }),
+          });
+          const result = (await response.json().catch(() => null)) as
+            (Partial<PresignedUpload> & { error?: string; message?: string }) | null;
+          if (!response.ok) {
+            throw new Error(
+              result?.error || result?.message || `Could not prepare upload (${response.status}).`
+            );
+          }
+          if (
+            !result?.key ||
+            !result.upload_url ||
+            !result.headers ||
+            typeof result.headers !== 'object'
+          ) {
+            throw new Error('Upload service returned an invalid presigned URL response.');
+          }
+          return result as PresignedUpload;
+        };
+
+        const putFile = (upload: PresignedUpload): Promise<number> =>
+          new Promise((resolve, reject) => {
+            const request = new XMLHttpRequest();
+            request.open('PUT', upload.upload_url);
+            Object.entries(upload.headers).forEach(([name, value]) => {
+              if (name.toLowerCase() !== 'content-length') request.setRequestHeader(name, value);
+            });
+            request.upload.onprogress = (event) => {
+              if (event.lengthComputable)
+                setUploadProgress(Math.round((event.loaded / event.total) * 100));
+            };
+            request.onerror = () =>
+              reject(
+                new Error(
+                  'Could not reach storage. Check the storage bucket CORS policy allows PUT from this site and the signed request headers.'
+                )
+              );
+            request.onabort = () => reject(new Error('Upload was cancelled.'));
+            request.onload = () => {
+              if (request.status >= 200 && request.status < 300) resolve(request.status);
+              else
+                reject(
+                  Object.assign(
+                    new Error(
+                      `Storage upload failed (${request.status}). ${request.responseText || request.statusText}`
+                    ),
+                    { status: request.status }
+                  )
+                );
+            };
+            request.send(attachment);
+          });
+
+        let upload = await requestUploadUrl();
+        try {
+          await putFile(upload);
+        } catch (error) {
+          if (
+            (error as { status?: number }).status !== 401 &&
+            (error as { status?: number }).status !== 403
+          )
+            throw error;
+          // A signed URL may expire before the upload begins; request a fresh one and retry once.
+          setUploadProgress(0);
+          upload = await requestUploadUrl();
+          await putFile(upload);
+        }
+        attachmentKey = upload.key;
+
+        if (attachmentKey.length > 1024) {
           throw new Error('Attachment key is invalid or too long (max 1024 chars)');
         }
+        setUploadProgress(null);
       }
 
       const requestBody = {
@@ -209,6 +274,7 @@ export default function SupportPage() {
         description: error instanceof Error ? error.message : 'Please try again in a moment.',
       });
     } finally {
+      setUploadProgress(null);
       setIsSubmitting(false);
     }
   };
@@ -392,12 +458,16 @@ export default function SupportPage() {
                             </button>
                           </div>
                           {attachmentType === 'video' ? (
-                            <video src={attachment} controls className="max-h-60 w-full rounded">
+                            <video
+                              src={attachmentUrl ?? undefined}
+                              controls
+                              className="max-h-60 w-full rounded"
+                            >
                               Your browser does not support video playback.
                             </video>
                           ) : (
                             <img
-                              src={attachment}
+                              src={attachmentUrl ?? undefined}
                               alt="Attachment preview"
                               className="max-h-60 w-full rounded object-contain"
                             />
@@ -415,7 +485,7 @@ export default function SupportPage() {
                               Click to upload
                             </span>
                             <span className="mt-1 block text-xs text-muted-foreground">
-                              Images or videos
+                              Images or videos, up to 5 GiB
                             </span>
                           </span>
                         </button>
@@ -428,7 +498,11 @@ export default function SupportPage() {
                       className="w-full min-h-12 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 text-sm sm:text-base"
                     >
                       <Send size={18} aria-hidden="true" />
-                      {isSubmitting ? 'Sending...' : 'Send Message'}
+                      {isSubmitting
+                        ? uploadProgress === null
+                          ? 'Sending...'
+                          : `Uploading attachment ${uploadProgress}%`
+                        : 'Send Message'}
                     </button>
                   </form>
                 </div>

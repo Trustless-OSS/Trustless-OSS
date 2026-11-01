@@ -66,9 +66,10 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(15_000),
     });
 
-    const data = (await res.json().catch(() => null)) as
-      | { success?: boolean; error?: string }
-      | null;
+    const data = (await res.json().catch(() => null)) as {
+      success?: boolean;
+      error?: string;
+    } | null;
     if (!res.ok || !data?.success) {
       return NextResponse.json(
         { error: data?.error ?? 'Could not save to the waitlist. Please try again.' },

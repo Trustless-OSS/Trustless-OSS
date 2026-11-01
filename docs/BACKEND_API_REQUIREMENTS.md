@@ -77,6 +77,24 @@ Response envelope:
 
 ## 3. Already available (do not duplicate)
 
+### Direct support attachment uploads
+
+The support form requests a signed storage upload with `POST /api/v1/upload`, sending the
+Supabase bearer token and JSON `{ contentType, size, folder: "trustless-oss" }`. It then sends
+the raw file body with `PUT` to the returned `upload_url`, applying the returned `headers`
+without changing their values. The resulting `key` is submitted as `attachmentKey` when the
+support ticket is created. The browser never sends its bearer token to storage.
+
+Configure the storage bucket CORS policy to allow `PUT` from every deployed frontend origin
+(including local development origins) and allow the signed request headers returned by the
+upload API. The upload accepts files from 1 byte through 5 GiB.
+
+| Method | Path | Used by |
+| --- | --- | --- |
+| `POST` | `/api/v1/upload` | Support attachment presigned URL |
+
+### Existing application routes
+
 These are implemented on Toss Backend and already called by this app.
 
 | Method | Path | Used by |

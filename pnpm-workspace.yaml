@@ -8,6 +8,7 @@ overrides:
   ws: ">=8.21.0"
   undici: ">=8.12.2"
   toml: "^5.0.1"
+  follow-redirects: ">=1.16.2"
 
 # zod <4.6.6 (GHSA-mrhx-c7xc-m3w5): false positive — abitype declares zod as an
 # optional peer with range ^3 || ^4, but the tree only ever resolves zod 3.x,

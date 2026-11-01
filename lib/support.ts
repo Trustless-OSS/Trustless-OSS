@@ -11,19 +11,6 @@ export const SUPPORT_CATEGORIES = [
 
 export type SupportCategory = (typeof SUPPORT_CATEGORIES)[number]['value'];
 
-export interface SupportRequest {
-  org?: string;
-  category: SupportCategory;
-  subject: string;
-  message: string;
-  attachment?: string;
-}
-
-export interface StoredSupportRequest extends SupportRequest {
-  id: string;
-  timestamp: string;
-}
-
 export function isSupportCategory(value: string): value is SupportCategory {
   return SUPPORT_CATEGORIES.some((category) => category.value === value);
 }

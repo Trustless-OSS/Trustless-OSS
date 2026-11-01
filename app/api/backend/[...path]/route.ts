@@ -11,7 +11,6 @@ const PROXY_ATTEMPTS = 3;
 const HOP_BY_HOP = new Set([
   'connection',
   'content-encoding',
-  'content-length',
   'host',
   'keep-alive',
   'proxy-authenticate',
