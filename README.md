@@ -193,6 +193,10 @@ Public `NEXT_PUBLIC_*` values are included in the browser bundle. Never place pr
 | `pnpm typecheck`     | Check TypeScript without emitting files                 |
 | `pnpm format:check`  | Check TypeScript and TSX formatting                     |
 | `pnpm audit`         | Fail on high or critical dependency advisories          |
-| `pnpm check`         | Run format, lint, typecheck, tests, and audit           |
+| `make check`         | Run formatting, lint, types, tests, build, and audit    |
+
+Run `make check` before committing. It performs the full verification without
+rewriting source files and stops as soon as a check fails. Run `make` to see
+the individual Makefile commands.
 
 Commands used in GitHub issue comments are documented separately in the [bot command guide](docs/BOT_COMMANDS.md).
