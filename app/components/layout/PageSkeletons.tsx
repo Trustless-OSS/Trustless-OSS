@@ -84,19 +84,18 @@ export function DashboardPageSkeleton() {
   return (
     <div className="w-full" aria-busy="true" aria-live="polite">
       <ScreenReaderStatus label="Loading dashboard" />
-      <div className="mb-10 flex flex-col justify-between gap-7 md:mb-14 md:flex-row md:items-end">
+      <div className="mb-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-end md:mb-14">
         <div className="space-y-3">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-12 w-56 sm:h-14" />
         </div>
-        <div className="flex w-full gap-3 sm:w-auto">
-          <Skeleton className="h-12 w-full rounded-md sm:w-44" />
-          <Skeleton className="h-12 w-full rounded-md sm:w-40" />
-          <Skeleton className="h-12 w-full rounded-md sm:w-36" />
+        <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
+          <Skeleton className="h-10 w-full rounded-md sm:w-36" />
+          <Skeleton className="h-10 w-full rounded-md sm:w-32" />
         </div>
       </div>
-      <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-3xl">
+      <div className="mb-6 grid gap-4 xl:grid-cols-12">
+        <Card className="rounded-3xl xl:col-span-7">
           <CardHeader className="space-y-4">
             <Skeleton className="h-3 w-28" />
             <Skeleton className="h-8 w-40" />
@@ -105,7 +104,7 @@ export function DashboardPageSkeleton() {
             <Skeleton className="h-2 w-full rounded-full" />
           </CardHeader>
         </Card>
-        <div className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:col-span-5">
           <Card className="rounded-3xl">
             <CardHeader className="flex-row justify-between">
               <div className="flex-1 space-y-3">
@@ -124,6 +123,7 @@ export function DashboardPageSkeleton() {
               <Skeleton className="h-10 w-10 rounded-md" />
             </CardHeader>
           </Card>
+          <Skeleton className="h-24 rounded-3xl sm:col-span-2" />
         </div>
       </div>
       <Card className="rounded-3xl">

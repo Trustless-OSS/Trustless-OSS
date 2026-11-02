@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { RepoChartPoint } from './activity';
 
@@ -48,6 +49,7 @@ function RewardedTooltip({
 }
 
 export default function RepoFundsChart({ points }: { points: RepoChartPoint[] }) {
+  const isCompact = useCompactRepoChart();
   if (points.length === 0) return null;
 
   const chartPoints = points;
@@ -57,7 +59,7 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
     <div
       role="group"
       aria-label="Repository locked and released funds"
-      className="w-full min-w-0 overflow-hidden rounded-xl bg-muted/20"
+      className="w-full min-w-0 overflow-hidden rounded-2xl bg-muted/25 p-1"
       style={{ height: chartHeight }}
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -67,6 +69,16 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
           accessibilityLayer
           margin={{ top: 8, right: 16, left: 4, bottom: 8 }}
         >
+          <defs>
+            <linearGradient id="repoReleasedFill" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#7c3aed" />
+              <stop offset="100%" stopColor="#a78bfa" />
+            </linearGradient>
+            <linearGradient id="repoLockedFill" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#1d4ed8" />
+              <stop offset="100%" stopColor="#60a5fa" />
+            </linearGradient>
+          </defs>
           <CartesianGrid vertical stroke="var(--border)" strokeDasharray="4 5" />
           <XAxis
             type="number"
@@ -79,20 +91,29 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
           <YAxis
             type="category"
             dataKey="name"
-            width={96}
-            tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            width={isCompact ? 68 : 96}
+            tick={{ fontSize: isCompact ? 9 : 11, fill: 'var(--muted-foreground)' }}
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(name: string) => (name.length > 14 ? `${name.slice(0, 13)}…` : name)}
+            tickFormatter={(name: string) => {
+              const limit = isCompact ? 9 : 14;
+              return name.length > limit ? `${name.slice(0, limit - 1)}…` : name;
+            }}
           />
           <Tooltip content={<FundsTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.45 }} />
-          <Bar dataKey="released" name="Released" stackId="funds" fill="#8b5cf6" maxBarSize={26} />
+          <Bar
+            dataKey="released"
+            name="Released"
+            stackId="funds"
+            fill="url(#repoReleasedFill)"
+            maxBarSize={26}
+          />
           <Bar
             dataKey="remaining"
             name="Still locked"
             stackId="funds"
-            fill="#3b82f6"
+            fill="url(#repoLockedFill)"
             radius={[0, 6, 6, 0]}
             maxBarSize={26}
           />
@@ -103,6 +124,7 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
 }
 
 export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
+  const isCompact = useCompactRepoChart();
   if (points.length === 0) return null;
 
   const chartPoints = points;
@@ -112,7 +134,7 @@ export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
     <div
       role="group"
       aria-label="Rewarded issues by repository"
-      className="w-full min-w-0 overflow-hidden rounded-xl bg-muted/20"
+      className="w-full min-w-0 overflow-hidden rounded-2xl bg-muted/25 p-1"
       style={{ height: chartHeight }}
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -122,6 +144,12 @@ export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
           accessibilityLayer
           margin={{ top: 8, right: 16, left: 4, bottom: 8 }}
         >
+          <defs>
+            <linearGradient id="repoRewardedFill" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#059669" />
+              <stop offset="100%" stopColor="#34d399" />
+            </linearGradient>
+          </defs>
           <CartesianGrid vertical stroke="var(--border)" strokeDasharray="4 5" />
           <XAxis
             type="number"
@@ -134,18 +162,21 @@ export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
           <YAxis
             type="category"
             dataKey="name"
-            width={96}
-            tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+            width={isCompact ? 68 : 96}
+            tick={{ fontSize: isCompact ? 9 : 11, fill: 'var(--muted-foreground)' }}
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(name: string) => (name.length > 14 ? `${name.slice(0, 13)}…` : name)}
+            tickFormatter={(name: string) => {
+              const limit = isCompact ? 9 : 14;
+              return name.length > limit ? `${name.slice(0, limit - 1)}…` : name;
+            }}
           />
           <Tooltip content={<RewardedTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.45 }} />
           <Bar
             dataKey="rewarded"
             name="Explore Bounties"
-            fill="#10b981"
+            fill="url(#repoRewardedFill)"
             radius={[0, 6, 6, 0]}
             maxBarSize={26}
           />
@@ -153,4 +184,20 @@ export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
       </ResponsiveContainer>
     </div>
   );
+}
+
+function useCompactRepoChart() {
+  const [isCompact, setIsCompact] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+
+    const media = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsCompact(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return isCompact;
 }

@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Gift, GitBranch } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import RepoFundsChart, { RepoRewardedChart } from '@/app/components/dashboard/RepoFundsChart';
 import { fetchDashboardRepos } from '@/lib/dashboard-api';
 import type { RepoChartPoint } from './activity';
+import styles from './dashboard.module.css';
 
 export default function MaintainerActivity() {
   const [chartPoints, setChartPoints] = useState<RepoChartPoint[] | null>(null);
@@ -32,18 +34,38 @@ export default function MaintainerActivity() {
   const rewardedPoints = (chartPoints ?? []).filter((point) => point.rewarded > 0);
 
   return (
-    <section className="mt-6" aria-label="Repository funds">
+    <section className="mt-10" aria-labelledby="repository-insights-title">
+      <div className={styles.sectionIntro}>
+        <div>
+          <p className={styles.sectionEyebrow}>Repository intelligence</p>
+          <h2 id="repository-insights-title" className={styles.sectionTitle}>
+            Portfolio insights
+          </h2>
+        </div>
+        <p className={styles.sectionDescription}>
+          See which repositories are carrying locked capital and where rewards are creating
+          momentum.
+        </p>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="font-display text-xl font-extrabold tracking-tight">
-              Repository funds
-            </CardTitle>
-            <CardDescription>
-              Locked escrow versus released payouts for every repository under this maintainer.
-            </CardDescription>
+        <Card className={`${styles.chartCard} ${styles.revealCard}`}>
+          <CardHeader className="border-b border-border/70">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="font-display text-xl font-extrabold tracking-tight">
+                  Repository funds
+                </CardTitle>
+                <CardDescription className="mt-1.5">
+                  Locked escrow versus released payouts for every connected repository.
+                </CardDescription>
+              </div>
+              <span className={styles.metricIcon}>
+                <GitBranch aria-hidden="true" />
+              </span>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-5">
             {chartPoints === null && !error ? (
               <Skeleton className="h-64 w-full" />
             ) : error ? (
@@ -73,14 +95,23 @@ export default function MaintainerActivity() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl">
-          <CardHeader>
-            <CardTitle className="font-display text-xl font-extrabold tracking-tight">
-              Explore Bounties
-            </CardTitle>
-            <CardDescription>Issues marked rewarded in each repository.</CardDescription>
+        <Card className={`${styles.chartCard} ${styles.revealCard} ${styles.delayOne}`}>
+          <CardHeader className="border-b border-border/70">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="font-display text-xl font-extrabold tracking-tight">
+                  Explore Bounties
+                </CardTitle>
+                <CardDescription className="mt-1.5">
+                  Rewarded issues and bounty momentum by repository.
+                </CardDescription>
+              </div>
+              <span className={styles.metricIcon}>
+                <Gift aria-hidden="true" />
+              </span>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-5">
             {chartPoints === null && !error ? (
               <Skeleton className="h-64 w-full" />
             ) : error ? (

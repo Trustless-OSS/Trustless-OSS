@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 import { DOCS_URL } from './lib/links';
 
 const nextConfig: NextConfig = {
+  experimental: {
+    useTypeScriptCli: false,
+  },
   allowedDevOrigins: ['192.168.1.9'],
   images: {
     remotePatterns: [

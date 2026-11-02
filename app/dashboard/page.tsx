@@ -20,14 +20,14 @@ export default async function DashboardPage(props: DashboardProps) {
 
   return (
     <div className="w-full">
-      <div className="relative mb-10 flex flex-col justify-between gap-7 md:mb-14 md:flex-row md:items-end">
-        <div className="max-w-5xl">
+      <header className="mb-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-end md:mb-14">
+        <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">Overview</p>
           <h1 className="font-display mt-2 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl">
             Dashboard
           </h1>
         </div>
-        <div className="animate-hero-in hero-stagger-5 grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
+        <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
           <Button href="/dashboard/repos" variant="outline" className="w-full justify-center">
             <GitBranch className="h-5 w-5 text-primary" strokeWidth={2.5} aria-hidden="true" />
             Repositories
@@ -45,7 +45,7 @@ export default async function DashboardPage(props: DashboardProps) {
             Activity
           </Button>
         </div>
-      </div>
+      </header>
 
       <DashboardMetrics />
 

@@ -1,16 +1,19 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowUpRight, Ban, Layers, Lock, Tag, Unlock, UserMinus, UserPlus } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  ArrowUpRight,
+  Ban,
+  Inbox,
+  Layers,
+  Lock,
+  Tag,
+  Unlock,
+  UserMinus,
+  UserPlus,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -168,6 +171,7 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
   const [page, setPage] = useState(1);
   const filtered = useMemo(() => filterActivity(activity, filter), [activity, filter]);
   const paged = useMemo(() => paginateItems(filtered, page, TX_PAGE_SIZE), [filtered, page]);
+  const selectedFilter = ACTIVITY_FILTERS.find((item) => item.value === filter)?.label ?? 'All';
 
   const loading = rows == null && fetched.loading;
   const error = rows == null ? fetched.error : null;
@@ -179,20 +183,33 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
         setFilter(value as ActivityFilter);
         setPage(1);
       }}
-      className="gap-0"
+      className="min-w-0 gap-0"
     >
-      <Card className="overflow-visible rounded-3xl py-0">
-        <CardHeader className="border-b border-border/70 pt-6">
-          <CardTitle className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
-            Activity
-          </CardTitle>
-          <CardDescription className="text-sm sm:text-base">
-            Newest first, with GitHub issues and Stellar transaction links.
-          </CardDescription>
-          <CardAction className="max-sm:col-span-full max-sm:mt-2 max-sm:justify-self-start">
+      <Card className="animate-hero-in min-w-0 overflow-hidden rounded-3xl border-border/70 py-0 shadow-sm">
+        <CardHeader className="block border-b border-border/70 px-4 pt-5 sm:px-6 sm:pt-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <CardTitle className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
+                Activity
+              </CardTitle>
+              <CardDescription className="mt-1.5 max-w-2xl text-sm leading-6 sm:text-base">
+                Newest first, with GitHub issues and Stellar transaction links.
+              </CardDescription>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge variant="outline" className="h-auto rounded-full px-3 py-1.5 text-xs">
+                {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
+              </Badge>
+              <Badge className="h-auto rounded-full bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/10">
+                {selectedFilter}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="mt-5 min-w-0 overflow-x-auto pb-1 [scrollbar-width:thin]">
             <TabsList
               aria-label="Filter activity"
-              className="h-auto w-fit max-w-full flex-wrap gap-0.5 rounded-xl p-1 group-data-horizontal/tabs:h-auto"
+              className="h-auto min-w-max justify-start gap-1 rounded-xl p-1 group-data-horizontal/tabs:h-auto"
             >
               {ACTIVITY_FILTERS.map((item) => {
                 const Icon = FILTER_ICONS[item.value];
@@ -204,7 +221,7 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
                       setFilter(item.value);
                       setPage(1);
                     }}
-                    className="h-8 shrink-0 gap-1 px-2.5 py-1 text-xs font-semibold sm:text-sm"
+                    className="h-9 shrink-0 flex-none gap-1.5 px-3 py-1 text-xs font-semibold sm:text-sm"
                   >
                     <Icon className="size-3.5" aria-hidden="true" />
                     {item.label}
@@ -212,7 +229,7 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
                 );
               })}
             </TabsList>
-          </CardAction>
+          </div>
         </CardHeader>
         <CardContent className="px-0 pb-0">
           {error ? (
@@ -228,10 +245,19 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
               </p>
             </div>
           ) : paged.items.length === 0 ? (
-            <div className="flex min-h-[400px] items-center justify-center">
-              <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
-                No activity in this filter.
-              </p>
+            <div className="flex min-h-[360px] items-center justify-center px-6 py-16">
+              <div className="max-w-sm text-center">
+                <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                  <Inbox className="size-6" aria-hidden="true" />
+                </span>
+                <p className="mt-5 text-base font-bold text-foreground">
+                  No {selectedFilter.toLowerCase()} activity yet
+                </p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Events matching this filter will appear here as repository rewards move through
+                  the workflow.
+                </p>
+              </div>
             </div>
           ) : (
             <>
@@ -272,8 +298,8 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
               </div>
 
               <Table
-                className="hidden table-fixed text-base md:table"
-                containerClassName="hidden overflow-x-hidden md:block"
+                className="hidden min-w-[960px] table-fixed text-sm md:table lg:text-base"
+                containerClassName="hidden overflow-x-auto md:block"
               >
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
