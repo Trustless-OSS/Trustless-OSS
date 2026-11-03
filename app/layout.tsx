@@ -86,6 +86,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="page-aurora-two" />
               <span className="page-aurora-three" />
             </div>
+            <div className="page-symbols" aria-hidden="true">
+              <span className="page-symbol page-symbol-usdc page-symbol-one" />
+              <span className="page-symbol page-symbol-logo page-symbol-two" />
+              <span className="page-symbol page-symbol-usdc page-symbol-three" />
+              <span className="page-symbol page-symbol-logo page-symbol-four" />
+              <span className="page-symbol page-symbol-usdc page-symbol-five" />
+            </div>
             <div className="relative z-10 flex min-h-screen flex-col">
               {children}
               <Footer />

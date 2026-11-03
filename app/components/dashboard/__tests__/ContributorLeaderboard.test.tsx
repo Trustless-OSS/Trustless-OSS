@@ -41,14 +41,25 @@ describe('ContributorLeaderboard', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('link', { name: /on GitHub/ }).length).toBeGreaterThan(0)
     );
-    const repoLinks = screen.getAllByRole('link', { name: /trustless-oss/ });
+    const repoLinks = screen.getAllByRole('link', { name: 'contracts' });
     expect(repoLinks.length).toBeGreaterThan(0);
+    expect(repoLinks[0]).toHaveAttribute('href', 'https://github.com/trustless-oss/contracts');
   });
 
   it('renders provided entries without fetching', () => {
     render(<ContributorLeaderboard entries={[entry({ rank: 1 })]} />);
 
     expect(fetchPublicLeaderboard).not.toHaveBeenCalled();
-    expect(screen.getAllByRole('link', { name: /trustless-oss/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'contracts' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('article')).toHaveTextContent('220');
+    expect(screen.getByRole('article')).toHaveTextContent('1 merged');
+  });
+
+  it('keeps an empty result at a readable height', () => {
+    render(<ContributorLeaderboard entries={[]} />);
+
+    expect(screen.getByText('No contributors yet')).toBeInTheDocument();
+    expect(screen.getByText('No contributors yet').parentElement).toHaveClass('min-h-[320px]');
   });
 });

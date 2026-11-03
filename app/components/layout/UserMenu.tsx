@@ -167,9 +167,10 @@ export default function UserMenu({ user }: { user: User }) {
             Network
           </DropdownMenuLabel>
           <DropdownMenuGroup>
-            {NETWORKS.map(({ value, label }) => (
+            {NETWORKS.map(({ value, label, disabled }) => (
               <DropdownMenuItem
                 key={value}
+                disabled={disabled}
                 onSelect={() => setNetwork(value)}
                 className="justify-between"
               >

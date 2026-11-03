@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Fragment } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/app/components/layout/Navbar';
@@ -76,11 +77,8 @@ export default async function LeaderboardPage(props: LeaderboardPageProps) {
           {/* Header and Search in same row */}
           <div className="mb-8 flex flex-col items-start justify-between gap-4 md:mb-10 md:flex-row md:items-center">
             <div className="min-w-0">
-              <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
-                Across every repository
-              </p>
-              <h1 className="font-display mt-3 text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl">
-                Contributor leaderboard
+              <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl">
+                Leaderboard
               </h1>
             </div>
             <div className="w-full md:w-auto">
@@ -123,9 +121,9 @@ function LeaderboardPagination({
   query: string;
   sort: LeaderboardSort;
 }) {
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-  const showEllipsis = totalPages > 10;
-  const displayPages = showEllipsis ? pages.slice(0, 9) : pages;
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
+    (number) => number === 1 || number === totalPages || Math.abs(number - page) <= 1
+  );
 
   return (
     <Pagination className="mt-8">
@@ -138,22 +136,23 @@ function LeaderboardPagination({
           )}
         </PaginationItem>
 
-        {displayPages.map((num) => (
-          <PaginationItem key={num}>
-            <PaginationLink
-              href={leaderboardPageHref(num, { q: query, sort })}
-              isActive={num === page}
-            >
-              {num}
-            </PaginationLink>
-          </PaginationItem>
+        {pages.map((num, index) => (
+          <Fragment key={num}>
+            {index > 0 && num - pages[index - 1] > 1 ? (
+              <PaginationItem>
+                <PaginationEllipsis />
+              </PaginationItem>
+            ) : null}
+            <PaginationItem>
+              <PaginationLink
+                href={leaderboardPageHref(num, { q: query, sort })}
+                isActive={num === page}
+              >
+                {num}
+              </PaginationLink>
+            </PaginationItem>
+          </Fragment>
         ))}
-
-        {showEllipsis && totalPages > 10 && (
-          <PaginationItem>
-            <PaginationEllipsis />
-          </PaginationItem>
-        )}
 
         <PaginationItem>
           {page < totalPages ? (

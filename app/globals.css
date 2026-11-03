@@ -630,6 +630,111 @@ html {
   overflow: hidden;
 }
 
+.page-symbols {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.page-symbol {
+  position: absolute;
+  display: block;
+  width: clamp(3.5rem, 6vw, 6rem);
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.18;
+  animation: page-symbol-float var(--float-time, 20s) ease-in-out infinite;
+  will-change: transform;
+}
+
+.page-symbol-usdc {
+  background-image: url('/usd-coin-usdc-logo.svg');
+}
+.page-symbol-logo {
+  background-image: url('/toss-logo.png');
+}
+.page-symbol-one {
+  top: 12%;
+  left: 4%;
+  --float-x: 70px;
+  --float-y: 42px;
+  --float-time: 19s;
+  animation-delay: -2s;
+}
+.page-symbol-two {
+  top: 19%;
+  right: 7%;
+  --float-x: -64px;
+  --float-y: 58px;
+  --float-time: 24s;
+  animation-delay: -9s;
+}
+.page-symbol-three {
+  top: 53%;
+  left: 14%;
+  --float-x: 88px;
+  --float-y: -60px;
+  --float-time: 22s;
+  animation-delay: -13s;
+}
+.page-symbol-four {
+  bottom: 12%;
+  right: 17%;
+  --float-x: -76px;
+  --float-y: -55px;
+  --float-time: 27s;
+  animation-delay: -5s;
+}
+.page-symbol-five {
+  bottom: 7%;
+  left: 43%;
+  --float-x: 56px;
+  --float-y: -75px;
+  --float-time: 21s;
+  animation-delay: -16s;
+}
+
+.dark .page-symbol {
+  opacity: 0.2;
+}
+
+@keyframes page-symbol-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-12deg);
+  }
+  25% {
+    transform: translate3d(calc(var(--float-x) * 0.55), calc(var(--float-y) * -0.4), 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(var(--float-x), var(--float-y), 0) rotate(12deg);
+  }
+  75% {
+    transform: translate3d(calc(var(--float-x) * 0.25), calc(var(--float-y) * 0.8), 0) rotate(2deg);
+  }
+}
+
+@media (max-width: 639px) {
+  .page-symbol-three,
+  .page-symbol-five {
+    display: none;
+  }
+  .page-symbol {
+    opacity: 0.12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-symbol {
+    animation: none;
+    will-change: auto;
+  }
+}
+
 .page-aurora span {
   position: absolute;
   border-radius: 9999px;

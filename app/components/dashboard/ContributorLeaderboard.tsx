@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, GitMerge, GitPullRequest, Trophy } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, GitMerge, GitPullRequest, Inbox, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -78,6 +78,22 @@ function PodiumCard({ entry }: { entry: LeaderboardEntry }) {
   );
 }
 
+function RepositoryLink({ repo }: { repo?: string }) {
+  if (!repo) return <span className="text-muted-foreground">—</span>;
+  return (
+    <a
+      href={`https://github.com/${repo}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={repo}
+      className="inline-flex max-w-full items-center gap-1 font-semibold text-primary hover:underline"
+    >
+      <span className="truncate">{repo.split('/').at(-1)}</span>
+      <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
+    </a>
+  );
+}
+
 export type ContributorLeaderboardProps = {
   /** List of already-paginated entries to display in the table. */
   entries?: LeaderboardEntry[];
@@ -140,99 +156,129 @@ export default function ContributorLeaderboard({
         </section>
       ) : null}
 
-      <Card className="escrow-event-log-feed overflow-hidden rounded-xl py-0">
+      <Card className="escrow-event-log-feed min-w-0 overflow-hidden rounded-xl border-border/70 py-0 shadow-sm">
         <CardContent className="px-0 pb-0">
           {error ? (
-            <p className="px-6 py-16 text-center text-base font-semibold text-destructive">
+            <div className="flex min-h-[320px] items-center justify-center px-6 py-12 text-center text-sm font-semibold text-destructive">
               {error}
-            </p>
+            </div>
           ) : !entries && fetched == null ? (
-            <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
+            <div className="flex min-h-[320px] items-center justify-center px-6 py-12 text-center text-sm text-muted-foreground">
               Loading leaderboard…
-            </p>
+            </div>
           ) : leaderboard.length === 0 ? (
-            <p className="px-6 py-16 text-center text-base font-semibold text-muted-foreground">
-              No contributors yet.
-            </p>
+            <div className="flex min-h-[320px] flex-col items-center justify-center px-6 py-12 text-center">
+              <span className="flex size-14 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+                <Inbox className="size-6" aria-hidden="true" />
+              </span>
+              <p className="mt-4 text-base font-bold">No contributors yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Rankings will appear here.</p>
+            </div>
           ) : (
-            <Table className="text-base">
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Rank
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Contributor
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Earned
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Merged PRs
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Assigned
-                  </TableHead>
-                  <TableHead className="h-14 px-6 text-sm font-semibold tracking-wide text-muted-foreground">
-                    Top Repository
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="divide-y divide-border/70 lg:hidden">
                 {visible.map((entry) => (
-                  <TableRow key={entry.name} className="hover:bg-muted/40">
-                    <TableCell className="px-6 py-5">
-                      <RankBadge rank={entry.rank} />
-                    </TableCell>
-                    <TableCell className="px-6 py-5">
-                      <GithubUserLink name={entry.name} size="lg" className="text-lg" />
-                    </TableCell>
-                    <TableCell className="px-6 py-5 font-mono text-lg font-black tracking-tight">
-                      {formatUsdc(entry.earnedUsdc)}
-                    </TableCell>
-                    <TableCell className="px-6 py-5">
-                      <span className="inline-flex items-center gap-2 font-semibold">
-                        <GitMerge className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                        {entry.mergedPrs}
+                  <article key={entry.name} className="space-y-3 px-4 py-4 sm:px-6">
+                    <div className="flex min-w-0 items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <RankBadge rank={entry.rank} />
+                        <GithubUserLink name={entry.name} compact className="min-w-0" />
+                      </div>
+                      <span className="shrink-0 font-mono text-sm font-black tabular-nums sm:text-base">
+                        {formatUsdc(entry.earnedUsdc)}
                       </span>
-                    </TableCell>
-                    <TableCell className="px-6 py-5">
-                      <span className="inline-flex items-center gap-2 font-semibold">
-                        <GitPullRequest
-                          className="h-4 w-4 text-muted-foreground"
-                          aria-hidden="true"
-                        />
-                        {entry.assigned}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5" title="Merged PRs">
+                        <GitMerge className="size-3.5" aria-hidden="true" />
+                        <span className="font-semibold text-foreground">
+                          {entry.mergedPrs}
+                        </span>{' '}
+                        merged
                       </span>
-                    </TableCell>
-                    <TableCell className="px-6 py-5">
-                      {entry.repos.length > 0 ? (
-                        <a
-                          href={`https://github.com/${entry.repos[0]}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline font-semibold"
-                        >
-                          {entry.repos[0]}
-                        </a>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
+                      <span className="inline-flex items-center gap-1.5" title="Assigned">
+                        <GitPullRequest className="size-3.5" aria-hidden="true" />
+                        <span className="font-semibold text-foreground">{entry.assigned}</span>{' '}
+                        assigned
+                      </span>
+                      <span className="ml-auto min-w-0 max-w-full">
+                        <RepositoryLink repo={entry.repos[0]} />
+                      </span>
+                    </div>
+                  </article>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              <Table
+                className="hidden table-fixed text-sm lg:table"
+                containerClassName="hidden lg:block"
+              >
+                <TableHeader>
+                  <TableRow className="bg-muted/35 hover:bg-muted/35">
+                    <TableHead className="h-11 w-[9%] px-5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Rank
+                    </TableHead>
+                    <TableHead className="h-11 w-[28%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Contributor
+                    </TableHead>
+                    <TableHead className="h-11 w-[16%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Earned
+                    </TableHead>
+                    <TableHead className="h-11 w-[14%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Merged PRs
+                    </TableHead>
+                    <TableHead className="h-11 w-[13%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Assigned
+                    </TableHead>
+                    <TableHead className="h-11 w-[20%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Top Repository
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((entry) => (
+                    <TableRow key={entry.name} className="hover:bg-muted/25">
+                      <TableCell className="px-5 py-4">
+                        <RankBadge rank={entry.rank} />
+                      </TableCell>
+                      <TableCell className="min-w-0 px-4 py-4">
+                        <GithubUserLink name={entry.name} className="max-w-full" />
+                      </TableCell>
+                      <TableCell className="px-4 py-4 font-mono font-bold tabular-nums">
+                        {formatUsdc(entry.earnedUsdc)}
+                      </TableCell>
+                      <TableCell className="px-4 py-4 font-semibold tabular-nums">
+                        <span className="inline-flex items-center gap-1.5">
+                          <GitMerge className="size-4 text-muted-foreground" aria-hidden="true" />
+                          {entry.mergedPrs}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-4 py-4 font-semibold tabular-nums">
+                        <span className="inline-flex items-center gap-1.5">
+                          <GitPullRequest
+                            className="size-4 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                          {entry.assigned}
+                        </span>
+                      </TableCell>
+                      <TableCell className="min-w-0 px-4 py-4">
+                        <RepositoryLink repo={entry.repos[0]} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </>
           )}
 
           {hasMore && expandHref ? (
-            <div className="border-t border-border/70 px-6 py-5 flex justify-center">
+            <div className="flex justify-center border-t border-border/70 px-4 py-4 sm:px-6">
               <Link
                 href={expandHref}
-                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
               >
-                View full leaderboard
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                View full leaderboard <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </div>
           ) : null}

@@ -111,7 +111,15 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     render(PageJSX);
 
     const table = screen.getByRole('table');
-    for (const heading of ['Issue', 'Title', 'Level', 'Reward', 'Status', 'Contributor', 'Actions']) {
+    for (const heading of [
+      'Issue',
+      'Title',
+      'Level',
+      'Reward',
+      'Status',
+      'Contributor',
+      'Actions',
+    ]) {
       expect(within(table).getByRole('columnheader', { name: heading })).toBeInTheDocument();
     }
 

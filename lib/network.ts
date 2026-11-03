@@ -4,13 +4,12 @@ export type StellarNetwork = 'testnet' | 'mainnet';
 export const NETWORK_COOKIE = 'toss-network';
 export const DEFAULT_NETWORK: StellarNetwork = 'testnet';
 
-// Mainnet is only selectable when a mainnet backend is configured, so the UI never
-// pairs a mainnet wallet with a testnet backend.
-export const MAINNET_ENABLED = Boolean(process.env.NEXT_PUBLIC_BACKEND_URL_MAINNET);
+// Mainnet remains unavailable until the product is launched there.
+export const MAINNET_ENABLED = false;
 
-export const NETWORKS: { value: StellarNetwork; label: string }[] = [
-  { value: 'testnet', label: 'Testnet' },
-  ...(MAINNET_ENABLED ? [{ value: 'mainnet' as const, label: 'Mainnet' }] : []),
+export const NETWORKS: { value: StellarNetwork; label: string; disabled: boolean }[] = [
+  { value: 'testnet', label: 'Testnet', disabled: false },
+  { value: 'mainnet', label: 'Mainnet · Coming soon', disabled: true },
 ];
 
 export function parseNetwork(value: unknown): StellarNetwork {
@@ -26,6 +25,7 @@ export function getNetwork(): StellarNetwork {
 
 /** Persist the network and reload so every server/client fetch, wallet and Horizon switch together. */
 export function switchNetwork(next: StellarNetwork) {
+  if (next !== 'testnet') return;
   if (next === getNetwork()) return;
   document.cookie = `${NETWORK_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
   window.location.reload();

@@ -78,9 +78,10 @@ export default function AccountBar({ user }: { user: User }) {
             <DropdownMenuLabel className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               Network
             </DropdownMenuLabel>
-            {NETWORKS.map(({ value, label }) => (
+            {NETWORKS.map(({ value, label, disabled }) => (
               <DropdownMenuItem
                 key={value}
+                disabled={disabled}
                 onSelect={() => setNetwork(value)}
                 className="justify-between"
               >

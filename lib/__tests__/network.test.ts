@@ -13,19 +13,22 @@ afterEach(() => {
 });
 
 describe('network selection', () => {
-  it('hides mainnet and falls back to testnet when no mainnet backend is configured', async () => {
+  it('shows mainnet as disabled and falls back to testnet', async () => {
     const [net] = await load();
     document.cookie = 'toss-network=mainnet; path=/';
-    expect(net.NETWORKS.map((n) => n.value)).toEqual(['testnet']);
+    expect(net.NETWORKS).toEqual([
+      { value: 'testnet', label: 'Testnet', disabled: false },
+      { value: 'mainnet', label: 'Mainnet · Coming soon', disabled: true },
+    ]);
     expect(net.getNetwork()).toBe('testnet');
   });
 
-  it('routes to the mainnet backend when the cookie selects mainnet', async () => {
+  it('stays on testnet even when a mainnet backend is configured', async () => {
     const [net, backend] = await load('https://main.example.com/');
     document.cookie = 'toss-network=mainnet; path=/';
-    expect(net.getNetwork()).toBe('mainnet');
-    expect(backend.backendUrl('/repos')).toBe('https://main.example.com/api/v1/repos');
-    expect(net.stellarExpertNetwork()).toBe('public');
+    expect(net.getNetwork()).toBe('testnet');
+    expect(backend.backendUrl('/repos')).not.toBe('https://main.example.com/api/v1/repos');
+    expect(net.stellarExpertNetwork()).toBe('testnet');
   });
 
   it('ignores garbage cookie values', async () => {

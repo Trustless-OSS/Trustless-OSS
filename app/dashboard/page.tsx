@@ -32,11 +32,7 @@ export default async function DashboardPage(props: DashboardProps) {
             <SiGithub className="h-5 w-5 text-primary" aria-hidden="true" />
             Repositories
           </Button>
-          <Button
-            href="/dashboard/activity"
-            variant="outline"
-            className="w-full justify-center"
-          >
+          <Button href="/dashboard/activity" variant="outline" className="w-full justify-center">
             <ArrowLeftRight
               className="h-5 w-5 text-emerald-600 dark:text-emerald-400"
               strokeWidth={2.5}
