@@ -49,6 +49,8 @@ export default function RetryProcessButton({
     'paid',
     'released',
     'completed',
+    'merged',
+    'settled',
     'cancelled',
     'canceled',
     'rejected',
@@ -56,7 +58,8 @@ export default function RetryProcessButton({
   ].includes(normalized);
   const onChain = milestoneIndex !== null;
 
-  // Hide hold/reject for terminal bounties; hide hold when not pushed on-chain.
+  // Keep terminal actions visible as a disabled control; active bounties only
+  // offer Hold after the milestone has reached the chain.
   const actions = ACTIONS.filter((a) => {
     if (a.value === 'hold') return !isTerminal && onChain;
     if (a.value === 'reject') return !isTerminal;
@@ -114,13 +117,7 @@ export default function RetryProcessButton({
     setConfirm(null);
   }
 
-  if (done) {
-    return <span className="status-badge status-completed">RELEASED</span>;
-  }
-
-  if (isTerminal) return null;
-
-  const isDisabled = loading;
+  const isDisabled = loading || done || isTerminal;
 
   return (
     <>

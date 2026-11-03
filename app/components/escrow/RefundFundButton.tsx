@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowDownToLine, Check, X, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowDownToLine, Check, PenLine, X, Wallet } from 'lucide-react';
 import { handleError, notifySuccess } from '@/lib/notifications';
+import { getWalletKit } from '@/lib/wallet-kit';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createClient } from '@/lib/supabase/client';
 
 function formatUsdc(value: number) {
   return value.toLocaleString('en-US', {
@@ -50,6 +50,8 @@ function extractBackendMessage(raw: string): string {
   return raw;
 }
 
+type WalletSource = 'profile' | 'other';
+
 export default function RefundFundButton({
   repoId,
   token,
@@ -63,35 +65,54 @@ export default function RefundFundButton({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [wallet, setWallet] = useState('');
+  const [walletSource, setWalletSource] = useState<WalletSource>('other');
   const [profileWallet, setProfileWallet] = useState('');
+  const [otherWallet, setOtherWallet] = useState('');
 
   useEffect(() => {
+    let active = true;
     async function loadProfileWallet() {
       try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user?.user_metadata?.stellar_address) {
-          setProfileWallet(user.user_metadata.stellar_address);
+        const res = await fetch(backendUrl('/contributor/me'), {
+          headers: authHeaders(token, false),
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const contributor = json?.contributor ?? json?.data?.contributor;
+          const address = contributor?.stellar_wallet;
+          if (active && typeof address === 'string' && isValidStellarAddress(address)) {
+            setProfileWallet(address);
+            return;
+          }
         }
       } catch {
-        // Fail silently
+        // A browser wallet may still be connected if the profile request fails.
+      }
+      try {
+        const kit = await getWalletKit();
+        const { address } = await kit.getAddress();
+        if (active && isValidStellarAddress(address)) setProfileWallet(address);
+      } catch {
+        // The manual destination remains available if no wallet is selected.
       }
     }
-    loadProfileWallet();
-  }, []);
+    void loadProfileWallet();
+    return () => {
+      active = false;
+    };
+  }, [token]);
 
   const available = Math.max(0, currentBalance);
-  const activeWallet = wallet;
+  const activeWallet = walletSource === 'profile' ? profileWallet.trim() : otherWallet.trim();
   const isWalletValid = isValidStellarAddress(activeWallet);
   const canSubmit = isWalletValid;
 
   function openDialog() {
     setOpen(true);
     setError('');
-    setWallet(profileWallet || '');
+    setOtherWallet('');
+    setWalletSource(isValidStellarAddress(profileWallet) ? 'profile' : 'other');
   }
 
   function closeDialog(nextOpen: boolean) {
@@ -106,7 +127,7 @@ export default function RefundFundButton({
     setError('');
 
     if (!isWalletValid) {
-      setError('Enter a valid Stellar wallet address or use your profile wallet.');
+      setError('Choose a valid Stellar destination address.');
       return;
     }
 
@@ -180,7 +201,7 @@ export default function RefundFundButton({
 
       <DialogContent
         showCloseButton={false}
-        className="gap-0 overflow-hidden rounded-xl p-0 sm:max-w-md"
+        className="max-h-[calc(100dvh-1.5rem)] gap-0 overflow-y-auto rounded-xl p-0 sm:max-w-md"
         onPointerDownOutside={(event) => {
           if (loading) event.preventDefault();
         }}
@@ -239,10 +260,7 @@ export default function RefundFundButton({
           </div>
 
           {/* Full refund warning */}
-          <Alert
-            variant="destructive"
-            className="rounded-lg border-red-200 bg-red-50 text-red-900"
-          >
+          <Alert variant="destructive" className="rounded-lg border-red-200 bg-red-50 text-red-900">
             <AlertTriangle className="size-4 text-red-600" />
             <AlertDescription className="text-xs font-bold text-red-900">
               This cancels every active bounty and cannot be undone.
@@ -250,88 +268,103 @@ export default function RefundFundButton({
           </Alert>
 
           {/* ── DESTINATION WALLET ── */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             <Label className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-              Destination wallet
+              Withdraw to
             </Label>
-
-            {/* Use profile wallet chip - toggle to select/deselect */}
-            {profileWallet && (
-              <button
-                type="button"
-                onClick={() => {
-                  // Toggle: if already selected, deselect; otherwise select
-                  setWallet(wallet === profileWallet ? '' : profileWallet);
-                  setError('');
-                }}
-                disabled={loading}
-                className={`group flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 ${
-                  wallet === profileWallet
-                    ? 'border-primary bg-primary/5 ring-2 ring-primary/15'
-                    : 'border-border bg-card hover:border-primary/40 hover:shadow-sm'
-                }`}
-              >
-                <span
-                  className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition ${
-                    wallet === profileWallet
-                      ? 'bg-primary text-white'
-                      : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
+            <div role="radiogroup" aria-label="Withdrawal destination" className="space-y-2">
+              {isValidStellarAddress(profileWallet) && (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={walletSource === 'profile'}
+                  onClick={() => {
+                    setWalletSource('profile');
+                    setError('');
+                  }}
+                  disabled={loading}
+                  className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors disabled:opacity-50 ${
+                    walletSource === 'profile'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/15'
+                      : 'border-border bg-card hover:border-primary/40'
                   }`}
                 >
-                  <Wallet className="size-[18px]" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                    Profile wallet
-                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[0.6rem] font-bold tracking-wide text-emerald-700 uppercase dark:bg-emerald-500/15 dark:text-emerald-300">
-                      Linked
+                  <Wallet className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">Profile wallet</span>
+                    <span className="block truncate font-mono text-xs text-muted-foreground">
+                      {shortenAddress(profileWallet)}
                     </span>
                   </span>
-                  <span className="mt-0.5 block truncate font-mono text-xs text-muted-foreground">
-                    {shortenAddress(profileWallet)}
-                  </span>
-                </span>
-                {wallet === profileWallet && (
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary">
-                    <Check className="size-3 text-white" strokeWidth={3.5} aria-hidden="true" />
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Wallet address input */}
-            <div
-              className={`flex items-center gap-2 rounded-lg border bg-card px-3.5 py-2.5 transition-colors ${
-                wallet && !isValidStellarAddress(wallet)
-                  ? 'border-destructive ring-3 ring-destructive/20'
-                  : 'border-input focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/20'
-              }`}
-            >
-              <Input
-                type="text"
-                value={wallet}
-                disabled={loading}
-                placeholder="Paste Stellar address (G…)"
-                className="h-9 flex-1 border-0 bg-transparent px-0 font-mono text-sm shadow-none focus-visible:border-0 focus-visible:ring-0"
-                onChange={(event) => {
-                  setWallet(event.target.value.trim());
+                  {walletSource === 'profile' && (
+                    <Check className="size-4 text-primary" aria-hidden="true" />
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={walletSource === 'other'}
+                onClick={() => {
+                  setWalletSource('other');
                   setError('');
                 }}
-              />
-              {wallet && isValidStellarAddress(wallet) && (
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                  <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />
-                </span>
-              )}
+                disabled={loading}
+                className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors disabled:opacity-50 ${
+                  walletSource === 'other'
+                    ? 'border-primary bg-primary/5 ring-2 ring-primary/15'
+                    : 'border-border bg-card hover:border-primary/40'
+                }`}
+              >
+                <PenLine className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                <span className="flex-1 text-sm font-semibold">Other Stellar address</span>
+                {walletSource === 'other' && (
+                  <Check className="size-4 text-primary" aria-hidden="true" />
+                )}
+              </button>
             </div>
 
-            {wallet && !isValidStellarAddress(wallet) && (
-              <p className="text-xs font-medium text-destructive">
-                Invalid address. Must start with G and be 56 characters.
-              </p>
-            )}
-          </div>
+            {walletSource === 'other' ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="withdraw-address" className="text-xs font-semibold">
+                  Destination address
+                </Label>
+                <Input
+                  id="withdraw-address"
+                  type="text"
+                  value={otherWallet}
+                  disabled={loading}
+                  placeholder="Stellar address (G…)"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="font-mono text-sm"
+                  aria-invalid={Boolean(otherWallet) && !isValidStellarAddress(otherWallet)}
+                  onChange={(event) => {
+                    setOtherWallet(event.target.value.trim());
+                    setError('');
+                  }}
+                />
+                {otherWallet && !isValidStellarAddress(otherWallet) && (
+                  <p className="text-xs font-medium text-destructive">
+                    Enter a valid 56-character Stellar address starting with G.
+                  </p>
+                )}
+              </div>
+            ) : null}
 
+            {isWalletValid && (
+              <div className="rounded-lg bg-muted/40 p-3">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Destination to confirm
+                </p>
+                <p className="mt-1 break-all font-mono text-xs text-foreground">{activeWallet}</p>
+              </div>
+            )}
+            <p className="text-xs leading-5 text-muted-foreground">
+              The escrow verifies the recorded funder before sending a refund. Other addresses may
+              be rejected.
+            </p>
+          </div>
           {error ? (
             <Alert variant="destructive" className="rounded-lg">
               <AlertTriangle className="size-4" />

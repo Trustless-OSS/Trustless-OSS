@@ -119,15 +119,24 @@ describe('RetryProcessButton', () => {
     });
   });
 
-  it('hides actions for finished bounties', () => {
-    render(
-      <RetryProcessButton
-        issueId="issue-3"
-        token="test-token"
-        status="released"
-        milestoneIndex={0}
-      />
-    );
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-  });
+  it.each(['released', 'completed', 'settled', 'rejected'])(
+    'keeps actions disabled for %s bounties',
+    (status) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      render(
+        <RetryProcessButton
+          issueId="issue-3"
+          token="test-token"
+          status={status}
+          milestoneIndex={0}
+        />
+      );
+      const actions = screen.getByRole('combobox', { name: 'Bounty actions' });
+      expect(actions).toBeDisabled();
+      fireEvent.click(actions);
+      expect(screen.queryByRole('option', { name: 'Retry' })).not.toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
 });

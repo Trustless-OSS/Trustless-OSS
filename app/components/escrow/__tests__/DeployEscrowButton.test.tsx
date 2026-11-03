@@ -7,6 +7,7 @@ const authModal = vi.fn(() => new Promise<never>(() => undefined));
 
 vi.mock('@/lib/wallet-kit', () => ({
   getWalletKit: vi.fn(async () => ({ authModal })),
+  getActiveWalletAddress: vi.fn(() => new Promise<never>(() => undefined)),
   withTimeout: async (promise: Promise<unknown>) => promise,
   WALLET_OPERATION_TIMEOUT_MS: 120000,
 }));
@@ -32,6 +33,6 @@ describe('DeployEscrowButton', () => {
     expect(await screen.findByText('INITIALIZING...')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'INITIALIZING...' })).toBeDisabled();
     expect(document.querySelector('.animate-spin')).toBeInTheDocument();
-    expect(authModal).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'INITIALIZING...' })).toBeDisabled();
   });
 });

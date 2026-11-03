@@ -7,6 +7,24 @@ let walletKitNetwork: string | null = null;
 
 export const WALLET_OPERATION_TIMEOUT_MS = 120000;
 
+/** Reuse the wallet selected in Profile or another app flow when available. */
+export async function getActiveWalletAddress(): Promise<string> {
+  const kit = await getWalletKit();
+  try {
+    const { address } = await kit.getAddress();
+    if (address) return address;
+  } catch {
+    // No selected wallet in this browser yet.
+  }
+  const { address } = await withTimeout(
+    kit.authModal(),
+    WALLET_OPERATION_TIMEOUT_MS,
+    'Wallet authorization timed out. Close the wallet modal and try again.'
+  );
+  if (!address) throw new Error('No Stellar public key returned');
+  return address;
+}
+
 export async function getWalletKit(): Promise<WalletKit> {
   const network = getNetwork();
 

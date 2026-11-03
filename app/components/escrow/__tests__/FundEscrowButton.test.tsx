@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/wallet-kit', () => ({
   getWalletKit: vi.fn(),
+  getActiveWalletAddress: vi.fn(),
   withTimeout: async (promise: Promise<unknown>) => promise,
   WALLET_OPERATION_TIMEOUT_MS: 120000,
 }));
@@ -54,6 +55,9 @@ describe('FundEscrowButton', () => {
   });
 
   it('closes the fund dialog while the wallet modal is open so it stays clickable', async () => {
+    vi.mocked(walletKit.getActiveWalletAddress).mockImplementation(
+      () => new Promise(() => undefined)
+    );
     vi.mocked(walletKit.getWalletKit).mockResolvedValue({
       authModal: vi.fn(() => new Promise(() => undefined)),
       signTransaction: vi.fn(),
@@ -121,6 +125,7 @@ describe('FundEscrowButton', () => {
   });
 
   it('auto-closes the dialog after successful funding', async () => {
+    vi.mocked(walletKit.getActiveWalletAddress).mockResolvedValue('wallet-address');
     vi.mocked(walletKit.getWalletKit).mockResolvedValue({
       authModal: vi.fn().mockResolvedValue({ address: 'wallet-address' }),
       signTransaction: vi.fn().mockResolvedValue({ signedTxXdr: 'signed-xdr' }),

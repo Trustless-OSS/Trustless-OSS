@@ -112,6 +112,7 @@ async function apiGhLabels(repoId: string, token: string): Promise<GitHubLabel[]
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type Mode = 'view' | 'edit' | 'delete';
+const MAX_REWARD_LABELS = 8;
 
 export default function RewardSettingsForm({
   repoId,
@@ -224,6 +225,7 @@ export default function RewardSettingsForm({
   }, [open, loadGhLabels]);
 
   function openDialog() {
+    if (labels.length >= MAX_REWARD_LABELS) return;
     setMode('view');
     setTab('github');
     setGhLabel('');
@@ -234,6 +236,10 @@ export default function RewardSettingsForm({
   }
 
   async function submit() {
+    if (labels.length >= MAX_REWARD_LABELS) {
+      setError(`You can add up to ${MAX_REWARD_LABELS} reward labels.`);
+      return;
+    }
     const label = (tab === 'github' ? ghLabel : customLabel)
       .trim()
       .toLowerCase()
@@ -311,6 +317,12 @@ export default function RewardSettingsForm({
                 variant="outline"
                 size="sm"
                 onClick={openDialog}
+                disabled={labels.length >= MAX_REWARD_LABELS}
+                title={
+                  labels.length >= MAX_REWARD_LABELS
+                    ? `Maximum ${MAX_REWARD_LABELS} labels`
+                    : undefined
+                }
                 className="h-8 gap-1.5 rounded-lg border-dashed px-3 text-xs font-semibold text-muted-foreground hover:border-primary/50 hover:text-foreground"
               >
                 <Plus className="size-3.5" strokeWidth={2.5} />
@@ -378,7 +390,7 @@ export default function RewardSettingsForm({
       </div>
 
       {/* Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {labels.map((key, i) => {
           const isChecked = Boolean(checked[key]);
           return (

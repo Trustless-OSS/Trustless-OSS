@@ -4,7 +4,12 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, ExternalLink, Plus, X } from 'lucide-react';
-import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
+import {
+  getActiveWalletAddress,
+  getWalletKit,
+  withTimeout,
+  WALLET_OPERATION_TIMEOUT_MS,
+} from '@/lib/wallet-kit';
 import { handleError, notifySuccess } from '@/lib/notifications';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
@@ -127,12 +132,7 @@ export default function FundEscrowButton({
       // Close dialog so wallet extension can receive clicks
       setOpen(false);
 
-      const { address } = await withTimeout(
-        kit.authModal(),
-        WALLET_OPERATION_TIMEOUT_MS,
-        'Wallet authorization timed out. Please close the wallet modal and try again.'
-      );
-      if (!address) throw new Error('No public key returned');
+      const address = await getActiveWalletAddress();
 
       // Reopen dialog for transaction signing
       setOpen(true);

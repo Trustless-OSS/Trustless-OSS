@@ -41,6 +41,43 @@ afterEach(() => {
 });
 
 describe('RewardSettingsForm', () => {
+  it('allows an eighth label and then disables adding more', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (_url: string, options?: RequestInit) => ({
+      ok: true,
+      json: async () => [],
+      text: async () => '{}',
+      method: options?.method,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <RewardSettingsForm
+        {...defaultProps}
+        initialLevels={Array.from({ length: 7 }, (_, index) => ({
+          label: `level-${index + 1}`,
+          amount: index + 1,
+        }))}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Label' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Custom label' }));
+    fireEvent.change(within(dialog).getByLabelText('Label name'), {
+      target: { value: 'level-8' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Payout amount'), {
+      target: { value: '8' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Label' })).toBeDisabled());
+    expect(screen.getByText('level-8')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:5000/api/v1/repos/repo_123/rewards',
+      expect.objectContaining({ method: 'PUT' })
+    );
+  });
+
   it('renders each tier read-only with the top-level actions', () => {
     render(<RewardSettingsForm {...defaultProps} />);
 

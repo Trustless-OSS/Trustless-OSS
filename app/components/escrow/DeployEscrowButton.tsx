@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 import { Settings } from 'lucide-react';
-import { getWalletKit, withTimeout, WALLET_OPERATION_TIMEOUT_MS } from '@/lib/wallet-kit';
+import {
+  getActiveWalletAddress,
+  getWalletKit,
+  withTimeout,
+  WALLET_OPERATION_TIMEOUT_MS,
+} from '@/lib/wallet-kit';
 import { handleError, notifySuccess } from '@/lib/notifications';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
@@ -29,12 +34,7 @@ export default function DeployEscrowButton({
 
     try {
       const kit = await getWalletKit();
-      const { address } = await withTimeout(
-        kit.authModal(),
-        WALLET_OPERATION_TIMEOUT_MS,
-        'Wallet authorization timed out. Please close the wallet modal and try again.'
-      );
-      if (!address) throw new Error('No public key returned');
+      const address = await getActiveWalletAddress();
 
       const res1 = await fetch(backendUrl('/api/v1/escrow/create-unsigned'), {
         method: 'POST',
