@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, PauseCircle, RefreshCw, Send, X, XCircle } from 'lucide-react';
+import { PauseCircle, RefreshCw, X, XCircle } from 'lucide-react';
 import { notifySuccess, handleError, toast } from '@/lib/notifications';
 import {
   Select,
@@ -24,11 +24,9 @@ interface RetryProcessButtonProps {
 }
 
 // Each maintainer action maps to POST /api/v1/issues/{id}/<endpoint>.
-// `retry` is live today; the backend must implement the rest for them to succeed.
+// Keep the maintainer actions that are part of the bounty workflow.
 const ACTIONS = [
   { value: 'retry', label: 'Retry', endpoint: 'retry', icon: RefreshCw },
-  { value: 'release', label: 'Release', endpoint: 'release', icon: Send },
-  { value: 'approve', label: 'Approve', endpoint: 'approve', icon: CheckCircle2 },
   { value: 'hold', label: 'Hold', endpoint: 'hold', icon: PauseCircle },
   { value: 'reject', label: 'Reject', endpoint: 'reject', icon: XCircle },
 ] as const;
@@ -47,15 +45,22 @@ export default function RetryProcessButton({
   const router = useRouter();
 
   const normalized = status.trim().toLowerCase();
-  const isTerminal =
-    normalized === 'paid' || normalized === 'cancelled' || normalized === 'canceled';
+  const isTerminal = [
+    'paid',
+    'released',
+    'completed',
+    'cancelled',
+    'canceled',
+    'rejected',
+    'closed',
+  ].includes(normalized);
   const onChain = milestoneIndex !== null;
 
   // Hide hold/reject for terminal bounties; hide hold when not pushed on-chain.
   const actions = ACTIONS.filter((a) => {
     if (a.value === 'hold') return !isTerminal && onChain;
     if (a.value === 'reject') return !isTerminal;
-    return true;
+    return !isTerminal;
   });
 
   async function runAction(endpoint: string, label: string) {
@@ -92,7 +97,7 @@ export default function RetryProcessButton({
         const refunded = data.refundedAmount ?? '0';
         notifySuccess(`Bounty rejected. ${refunded} USDC returned to the escrow pool.`);
       } else {
-        if (data.step === 'released' || endpoint === 'release') setDone(true);
+        if (data.step === 'released') setDone(true);
         notifySuccess(`${label} triggered`, `The ${label.toLowerCase()} action was submitted.`);
       }
       setConfirm(null);
@@ -113,7 +118,9 @@ export default function RetryProcessButton({
     return <span className="status-badge status-completed">RELEASED</span>;
   }
 
-  const isDisabled = loading || normalized === 'completed' || isTerminal;
+  if (isTerminal) return null;
+
+  const isDisabled = loading;
 
   return (
     <>
@@ -168,7 +175,7 @@ export default function RetryProcessButton({
               <div className="p-6 sm:p-8">
                 <div className="flex items-start justify-between gap-4">
                   <span
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                    className={`flex h-12 w-12 items-center justify-center rounded-lg ${
                       confirm === 'reject' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'
                     }`}
                   >

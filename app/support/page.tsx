@@ -309,7 +309,7 @@ export default function SupportPage() {
             </section>
 
             <div className="mx-auto max-w-3xl space-y-6">
-              <section className="overflow-hidden rounded-2xl border border-border bg-card/80 shadow-xl shadow-primary/5 backdrop-blur-sm">
+              <section className="overflow-hidden rounded-lg border border-border bg-card/80 shadow-xl shadow-primary/5 backdrop-blur-sm">
                 <div className="border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-5 sm:px-8 sm:py-6">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">

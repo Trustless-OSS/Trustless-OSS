@@ -59,7 +59,7 @@ export default function LoginForm() {
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
-      <Card className="relative w-full max-w-md rounded-3xl py-2">
+      <Card className="relative w-full max-w-md rounded-xl py-2">
         <Button
           type="button"
           variant="ghost"

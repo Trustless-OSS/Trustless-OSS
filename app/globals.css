@@ -42,7 +42,7 @@
   --chart-3: #a2a095;
   --chart-4: #5a5a5a;
   --chart-5: #000000;
-  --radius: 14px;
+  --radius: 8px;
   --sidebar: #f7f6ee;
   --sidebar-foreground: #000000;
   --sidebar-primary: #061fd4;
@@ -149,7 +149,7 @@ html {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--radius);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1;
@@ -1477,7 +1477,7 @@ img.landing-watermark {
   background: rgba(7, 17, 31, 0.92);
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 1.25rem;
+  border-radius: var(--radius);
   font-family: var(--font-mono);
   padding: 1.25rem 1.35rem;
   position: relative;
@@ -1536,8 +1536,8 @@ img.landing-watermark {
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: var(--radius); /* 14px */
+  --radius-md: 6px;
+  --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);

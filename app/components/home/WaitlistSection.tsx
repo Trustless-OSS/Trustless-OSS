@@ -42,7 +42,7 @@ export default function WaitlistSection() {
 
   return (
     <section
-      className="landing-spotlight relative mb-20 overflow-hidden rounded-3xl px-5 py-10 sm:px-10 sm:py-14 md:mb-28"
+      className="landing-spotlight relative mb-20 overflow-hidden rounded-xl px-5 py-10 sm:px-10 sm:py-14 md:mb-28"
       aria-labelledby="waitlist-title"
     >
       <div className="relative z-10 mx-auto max-w-2xl text-center">
@@ -65,7 +65,7 @@ export default function WaitlistSection() {
         </p>
 
         {status === 'success' ? (
-          <div className="mt-8 inline-flex items-center gap-2 rounded-2xl bg-emerald-100 px-6 py-4 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/20">
+          <div className="mt-8 inline-flex items-center gap-2 rounded-lg bg-emerald-100 px-6 py-4 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/20">
             <span className="text-base">🎉</span>
             You&apos;re on the list! We&apos;ll be in touch.
           </div>

@@ -155,11 +155,11 @@ export default function HeroSection({ user }: HeroSectionProps) {
 
           <Card
             aria-label="Example bounty lifecycle"
-            className="home-bounty-preview animate-hero-in hero-stagger-6 relative z-10 overflow-hidden rounded-3xl py-6 ring-1 ring-border/80"
+            className="home-bounty-preview animate-hero-in hero-stagger-6 relative z-10 overflow-hidden rounded-xl py-6 ring-1 ring-border/80"
           >
             <CardHeader className="flex flex-col items-start justify-between gap-4 border-b border-border/70 px-6 pb-5 sm:flex-row sm:items-center">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground text-background">
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-foreground text-background">
                   <GitBranch className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <div>
@@ -193,7 +193,7 @@ export default function HeroSection({ user }: HeroSectionProps) {
                 />
               </div>
 
-              <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl bg-primary px-4 py-5 text-primary-foreground">
+              <div className="mt-6 flex items-center justify-between gap-4 rounded-lg bg-primary px-4 py-5 text-primary-foreground">
                 <div className="flex items-center gap-4">
                   <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white">
                     <Image
@@ -223,7 +223,7 @@ export default function HeroSection({ user }: HeroSectionProps) {
                 {bountySteps.map(({ title, detail, icon: Icon, className }, index) => (
                   <li
                     key={title}
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-muted/70 p-3.5 ring-1 ring-border/60"
+                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg bg-muted/70 p-3.5 ring-1 ring-border/60"
                   >
                     <span
                       className={`flex h-10 w-10 items-center justify-center rounded-xl ${className}`}

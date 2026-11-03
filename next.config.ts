@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
         destination: '/profile',
         permanent: false,
       },
+      {
+        source: '/dashboard/transactions',
+        destination: '/dashboard/activity',
+        permanent: true,
+      },
     ];
   },
 };

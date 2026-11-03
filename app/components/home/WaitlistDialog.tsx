@@ -92,7 +92,7 @@ export default function WaitlistDialog({ open, onClose }: WaitlistDialogProps) {
           event.preventDefault();
           titleRef.current?.focus();
         }}
-        className="flex! max-h-[calc(100dvh-1.5rem)] max-w-[calc(100%-1.5rem)]! flex-col gap-0! overflow-hidden! rounded-3xl! border border-border bg-card p-0! shadow-2xl shadow-black/20 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[820px]!"
+        className="flex! max-h-[calc(100dvh-1.5rem)] max-w-[calc(100%-1.5rem)]! flex-col gap-0! overflow-hidden! rounded-xl! border border-border bg-card p-0! shadow-2xl shadow-black/20 sm:max-h-[calc(100dvh-3rem)] sm:max-w-[820px]!"
       >
         <DialogClose asChild>
           <Button
@@ -112,7 +112,7 @@ export default function WaitlistDialog({ open, onClose }: WaitlistDialogProps) {
                 aria-hidden="true"
                 className="pointer-events-none absolute -left-20 -top-20 -z-10 size-72 rounded-full bg-primary/10 blur-3xl"
               />
-              <div className="mb-6 hidden size-12 md:flex items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 md:mb-10 md:size-14">
+              <div className="mb-6 hidden size-12 md:flex items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20 md:mb-10 md:size-14">
                 <Rocket className="size-6" aria-hidden="true" />
               </div>
               <span className="mb-2 flex items-center gap-2 text-[11px] font-bold tracking-[0.18em] text-primary uppercase">
@@ -131,7 +131,7 @@ export default function WaitlistDialog({ open, onClose }: WaitlistDialogProps) {
                 Be first in line when Trustless OSS launches on mainnet. Open-source work, with
                 rewards built in.
               </DialogDescription>
-              <div className="mt-8 hidden rounded-2xl border border-primary/15 bg-card/80 p-4 md:block">
+              <div className="mt-8 hidden rounded-lg border border-primary/15 bg-card/80 p-4 md:block">
                 <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                   <GitPullRequest className="size-4 text-primary" aria-hidden="true" /> From
                   contribution to reward

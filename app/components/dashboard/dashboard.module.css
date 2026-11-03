@@ -13,28 +13,12 @@
   gap: 1rem;
 }
 
-.sectionEyebrow {
-  color: var(--primary);
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-}
-
 .sectionTitle {
-  margin-top: 0.35rem;
   font-family: var(--font-sans), sans-serif;
   font-size: clamp(1.65rem, 4vw, 2.4rem);
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1;
-}
-
-.sectionDescription {
-  max-width: 38rem;
-  color: var(--muted-foreground);
-  font-size: 0.78rem;
-  line-height: 1.65;
 }
 
 .revealCard {
@@ -69,7 +53,7 @@
   height: 2.75rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.9rem;
+  border-radius: 0.65rem;
   background: color-mix(in oklch, var(--primary) 11%, var(--card));
   color: var(--primary);
 }
@@ -104,7 +88,7 @@
 .chartCard {
   overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
-  border-radius: 1.75rem;
+  border-radius: 0.85rem;
   background: linear-gradient(
     145deg,
     color-mix(in oklch, var(--card) 96%, transparent),

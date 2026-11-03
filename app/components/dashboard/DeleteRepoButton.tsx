@@ -87,7 +87,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
             >
               <div className="p-6 sm:p-8">
                 <div className="flex items-start justify-between gap-4">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50 text-red-600">
                     <Trash2 className="h-5 w-5" strokeWidth={2.25} aria-hidden="true" />
                   </span>
                   <button
@@ -118,7 +118,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
                 </p>
 
                 {error && (
-                  <div className="mt-5 rounded-2xl bg-red-50 px-4 py-3">
+                  <div className="mt-5 rounded-lg bg-red-50 px-4 py-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-red-600">
                       Delete failed
                     </p>
@@ -126,7 +126,7 @@ export default function DeleteRepoButton({ repoId, token }: { repoId: string; to
                   </div>
                 )}
 
-                <ul className="mt-5 space-y-2 rounded-2xl bg-muted px-4 py-4 text-sm leading-6 text-muted-foreground">
+                <ul className="mt-5 space-y-2 rounded-lg bg-muted px-4 py-4 text-sm leading-6 text-muted-foreground">
                   <li>Tracked issues and bounty records will be deleted.</li>
                   <li>The GitHub App connection for this repository will be revoked.</li>
                   <li>The repository will be removed from your dashboard.</li>

@@ -29,7 +29,7 @@ export default function ConnectRepoPage() {
   return (
     <div className="flex w-full flex-1 flex-col">
       <div className="flex flex-1 items-center justify-center px-3 py-8 sm:px-5 md:px-6 md:py-12">
-        <Card className="relative w-full max-w-lg rounded-3xl py-0">
+        <Card className="relative w-full max-w-lg rounded-xl py-0">
           <Button
             type="button"
             variant="outline"
@@ -46,7 +46,7 @@ export default function ConnectRepoPage() {
               Connect repository
             </p>
 
-            <span className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+            <span className="mx-auto mt-6 flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <GitBranch className="h-7 w-7" strokeWidth={2.5} aria-hidden="true" />
             </span>
 

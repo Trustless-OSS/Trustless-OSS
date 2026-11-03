@@ -498,7 +498,7 @@ export default function ProfileSettings({ user }: { user: User }) {
 
       <div className="grid items-start gap-6 xl:items-stretch xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Card className="overflow-hidden rounded-3xl py-0">
+          <Card className="overflow-hidden rounded-xl py-0">
             <div className="relative h-28 overflow-hidden sm:h-36 bg-gradient-to-br from-[#3f5bff] via-primary to-[#0618a8]">
               <span className="absolute -top-10 -right-6 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
               <span className="absolute -bottom-8 left-16 h-28 w-28 rounded-full bg-white/15 blur-xl" />
@@ -561,7 +561,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                 <button
                   type="button"
                   onClick={() => document.getElementById('location')?.focus()}
-                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <MapPin className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -578,7 +578,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                 <button
                   type="button"
                   onClick={() => document.getElementById('skills')?.focus()}
-                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <Sparkles className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -597,7 +597,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                   onClick={() =>
                     document.getElementById('payout-wallet')?.scrollIntoView({ behavior: 'smooth' })
                   }
-                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <Wallet className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -614,7 +614,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                 <button
                   type="button"
                   onClick={() => document.getElementById('email')?.focus()}
-                  className="flex min-w-0 items-center gap-3 rounded-2xl bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
+                  className="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 px-4 py-3 text-left transition hover:bg-muted"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-border">
                     <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -632,7 +632,7 @@ export default function ProfileSettings({ user }: { user: User }) {
             </CardContent>
           </Card>
 
-          <Card aria-labelledby="kyc-title" className="rounded-3xl">
+          <Card aria-labelledby="kyc-title" className="rounded-xl">
             <CardHeader className="flex! flex-row items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <ShieldCheck className="size-5" aria-hidden="true" />
@@ -658,7 +658,7 @@ export default function ProfileSettings({ user }: { user: User }) {
             </CardContent>
           </Card>
 
-          <Card id="payout-wallet" className="scroll-mt-28 rounded-3xl xl:mt-auto">
+          <Card id="payout-wallet" className="scroll-mt-28 rounded-xl xl:mt-auto">
             <CardHeader className="flex! flex-row items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
@@ -680,7 +680,7 @@ export default function ProfileSettings({ user }: { user: User }) {
             <CardContent>
               {form.stellarAddress ? (
                 <div
-                  className={`flex flex-col gap-4 rounded-2xl px-4 py-4 sm:px-5 sm:py-5 ${
+                  className={`flex flex-col gap-4 rounded-lg px-4 py-4 sm:px-5 sm:py-5 ${
                     usdcBalance?.hasTrustline
                       ? 'bg-emerald-50 dark:bg-emerald-500/10'
                       : missingTrustline
@@ -815,7 +815,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-border px-4 py-6">
+                <div className="rounded-lg border border-dashed border-border px-4 py-6">
                   <p className="text-sm text-muted-foreground">
                     No wallet connected yet. USDC payouts stay locked until a Stellar address is on
                     this profile.
@@ -845,7 +845,7 @@ export default function ProfileSettings({ user }: { user: User }) {
           </Card>
         </div>
 
-        <Card className="min-w-0 rounded-3xl">
+        <Card className="min-w-0 rounded-xl">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">Contributor details</CardTitle>
             <CardDescription>
@@ -1119,7 +1119,7 @@ export default function ProfileSettings({ user }: { user: User }) {
                 </div>
               </CardContent>
             </fieldset>
-            <CardFooter className="mt-auto flex-wrap justify-end gap-2 rounded-b-3xl bg-muted/30 border-t border-border/50 [&>button]:flex-1 sm:[&>button]:flex-none">
+            <CardFooter className="mt-auto flex-wrap justify-end gap-2 rounded-b-xl bg-muted/30 border-t border-border/50 [&>button]:flex-1 sm:[&>button]:flex-none">
               {dirty ? (
                 <Button
                   variant="danger"

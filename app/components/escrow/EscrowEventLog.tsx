@@ -93,7 +93,7 @@ export default function EscrowEventLog({
         </div>
       </div>
 
-      <Card className="escrow-event-log-feed overflow-hidden rounded-3xl py-0">
+      <Card className="escrow-event-log-feed overflow-hidden rounded-xl py-0">
         <CardContent className="p-0" role="log" aria-live="polite">
           {renderedEvents.length === 0 ? (
             <div className="p-10 text-center sm:p-12">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Gift, GitBranch } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import RepoFundsChart, { RepoRewardedChart } from '@/app/components/dashboard/RepoFundsChart';
 import { fetchDashboardRepos } from '@/lib/dashboard-api';
@@ -37,15 +37,10 @@ export default function MaintainerActivity() {
     <section className="mt-10" aria-labelledby="repository-insights-title">
       <div className={styles.sectionIntro}>
         <div>
-          <p className={styles.sectionEyebrow}>Repository intelligence</p>
           <h2 id="repository-insights-title" className={styles.sectionTitle}>
             Portfolio insights
           </h2>
         </div>
-        <p className={styles.sectionDescription}>
-          See which repositories are carrying locked capital and where rewards are creating
-          momentum.
-        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -56,9 +51,6 @@ export default function MaintainerActivity() {
                 <CardTitle className="font-display text-xl font-extrabold tracking-tight">
                   Repository funds
                 </CardTitle>
-                <CardDescription className="mt-1.5">
-                  Locked escrow versus released payouts for every connected repository.
-                </CardDescription>
               </div>
               <span className={styles.metricIcon}>
                 <GitBranch aria-hidden="true" />
@@ -102,9 +94,6 @@ export default function MaintainerActivity() {
                 <CardTitle className="font-display text-xl font-extrabold tracking-tight">
                   Explore Bounties
                 </CardTitle>
-                <CardDescription className="mt-1.5">
-                  Rewarded issues and bounty momentum by repository.
-                </CardDescription>
               </div>
               <span className={styles.metricIcon}>
                 <Gift aria-hidden="true" />
@@ -147,7 +136,7 @@ function ChartPlaceholder({ label }: { label: string }) {
       role="img"
       aria-label={`${label}; waiting for data`}
       data-testid="empty-chart-skeleton"
-      className="relative flex h-64 flex-col justify-between overflow-hidden rounded-xl border border-border/60 bg-muted/10 px-4 pb-4 pt-5"
+      className="relative flex h-64 flex-col justify-between overflow-hidden rounded-lg border border-border/60 bg-muted/10 px-4 pb-4 pt-5"
     >
       <div className="absolute inset-4 grid grid-cols-4 divide-x divide-dashed divide-border/60">
         <span />

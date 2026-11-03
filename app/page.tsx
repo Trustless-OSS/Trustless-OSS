@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { SiGithub, SiGitlab } from 'react-icons/si';
-import { ArrowRight, GitBranch, GitMerge, GitPullRequest, Tags, WalletCards } from 'lucide-react';
+import { ArrowRight, GitMerge, GitPullRequest, Tags, WalletCards } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from './components/layout/Navbar';
 import HeroSection from './components/home/HeroSection';
@@ -15,7 +15,7 @@ const workflowItems = [
     title: 'Connect a repository',
     desc: 'Install the GitHub App and bring the repository into one maintainer dashboard.',
     detail: 'GitHub App',
-    icon: GitBranch,
+    icon: SiGithub,
   },
   {
     step: '02',
@@ -117,10 +117,10 @@ export default async function HomePage() {
             {workflowItems.map(({ step, title, desc, detail, icon: Icon }) => (
               <Card
                 key={step}
-                className="group relative min-h-0 overflow-hidden rounded-3xl py-0 transition-transform duration-200 hover:-translate-y-1 md:min-h-72"
+                className="group relative min-h-0 overflow-hidden rounded-xl py-0 transition-transform duration-200 hover:-translate-y-1 md:min-h-72"
               >
                 <CardHeader className="flex flex-row items-start justify-between gap-4 pt-5 md:pt-6">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <Icon className="h-6 w-6" strokeWidth={2.25} aria-hidden="true" />
                   </span>
                   <span className="font-display text-5xl font-extrabold tracking-[-0.08em] text-foreground/12 transition-colors group-hover:text-primary/25">
@@ -141,7 +141,7 @@ export default async function HomePage() {
         </section>
 
         <section
-          className="landing-spotlight relative mb-20 overflow-hidden rounded-3xl px-5 py-7 sm:px-7 sm:py-9 md:mb-28 md:px-10"
+          className="landing-spotlight relative mb-20 overflow-hidden rounded-xl px-5 py-7 sm:px-7 sm:py-9 md:mb-28 md:px-10"
           aria-labelledby="issue-platforms-title"
         >
           <Image
@@ -168,8 +168,8 @@ export default async function HomePage() {
             </div>
 
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-              <article className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-neutral-950">
+              <article className="flex min-w-0 items-center gap-3 overflow-hidden rounded-lg bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-950">
                   <SiGithub className="h-7 w-7" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
@@ -180,8 +180,8 @@ export default async function HomePage() {
                 </div>
               </article>
 
-              <article className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#FC6D26]">
+              <article className="flex min-w-0 items-center gap-3 overflow-hidden rounded-lg bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-sm">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-[#FC6D26]">
                   <SiGitlab className="h-8 w-8" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">

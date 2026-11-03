@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, CircleDollarSign, Lock, Tag, Unlock, Users } from 'lucide-react';
+import { CircleCheck, Lock, LockKeyhole, Unlock, UsersRound, Wallet } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,13 +43,13 @@ export default function DashboardMetrics() {
 
   if (error || escrowBalanceError) {
     return (
-      <p className="mb-6 rounded-3xl border border-border bg-card px-6 py-4 text-sm font-medium text-destructive">
+      <p className="mb-6 rounded-xl border border-border bg-card px-6 py-4 text-sm font-medium text-destructive">
         {error ?? escrowBalanceError}
       </p>
     );
   }
   if (loading || escrowBalance === null) {
-    return <Skeleton className="mb-6 h-56 w-full rounded-3xl" />;
+    return <Skeleton className="mb-6 h-56 w-full rounded-xl" />;
   }
 
   const rows = data ?? [];
@@ -68,37 +68,31 @@ export default function DashboardMetrics() {
       <div className={styles.sectionIntro}>
         <div className={styles.sectionIntroRow}>
           <div>
-            <p className={styles.sectionEyebrow}>Live financial state</p>
             <h2 id="escrow-overview-title" className={styles.sectionTitle}>
               Escrow overview
             </h2>
           </div>
           <Badge variant="outline" className="h-auto gap-2 rounded-full px-3 py-1.5 text-[0.68rem]">
             <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-            Synced with escrow
+            Live
           </Badge>
         </div>
-        <p className={styles.sectionDescription}>
-          A live view of secured funds, completed payouts, and the contributors moving your
-          repositories forward.
-        </p>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12">
-        <Card className={`${styles.revealCard} rounded-3xl xl:col-span-7`}>
+        <Card className={`${styles.revealCard} rounded-xl xl:col-span-7`}>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
               <CardTitle className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                 Escrow funds
               </CardTitle>
-              <p className="mt-2 text-sm text-muted-foreground">Available across deployed pools</p>
             </div>
             <span className={styles.metricIcon}>
-              <CircleDollarSign aria-hidden="true" />
+              <Wallet aria-hidden="true" />
             </span>
           </CardHeader>
           <CardContent className="space-y-8">
-            <div className="rounded-2xl bg-muted/40 p-4 sm:p-5">
+            <div className="rounded-lg bg-muted/40 p-4 sm:p-5">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <span className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <Lock className="h-4 w-4 text-blue-500" aria-hidden="true" />
@@ -142,15 +136,12 @@ export default function DashboardMetrics() {
                 className="h-2 [&_[data-slot=progress-indicator]]:bg-violet-500"
                 aria-label="Funds released share"
               />
-              <p className="mt-2 text-xs font-medium text-muted-foreground">
-                {releasedShare}% of current escrow balance plus released payouts
-              </p>
             </div>
           </CardContent>
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:col-span-5">
-          <Card className={`${styles.revealCard} ${styles.delayOne} rounded-3xl`}>
+          <Card className={`${styles.revealCard} ${styles.delayOne} rounded-xl`}>
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <div>
                 <CardTitle className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
@@ -159,15 +150,14 @@ export default function DashboardMetrics() {
                 <p className="mt-4 font-mono text-4xl font-black tracking-[-0.08em]">
                   {totals.rewarded}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">Bounties with assigned rewards</p>
               </div>
               <span className={styles.metricIcon}>
-                <Tag aria-hidden="true" />
+                <CircleCheck aria-hidden="true" />
               </span>
             </CardHeader>
           </Card>
 
-          <Card className={`${styles.revealCard} ${styles.delayTwo} rounded-3xl`}>
+          <Card className={`${styles.revealCard} ${styles.delayTwo} rounded-xl`}>
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <div>
                 <CardTitle className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
@@ -176,10 +166,9 @@ export default function DashboardMetrics() {
                 <p className="mt-4 font-mono text-4xl font-black tracking-[-0.08em]">
                   {contributors.length}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">Unique rewarded builders</p>
               </div>
               <span className={styles.metricIcon}>
-                <Users aria-hidden="true" />
+                <UsersRound aria-hidden="true" />
               </span>
             </CardHeader>
             <CardContent className="pt-0">
@@ -209,17 +198,14 @@ export default function DashboardMetrics() {
             </CardContent>
           </Card>
 
-          <Card className={`${styles.revealCard} ${styles.delayThree} rounded-3xl sm:col-span-2`}>
+          <Card className={`${styles.revealCard} ${styles.delayThree} rounded-xl sm:col-span-2`}>
             <CardContent className="flex flex-col justify-between gap-5 pt-5 sm:flex-row sm:items-center">
               <div className="flex items-center gap-3">
                 <span className={styles.metricIcon}>
-                  <Activity aria-hidden="true" />
+                  <LockKeyhole aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold">Reward pipeline active</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {lockedShare}% of deployed escrow is reserved for active work.
-                  </p>
+                  <p className="text-sm font-bold">Locked for rewards</p>
                 </div>
               </div>
               <Badge className="h-auto self-start rounded-full bg-primary/10 px-3 py-1.5 text-primary hover:bg-primary/10 sm:self-center">

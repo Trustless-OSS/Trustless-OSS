@@ -12,9 +12,9 @@ import {
   ReferenceDot,
   ReferenceLine,
 } from 'recharts';
-import { ArrowUpRight, CircleDollarSign, TrendingUp } from 'lucide-react';
+import { ArrowUpRight, ChartNoAxesCombined, Wallet } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   completeFundsMovementSeries,
@@ -69,7 +69,6 @@ export default function FundsMovementChart() {
       <div className={styles.sectionIntro}>
         <div className={styles.sectionIntroRow}>
           <div>
-            <p className={styles.sectionEyebrow}>Capital velocity</p>
             <h2 id="funds-movement-title" className={styles.sectionTitle}>
               Funds movement
             </h2>
@@ -78,34 +77,28 @@ export default function FundsMovementChart() {
             Rolling 12 months
           </Badge>
         </div>
-        <p className={styles.sectionDescription}>
-          Compare secured liquidity with completed contributor payouts over time.
-        </p>
       </div>
 
       <Card className={`${styles.chartCard} ${styles.revealCard}`}>
         <CardHeader className="flex flex-col gap-5 border-b border-border/70 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="inline-flex items-center gap-2 font-display text-lg font-extrabold tracking-tight sm:text-xl">
-              <TrendingUp className="h-5 w-5 text-primary" aria-hidden="true" />
+              <ChartNoAxesCombined className="h-5 w-5 text-primary" aria-hidden="true" />
               Escrow performance
             </CardTitle>
-            <CardDescription className="mt-1.5">
-              Locked balance and released rewards across all repositories.
-            </CardDescription>
           </div>
 
           {currentPoint ? (
             <div className="grid grid-cols-2 gap-2 sm:min-w-72">
-              <div className="rounded-xl bg-primary/8 px-3 py-2.5 ring-1 ring-primary/15">
+              <div className="rounded-lg bg-primary/8 px-3 py-2.5 ring-1 ring-primary/15">
                 <p className="flex items-center gap-1.5 text-[0.62rem] font-semibold tracking-wide text-muted-foreground uppercase">
-                  <CircleDollarSign className="size-3 text-primary" aria-hidden="true" /> TVL
+                  <Wallet className="size-3 text-primary" aria-hidden="true" /> TVL
                 </p>
                 <p className="mt-1 font-mono text-sm font-black sm:text-base">
                   {compactCurrencyFormatter.format(currentPoint.tvl)}
                 </p>
               </div>
-              <div className="rounded-xl bg-violet-500/8 px-3 py-2.5 ring-1 ring-violet-500/15">
+              <div className="rounded-lg bg-violet-500/8 px-3 py-2.5 ring-1 ring-violet-500/15">
                 <p className="flex items-center gap-1.5 text-[0.62rem] font-semibold tracking-wide text-muted-foreground uppercase">
                   <ArrowUpRight className="size-3 text-violet-500" aria-hidden="true" /> Paid
                 </p>
@@ -135,7 +128,7 @@ export default function FundsMovementChart() {
             {currentPoint ? (
               <div className="inline-flex items-center gap-2 text-xs font-semibold text-foreground">
                 <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-                Current month: {currentMonthLabel}
+                {currentMonthLabel}
               </div>
             ) : null}
           </div>

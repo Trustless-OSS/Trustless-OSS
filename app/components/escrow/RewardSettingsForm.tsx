@@ -386,7 +386,7 @@ export default function RewardSettingsForm({
               key={key}
               size="sm"
               className={cn(
-                'justify-between rounded-2xl border-l-4 transition-all',
+                'justify-between rounded-lg border-l-4 transition-all',
                 pal(i).accent,
                 mode === 'delete' && isChecked ? 'ring-2 ring-destructive/60' : 'ring-border/50',
                 mode === 'delete' && 'cursor-pointer'
@@ -438,7 +438,7 @@ export default function RewardSettingsForm({
         })}
 
         {labels.length === 0 && (
-          <p className="col-span-full rounded-2xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+          <p className="col-span-full rounded-lg border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
             No reward tiers yet. Select <strong className="text-foreground">Add tier</strong> to map
             a label to a payout.
           </p>
@@ -454,7 +454,7 @@ export default function RewardSettingsForm({
       >
         <DialogContent className="overflow-hidden sm:max-w-md">
           <DialogHeader className="flex-row items-start gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
               <Trash2 className="size-5" strokeWidth={2.25} />
             </span>
             <div className="space-y-1">
@@ -470,7 +470,7 @@ export default function RewardSettingsForm({
           </DialogHeader>
 
           <div>
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/40 px-4 py-3 hover:bg-muted/60">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 hover:bg-muted/60">
               <input
                 type="checkbox"
                 checked={alsoGh}
@@ -527,7 +527,7 @@ export default function RewardSettingsForm({
       >
         <DialogContent className="overflow-hidden sm:max-w-lg">
           <DialogHeader className="flex-row items-start gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Tag className="size-5" strokeWidth={2.25} />
             </span>
             <div className="space-y-1">

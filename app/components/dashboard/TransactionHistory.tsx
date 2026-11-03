@@ -13,7 +13,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -122,7 +122,7 @@ function ActivityPagination({
   totalPages: number;
   onPage: (page: number) => void;
 }) {
-  const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pages = [page - 1, page, page + 1].filter((number) => number >= 1 && number <= totalPages);
 
   return (
     <Pagination
@@ -132,7 +132,7 @@ function ActivityPagination({
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
-            text="Back"
+            text="Prev"
             aria-label="Back"
             onClick={() => onPage(page - 1)}
             disabled={page <= 1}
@@ -150,6 +150,10 @@ function ActivityPagination({
             </PaginationLink>
           </PaginationItem>
         ))}
+
+        <PaginationItem className="px-2 text-xs text-muted-foreground">
+          of {totalPages}
+        </PaginationItem>
 
         <PaginationItem>
           <PaginationNext
@@ -183,33 +187,23 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
         setFilter(value as ActivityFilter);
         setPage(1);
       }}
-      className="min-w-0 gap-0"
+      className="w-full min-w-0 flex-col gap-0"
     >
-      <Card className="animate-hero-in min-w-0 overflow-hidden rounded-3xl border-border/70 py-0 shadow-sm">
+      <Card className="animate-hero-in w-full min-w-0 overflow-hidden rounded-xl border-border/70 py-0 shadow-sm">
         <CardHeader className="block border-b border-border/70 px-4 pt-5 sm:px-6 sm:pt-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <CardTitle className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
-                Activity
-              </CardTitle>
-              <CardDescription className="mt-1.5 max-w-2xl text-sm leading-6 sm:text-base">
-                Newest first, with GitHub issues and Stellar transaction links.
-              </CardDescription>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Badge variant="outline" className="h-auto rounded-full px-3 py-1.5 text-xs">
-                {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
-              </Badge>
-              <Badge className="h-auto rounded-full bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/10">
-                {selectedFilter}
-              </Badge>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="font-display text-lg font-extrabold tracking-tight sm:text-xl">
+              Recent events
+            </CardTitle>
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+              {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
+            </span>
           </div>
 
-          <div className="mt-5 min-w-0 overflow-x-auto pb-1 [scrollbar-width:thin]">
+          <div className="-mx-4 mt-5 min-w-0 overflow-x-auto px-4 pb-3 [scrollbar-width:thin] sm:-mx-6 sm:px-6">
             <TabsList
               aria-label="Filter activity"
-              className="h-auto min-w-max justify-start gap-1 rounded-xl p-1 group-data-horizontal/tabs:h-auto"
+              className="h-auto min-w-max justify-start gap-2 rounded-none bg-transparent p-0 group-data-horizontal/tabs:h-auto"
             >
               {ACTIVITY_FILTERS.map((item) => {
                 const Icon = FILTER_ICONS[item.value];
@@ -221,7 +215,20 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
                       setFilter(item.value);
                       setPage(1);
                     }}
-                    className="h-9 shrink-0 flex-none gap-1.5 px-3 py-1 text-xs font-semibold sm:text-sm"
+                    style={
+                      filter === item.value
+                        ? {
+                            backgroundColor: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            borderColor: 'var(--primary)',
+                          }
+                        : undefined
+                    }
+                    className={`h-9 shrink-0 flex-none gap-1.5 rounded-md border px-3 py-1 text-xs font-semibold shadow-none sm:text-sm ${
+                      filter === item.value
+                        ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground dark:border-primary dark:bg-primary dark:text-primary-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-muted hover:text-foreground'
+                    }`}
                   >
                     <Icon className="size-3.5" aria-hidden="true" />
                     {item.label}
@@ -247,7 +254,7 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
           ) : paged.items.length === 0 ? (
             <div className="flex min-h-[360px] items-center justify-center px-6 py-16">
               <div className="max-w-sm text-center">
-                <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <span className="mx-auto flex size-14 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
                   <Inbox className="size-6" aria-hidden="true" />
                 </span>
                 <p className="mt-5 text-base font-bold text-foreground">
@@ -261,102 +268,103 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
             </div>
           ) : (
             <>
-              <div className="divide-y md:hidden">
+              <div className="divide-y divide-border/70 lg:hidden">
                 {paged.items.map((row) => {
                   const meta = KIND_STYLES[row.kind];
+                  const EventIcon = FILTER_ICONS[row.kind];
                   return (
-                    <article key={row.id} className="space-y-3 px-4 py-4 text-[0.95rem]">
-                      <div className="flex items-start justify-between gap-3">
+                    <article key={row.id} className="space-y-3 px-4 py-4 sm:px-6">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge
-                          className={`h-auto rounded-full px-2.5 py-1 text-sm ${meta.className}`}
+                          className={`h-auto gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${meta.className}`}
                         >
+                          <EventIcon className="size-3.5" aria-hidden="true" />
                           {meta.label}
                         </Badge>
-                        <time className="shrink-0 text-sm text-muted-foreground">
+                        <time dateTime={row.at} className="shrink-0 text-xs text-muted-foreground">
                           {formatWhen(row.at)}
                         </time>
                       </div>
                       <IssueCell row={row} />
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="font-mono text-base font-semibold">
-                          {row.amountUsdc == null ? '—' : formatUsdc(row.amountUsdc)}
-                        </p>
+                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/60 pt-3">
                         {row.contributor ? (
-                          <GithubUserLink name={row.contributor} compact className="text-base" />
+                          <GithubUserLink name={row.contributor} compact />
                         ) : (
-                          <span className="text-base text-muted-foreground">—</span>
+                          <span className="text-sm text-muted-foreground">No contributor</span>
+                        )}
+                        {row.amountUsdc != null && (
+                          <span className="font-mono text-sm font-bold tabular-nums">
+                            {formatUsdc(row.amountUsdc)}
+                          </span>
                         )}
                       </div>
-                      {row.txHash ? (
-                        <TxCell hash={row.txHash} />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">GitHub</p>
-                      )}
+                      {row.txHash ? <TxCell hash={row.txHash} /> : null}
                     </article>
                   );
                 })}
               </div>
 
               <Table
-                className="hidden min-w-[960px] table-fixed text-sm md:table lg:text-base"
-                containerClassName="hidden overflow-x-auto md:block"
+                className="hidden table-fixed text-sm lg:table"
+                containerClassName="hidden lg:block"
               >
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="h-12 w-[18%] px-4 whitespace-normal text-sm font-semibold tracking-wide text-muted-foreground">
-                      When
-                    </TableHead>
-                    <TableHead className="h-12 w-[34%] px-4 whitespace-normal text-sm font-semibold tracking-wide text-muted-foreground">
+                  <TableRow className="bg-muted/35 hover:bg-muted/35">
+                    <TableHead className="h-11 w-[39%] px-6 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       Issue
                     </TableHead>
-                    <TableHead className="h-12 w-[12%] px-4 whitespace-normal text-sm font-semibold tracking-wide text-muted-foreground">
+                    <TableHead className="h-11 w-[13%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       Event
                     </TableHead>
-                    <TableHead className="h-12 w-[14%] px-4 whitespace-normal text-sm font-semibold tracking-wide text-muted-foreground">
+                    <TableHead className="h-11 w-[14%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       Amount
                     </TableHead>
-                    <TableHead className="h-12 w-[12%] px-4 whitespace-normal text-sm font-semibold tracking-wide text-muted-foreground">
+                    <TableHead className="h-11 w-[18%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       Contributor
                     </TableHead>
-                    <TableHead className="h-12 w-[10%] px-4 whitespace-normal text-sm font-semibold tracking-wide text-muted-foreground">
-                      Tx
+                    <TableHead className="h-11 w-[16%] px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Details
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paged.items.map((row) => {
                     const meta = KIND_STYLES[row.kind];
+                    const EventIcon = FILTER_ICONS[row.kind];
                     return (
-                      <TableRow key={row.id} className="hover:bg-muted/40">
-                        <TableCell className="px-4 py-3.5 whitespace-normal text-muted-foreground">
-                          {formatWhen(row.at)}
-                        </TableCell>
-                        <TableCell className="px-4 py-3.5 whitespace-normal">
+                      <TableRow key={row.id} className="hover:bg-muted/25">
+                        <TableCell className="px-6 py-4 whitespace-normal">
                           <IssueCell row={row} />
                         </TableCell>
-                        <TableCell className="px-4 py-3.5 whitespace-normal">
+                        <TableCell className="px-4 py-4 whitespace-normal">
                           <Badge
-                            className={`h-auto rounded-full px-2.5 py-1 text-sm ${meta.className}`}
+                            className={`h-auto gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${meta.className}`}
                           >
+                            <EventIcon className="size-3.5" aria-hidden="true" />
                             {meta.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4 py-3.5 font-mono text-base font-semibold whitespace-normal">
-                          {row.amountUsdc == null ? '—' : formatUsdc(row.amountUsdc)}
+                        <TableCell className="px-4 py-4 font-mono text-sm font-bold whitespace-normal tabular-nums">
+                          {row.amountUsdc == null ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            formatUsdc(row.amountUsdc)
+                          )}
                         </TableCell>
-                        <TableCell className="max-w-0 px-4 py-3.5 whitespace-normal">
+                        <TableCell className="max-w-0 px-4 py-4 whitespace-normal">
                           {row.contributor ? (
-                            <GithubUserLink name={row.contributor} compact className="text-base" />
+                            <GithubUserLink name={row.contributor} compact />
                           ) : (
-                            '—'
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-4 py-3.5 whitespace-normal">
-                          {row.txHash ? (
-                            <TxCell hash={row.txHash} />
-                          ) : (
-                            <span className="text-sm text-muted-foreground">GitHub</span>
-                          )}
+                        <TableCell className="px-4 py-4 whitespace-normal">
+                          <div className="flex flex-col items-start gap-1">
+                            <time dateTime={row.at} className="text-xs text-muted-foreground">
+                              {formatWhen(row.at)}
+                            </time>
+                            {row.txHash ? <TxCell hash={row.txHash} /> : null}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -365,7 +373,9 @@ export default function TransactionHistory({ rows }: { rows?: ActivityRow[] }) {
               </Table>
             </>
           )}
-          <ActivityPagination page={paged.page} totalPages={paged.totalPages} onPage={setPage} />
+          {!error && !loading && paged.totalPages > 1 ? (
+            <ActivityPagination page={paged.page} totalPages={paged.totalPages} onPage={setPage} />
+          ) : null}
         </CardContent>
       </Card>
     </Tabs>

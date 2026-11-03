@@ -293,7 +293,7 @@ It does **not** contain:
 | `/dashboard/repos/[repoId]`  | Repository escrow state, balance, reward configuration, bounty issues, retry controls, fund/refund/deploy actions, and external links. |
 | `/dashboard/settings/github` | Handles GitHub App setup results and installation synchronization.                                                                     |
 | `/dashboard/github-setup`    | Compatibility redirect to the settings callback route.                                                                                 |
-| `/dashboard/transactions`    | Activity/transaction ledger with filters and explorer/GitHub links.                                                                    |
+| `/dashboard/activity`        | Activity/transaction ledger with filters and explorer/GitHub links.                                                                    |
 | `/profile`                   | Contributor profile, Stellar address, trustline state, skills, social links, and payout preferences.                                   |
 
 The session middleware protects all paths beginning with `/dashboard`. The profile route performs

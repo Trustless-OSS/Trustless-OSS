@@ -124,7 +124,7 @@ export default function LeaderboardToolbar({
             <ListFilter className="size-4" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={8} className="w-56 min-w-56 rounded-2xl p-2">
+        <DropdownMenuContent align="end" sideOffset={8} className="w-56 min-w-56 rounded-lg p-2">
           <DropdownMenuLabel className="px-2 py-1.5 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
             Quick filters
           </DropdownMenuLabel>

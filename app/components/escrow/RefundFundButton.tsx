@@ -180,7 +180,7 @@ export default function RefundFundButton({
 
       <DialogContent
         showCloseButton={false}
-        className="gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-md"
+        className="gap-0 overflow-hidden rounded-xl p-0 sm:max-w-md"
         onPointerDownOutside={(event) => {
           if (loading) event.preventDefault();
         }}
@@ -191,7 +191,7 @@ export default function RefundFundButton({
         <DialogHeader className="border-b border-border/70 px-5 py-5 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-1 ring-destructive/15">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive ring-1 ring-destructive/15">
                 <ArrowDownToLine className="size-5" aria-hidden="true" />
               </span>
               <DialogTitle className="font-display text-2xl font-extrabold tracking-tight">
@@ -213,7 +213,7 @@ export default function RefundFundButton({
 
         <div className="space-y-6 px-5 py-6 sm:px-6">
           {/* ── AMOUNT DISPLAY ── */}
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-border bg-gradient-to-br from-muted/50 to-background p-6">
+          <div className="relative overflow-hidden rounded-lg border border-border bg-gradient-to-br from-muted/50 to-background p-6">
             <div className="flex items-center justify-between">
               <span className="text-[0.6rem] font-semibold tracking-[0.22em] text-muted-foreground uppercase">
                 Total refund
@@ -241,7 +241,7 @@ export default function RefundFundButton({
           {/* Full refund warning */}
           <Alert
             variant="destructive"
-            className="rounded-2xl border-red-200 bg-red-50 text-red-900"
+            className="rounded-lg border-red-200 bg-red-50 text-red-900"
           >
             <AlertTriangle className="size-4 text-red-600" />
             <AlertDescription className="text-xs font-bold text-red-900">
@@ -265,7 +265,7 @@ export default function RefundFundButton({
                   setError('');
                 }}
                 disabled={loading}
-                className={`group flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 ${
+                className={`group flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 ${
                   wallet === profileWallet
                     ? 'border-primary bg-primary/5 ring-2 ring-primary/15'
                     : 'border-border bg-card hover:border-primary/40 hover:shadow-sm'
@@ -301,7 +301,7 @@ export default function RefundFundButton({
 
             {/* Wallet address input */}
             <div
-              className={`flex items-center gap-2 rounded-2xl border bg-card px-3.5 py-2.5 transition-colors ${
+              className={`flex items-center gap-2 rounded-lg border bg-card px-3.5 py-2.5 transition-colors ${
                 wallet && !isValidStellarAddress(wallet)
                   ? 'border-destructive ring-3 ring-destructive/20'
                   : 'border-input focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/20'
@@ -333,7 +333,7 @@ export default function RefundFundButton({
           </div>
 
           {error ? (
-            <Alert variant="destructive" className="rounded-2xl">
+            <Alert variant="destructive" className="rounded-lg">
               <AlertTriangle className="size-4" />
               <AlertDescription className="text-xs">{error}</AlertDescription>
             </Alert>

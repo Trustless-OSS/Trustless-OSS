@@ -244,7 +244,7 @@ export default function NotificationBell({ token }: { token: string }) {
   function hrefFor(notice: Notice): string {
     const repoId = notice.data?.repoId ?? notice.data?.repo_id;
     if (repoId) return `/dashboard/${repoId}`;
-    return '/dashboard/transactions';
+    return '/dashboard/activity';
   }
 
   return (
@@ -276,7 +276,7 @@ export default function NotificationBell({ token }: { token: string }) {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10"
+          className="absolute right-0 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-lg ring-1 ring-foreground/10"
         >
           {/* Header */}
           <div className="flex items-center justify-between gap-3 border-b border-border/70 px-5 py-4">

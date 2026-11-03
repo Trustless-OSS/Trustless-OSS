@@ -238,7 +238,7 @@ export default function FundEscrowButton({
 
       <DialogContent
         showCloseButton={false}
-        className="gap-0 overflow-hidden rounded-3xl p-0 sm:max-w-md"
+        className="gap-0 overflow-hidden rounded-xl p-0 sm:max-w-md"
         onPointerDownOutside={(event) => {
           if (loading) event.preventDefault();
         }}
@@ -249,7 +249,7 @@ export default function FundEscrowButton({
         <DialogHeader className="border-b border-border/70 px-5 py-5 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
                 <Plus className="size-5" strokeWidth={2.5} aria-hidden="true" />
               </span>
               <div className="min-w-0">
@@ -275,7 +275,7 @@ export default function FundEscrowButton({
         </DialogHeader>
 
         <div className="space-y-5 px-5 py-5 sm:px-6">
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/70 px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/70 px-4 py-3">
             <div>
               <p className="text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 Current balance
@@ -294,7 +294,7 @@ export default function FundEscrowButton({
             </Label>
 
             <div
-              className={`flex items-center gap-2 rounded-2xl border bg-background px-3 py-2 transition-colors ${
+              className={`flex items-center gap-2 rounded-lg border bg-background px-3 py-2 transition-colors ${
                 showAmountError
                   ? 'border-destructive ring-3 ring-destructive/20'
                   : 'border-input focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50'
@@ -368,7 +368,7 @@ export default function FundEscrowButton({
               ) : null}
               <Alert
                 variant={phase === 'error' ? 'destructive' : 'default'}
-                className={`rounded-2xl ${
+                className={`rounded-lg ${
                   phase === 'success'
                     ? 'border-emerald-500/20 bg-emerald-500/5'
                     : phase === 'error'

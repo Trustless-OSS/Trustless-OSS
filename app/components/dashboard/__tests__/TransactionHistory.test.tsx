@@ -26,7 +26,7 @@ describe('TransactionHistory', () => {
   it('renders transaction details with GitHub and Stellar links', () => {
     render(<TransactionHistory />);
 
-    expect(screen.getByText('Activity')).toBeInTheDocument();
+    expect(screen.getByText('Recent events')).toBeInTheDocument();
     expect(screen.getAllByText('#9 Add replay-safe release path').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: /c4f9…72a6/i })[0]).toHaveAttribute(
       'href',
@@ -36,6 +36,7 @@ describe('TransactionHistory', () => {
       'href',
       'https://github.com/octocat'
     );
+    expect(screen.queryByRole('navigation', { name: 'Transaction pages' })).not.toBeInTheDocument();
   });
 
   it('shows pool deposits only under the locked filter', () => {
@@ -44,6 +45,24 @@ describe('TransactionHistory', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Locked' }));
     expect(screen.getAllByText('Pool deposit').length).toBeGreaterThan(0);
     expect(screen.queryByText('#161 Reject stale bounty claim')).not.toBeInTheDocument();
+  });
+
+  it('shows the active filter clearly and resets the count when All is selected', () => {
+    render(<TransactionHistory rows={ACTIVITY_FIXTURE} />);
+
+    const all = screen.getByRole('tab', { name: 'All' });
+    const locked = screen.getByRole('tab', { name: 'Locked' });
+    expect(all).toHaveAttribute('aria-selected', 'true');
+    expect(all.getAttribute('style')).toContain('var(--primary)');
+
+    fireEvent.click(locked);
+    expect(locked).toHaveAttribute('aria-selected', 'true');
+    expect(all).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByText('2 events')).toBeInTheDocument();
+
+    fireEvent.click(all);
+    expect(all).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('7 events')).toBeInTheDocument();
   });
 
   it('uses short event labels', () => {

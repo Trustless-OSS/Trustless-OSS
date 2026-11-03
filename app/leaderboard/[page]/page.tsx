@@ -90,7 +90,7 @@ export default async function LeaderboardPage(props: LeaderboardPageProps) {
 
           {/* Leaderboard Table */}
           {loadError ? (
-            <p className="rounded-3xl border border-border bg-card px-6 py-16 text-center text-base font-semibold text-destructive">
+            <p className="rounded-xl border border-border bg-card px-6 py-16 text-center text-base font-semibold text-destructive">
               {loadError}
             </p>
           ) : (

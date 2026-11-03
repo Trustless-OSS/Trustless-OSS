@@ -241,7 +241,7 @@ Sort by most recent activity descending. Include repos with zero funds so empty 
 
 ### 4.4 `GET /api/activity` — P0
 
-**UI:** `/dashboard/transactions` table  
+**UI:** `/dashboard/activity` table
 **Auth:** bearer, maintainer  
 **Type:** REST JSON, paginated
 
@@ -373,7 +373,7 @@ limit=20
       "title": "Payout released",
       "body": "220 USDC sent to @gaearon for #9.",
       "at": "2026-09-04T12:10:00.000Z",
-      "href": "/dashboard/transactions",
+      "href": "/dashboard/activity",
       "kind": "released",
       "read": false,
       "repo": "trustless-oss/contracts",
@@ -388,7 +388,7 @@ limit=20
 }
 ```
 
-`href` should be an in-app path (`/dashboard/transactions` or `/dashboard/{repoId}`). Newest first.
+`href` should be an in-app path (`/dashboard/activity` or `/dashboard/{repoId}`). Newest first.
 
 `unread_count` is the **global** unread total, not the current page.
 

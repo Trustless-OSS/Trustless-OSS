@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { Check, Clock, ExternalLink, Loader, X } from 'lucide-react';
+import { Check, Clock, ExternalLink, Inbox, Loader, X } from 'lucide-react';
 import { SiGithub } from 'react-icons/si';
 import { createClient } from '@/lib/supabase/server';
 import DeployEscrowButton from '@/app/components/escrow/DeployEscrowButton';
@@ -50,6 +50,17 @@ type RewardLevel = {
 };
 
 type Reward = RewardLevel[];
+
+type BountyIssue = {
+  id: string;
+  github_issue_number: number;
+  title: string;
+  reward_level_label: string | null;
+  reward_amount: number;
+  status: string;
+  milestone_index?: number | null;
+  assignee?: { username?: string } | null;
+};
 
 type JsonRecord = Record<string, unknown>;
 
@@ -277,6 +288,7 @@ function statusBadge(status: string) {
     completed: 'status-completed',
     merged: 'status-completed',
     released: 'status-completed',
+    paid: 'status-completed',
     cancelled: 'status-cancelled',
     canceled: 'status-cancelled',
     rejected: 'status-cancelled',
@@ -304,11 +316,55 @@ function levelBadge(level: string) {
 function statusIcon(status: string) {
   const map: Record<string, typeof Check> = {
     pending: Clock,
+    open: Clock,
     active: Loader,
+    in_progress: Loader,
+    assigned: Loader,
     completed: Check,
+    merged: Check,
+    released: Check,
+    paid: Check,
     cancelled: X,
+    canceled: X,
+    rejected: X,
+    closed: X,
   };
-  return map[status] ?? Clock;
+  return map[status.trim().toLowerCase()] ?? Clock;
+}
+
+function BountyStatus({ status }: { status: string }) {
+  if (!status) return <span className="text-muted-foreground">—</span>;
+  const Icon = statusIcon(status);
+  return (
+    <span
+      className={`${statusBadge(status)} inline-flex items-center gap-1.5 font-semibold capitalize`}
+    >
+      <Icon className="size-3.5" aria-hidden="true" />
+      {status.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+function BountyContributor({ username }: { username?: string | null }) {
+  if (!username) return <span className="text-sm text-muted-foreground">Not assigned</span>;
+  return (
+    <a
+      href={`https://github.com/${username}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex min-w-0 max-w-full items-center gap-2 font-semibold text-foreground transition-colors hover:text-primary"
+    >
+      <img
+        src={`https://github.com/${username}.png?size=48`}
+        alt=""
+        width={24}
+        height={24}
+        loading="lazy"
+        className="size-6 shrink-0 rounded-full ring-1 ring-border"
+      />
+      <span className="truncate">@{username}</span>
+    </a>
+  );
 }
 
 export default async function RepoDetailPage({ params }: { params: Promise<{ repoId: string }> }) {
@@ -454,32 +510,90 @@ export default async function RepoDetailPage({ params }: { params: Promise<{ rep
         </div>
 
         {issues.length === 0 ? (
-          <div className="rounded-2xl bg-card/80 px-6 py-12 text-center ring-1 ring-foreground/10">
-            <p className="text-sm font-semibold text-muted-foreground">No tracked issues yet.</p>
-            <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-              Add a <span className="font-semibold text-foreground">rewarded</span> label with{' '}
-              {rewardLevels.length > 0 ? (
-                rewardLevels.map((level, index) => (
-                  <span key={`${level.label}-${index}`} className="font-semibold text-foreground">
-                    {level.label}
-                    {index < rewardLevels.length - 1 ? ', ' : ''}
-                  </span>
-                ))
-              ) : (
-                <>
-                  <span className="font-semibold text-foreground">low</span>,{' '}
-                  <span className="font-semibold text-foreground">medium</span>, or{' '}
-                  <span className="font-semibold text-foreground">high</span>
-                </>
-              )}
-              , or comment{' '}
-              <span className="font-semibold text-foreground">@trustless-oss 50 USDC</span> on an
-              issue.
+          <div className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-12 text-center">
+            <span className="mb-4 flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Inbox className="size-5" aria-hidden="true" />
+            </span>
+            <p className="font-semibold text-foreground">No bounties yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Reward a GitHub issue to see it here.
             </p>
           </div>
         ) : (
-          <div className="rounded-2xl bg-card/80 ring-1 ring-foreground/10">
-            <Table containerClassName="rounded-2xl" className="min-w-[48rem]">
+          <div className="w-full overflow-hidden rounded-lg border border-border bg-card">
+            <div className="divide-y divide-border/70 lg:hidden">
+              {issues.map((issue: BountyIssue) => {
+                const issueUrl = `https://github.com/${repo?.full_name}/issues/${issue.github_issue_number}`;
+                return (
+                  <article key={issue.id} className="space-y-4 px-4 py-4 sm:px-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-muted-foreground">Issue</p>
+                        <a
+                          href={issueUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-mono text-sm font-bold text-primary hover:underline"
+                        >
+                          #{issue.github_issue_number}
+                          <ExternalLink className="size-3" aria-hidden="true" />
+                        </a>
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-muted-foreground">Status</p>
+                        <BountyStatus status={issue.status} />
+                      </div>
+                    </div>
+                    <p className="text-xs font-semibold text-muted-foreground">Title</p>
+                    <a
+                      href={issueUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block font-semibold leading-5 text-foreground hover:text-primary"
+                    >
+                      {issue.title}
+                    </a>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-muted-foreground">Level</p>
+                        {issue.reward_level_label ? (
+                          <span className={levelBadge(issue.reward_level_label)}>
+                            {issue.reward_level_label}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-muted-foreground">Reward</p>
+                        <span className="font-mono font-bold tabular-nums">
+                          {issue.reward_amount}{' '}
+                          <span className="text-xs text-muted-foreground">USDC</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-end justify-between gap-3 border-t border-border/60 pt-3">
+                      <div>
+                        <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                          Contributor
+                        </p>
+                        <BountyContributor username={issue.assignee?.username} />
+                      </div>
+                      {isRepoMaintainer ? (
+                        <RetryProcessButton
+                          issueId={issue.id}
+                          token={session?.access_token ?? ''}
+                          status={issue.status}
+                          milestoneIndex={issue.milestone_index ?? null}
+                        />
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <Table containerClassName="hidden rounded-lg lg:block" className="min-w-[48rem]">
               <TableHeader>
                 <TableRow className="border-b border-border/70 text-left text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase hover:bg-transparent">
                   <TableHead className="w-px px-4 py-3 md:px-6 whitespace-nowrap">Issue</TableHead>

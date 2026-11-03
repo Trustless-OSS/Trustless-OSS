@@ -59,7 +59,7 @@ export default function RepoFundsChart({ points }: { points: RepoChartPoint[] })
     <div
       role="group"
       aria-label="Repository locked and released funds"
-      className="w-full min-w-0 overflow-hidden rounded-2xl bg-muted/25 p-1"
+      className="w-full min-w-0 overflow-hidden rounded-lg bg-muted/25 p-1"
       style={{ height: chartHeight }}
     >
       <ResponsiveContainer width="100%" height="100%">
@@ -134,7 +134,7 @@ export function RepoRewardedChart({ points }: { points: RepoChartPoint[] }) {
     <div
       role="group"
       aria-label="Rewarded issues by repository"
-      className="w-full min-w-0 overflow-hidden rounded-2xl bg-muted/25 p-1"
+      className="w-full min-w-0 overflow-hidden rounded-lg bg-muted/25 p-1"
       style={{ height: chartHeight }}
     >
       <ResponsiveContainer width="100%" height="100%">

@@ -10,7 +10,7 @@ export function NavbarSkeleton() {
     <div className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-[96rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2.5">
-          <Skeleton className="h-14 w-14 rounded-2xl" />
+          <Skeleton className="h-14 w-14 rounded-lg" />
           <Skeleton className="h-6 w-40" />
         </div>
         <Skeleton className="h-9 w-24 rounded-md" />
@@ -40,10 +40,10 @@ export function HomePageSkeleton() {
               <Skeleton className="h-12 w-36 rounded-md" />
             </div>
           </div>
-          <Card className="hidden rounded-3xl py-0 lg:block">
+          <Card className="hidden rounded-xl py-0 lg:block">
             <CardHeader className="gap-4 border-b border-border/70 py-5">
               <div className="flex items-center gap-3">
-                <Skeleton className="h-11 w-11 rounded-2xl" />
+                <Skeleton className="h-11 w-11 rounded-lg" />
                 <div className="space-y-2">
                   <Skeleton className="h-3 w-24" />
                   <Skeleton className="h-4 w-40" />
@@ -53,19 +53,19 @@ export function HomePageSkeleton() {
             <CardContent className="space-y-4 py-6">
               <Skeleton className="h-4 w-20" />
               <Skeleton className="h-8 w-3/4" />
-              <Skeleton className="h-28 w-full rounded-2xl" />
-              <Skeleton className="h-16 w-full rounded-2xl" />
-              <Skeleton className="h-16 w-full rounded-2xl" />
-              <Skeleton className="h-16 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
             </CardContent>
           </Card>
         </div>
 
         <div className="mt-20 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index} className="min-h-56 rounded-3xl">
+            <Card key={index} className="min-h-56 rounded-xl">
               <CardHeader className="flex-row justify-between">
-                <Skeleton className="h-12 w-12 rounded-2xl" />
+                <Skeleton className="h-12 w-12 rounded-lg" />
                 <Skeleton className="h-10 w-12" />
               </CardHeader>
               <CardContent className="space-y-3">
@@ -95,7 +95,7 @@ export function DashboardPageSkeleton() {
         </div>
       </div>
       <div className="mb-6 grid gap-4 xl:grid-cols-12">
-        <Card className="rounded-3xl xl:col-span-7">
+        <Card className="rounded-xl xl:col-span-7">
           <CardHeader className="space-y-4">
             <Skeleton className="h-3 w-28" />
             <Skeleton className="h-8 w-40" />
@@ -105,7 +105,7 @@ export function DashboardPageSkeleton() {
           </CardHeader>
         </Card>
         <div className="grid gap-4 sm:grid-cols-2 xl:col-span-5">
-          <Card className="rounded-3xl">
+          <Card className="rounded-xl">
             <CardHeader className="flex-row justify-between">
               <div className="flex-1 space-y-3">
                 <Skeleton className="h-3 w-28" />
@@ -114,7 +114,7 @@ export function DashboardPageSkeleton() {
               <Skeleton className="h-10 w-10 rounded-md" />
             </CardHeader>
           </Card>
-          <Card className="rounded-3xl">
+          <Card className="rounded-xl">
             <CardHeader className="flex-row justify-between">
               <div className="flex-1 space-y-3">
                 <Skeleton className="h-3 w-28" />
@@ -123,10 +123,10 @@ export function DashboardPageSkeleton() {
               <Skeleton className="h-10 w-10 rounded-md" />
             </CardHeader>
           </Card>
-          <Skeleton className="h-24 rounded-3xl sm:col-span-2" />
+          <Skeleton className="h-24 rounded-xl sm:col-span-2" />
         </div>
       </div>
-      <Card className="rounded-3xl">
+      <Card className="rounded-xl">
         <CardHeader className="space-y-3">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-4 w-64" />
@@ -136,7 +136,7 @@ export function DashboardPageSkeleton() {
         </CardContent>
       </Card>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-3xl">
+        <Card className="rounded-xl">
           <CardHeader className="space-y-3">
             <Skeleton className="h-6 w-40" />
             <Skeleton className="h-4 w-56" />
@@ -145,7 +145,7 @@ export function DashboardPageSkeleton() {
             <Skeleton className="h-72 w-full rounded-xl" />
           </CardContent>
         </Card>
-        <Card className="rounded-3xl">
+        <Card className="rounded-xl">
           <CardHeader className="space-y-3">
             <Skeleton className="h-6 w-36" />
             <Skeleton className="h-4 w-48" />
@@ -159,21 +159,18 @@ export function DashboardPageSkeleton() {
   );
 }
 
-export function TransactionsPageSkeleton() {
+export function ActivityPageSkeleton() {
   return (
     <div className="w-full" aria-busy="true" aria-live="polite">
       <ScreenReaderStatus label="Loading activity" />
-      <div className="mb-10 flex flex-col justify-between gap-7 md:mb-14 md:flex-row md:items-end">
-        <div className="space-y-3">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-12 w-64 sm:h-14" />
-        </div>
-        <Skeleton className="h-12 w-full rounded-md sm:w-44" />
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 sm:mb-8">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-9 w-32 rounded-md" />
       </div>
-      <Card className="rounded-3xl">
-        <CardHeader className="space-y-3">
-          <Skeleton className="h-6 w-56" />
-          <Skeleton className="h-4 w-72" />
+      <Card className="rounded-xl">
+        <CardHeader className="space-y-4">
+          <Skeleton className="h-6 w-44" />
+          <Skeleton className="h-9 w-full max-w-xl" />
         </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-14 w-full" />
@@ -191,10 +188,10 @@ export function ReposCardSkeletonGrid({ count = 15 }: { count?: number }) {
   return (
     <div className="grid gap-7 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite">
       {Array.from({ length: count }).map((_, index) => (
-        <Card key={index} className="rounded-3xl">
+        <Card key={index} className="rounded-xl">
           <CardHeader className="flex-row items-start justify-between">
             <div className="flex items-start gap-3">
-              <Skeleton className="h-10 w-10 rounded-2xl" />
+              <Skeleton className="h-10 w-10 rounded-lg" />
               <div className="space-y-2">
                 <Skeleton className="h-3 w-28" />
                 <Skeleton className="h-5 w-36" />
@@ -251,10 +248,10 @@ export function RepoDetailSkeleton() {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-20 rounded-2xl" />
+          <Skeleton key={index} className="h-20 rounded-lg" />
         ))}
       </div>
-      <Card className="overflow-hidden rounded-2xl py-0">
+      <Card className="overflow-hidden rounded-lg py-0">
         <CardHeader className="border-b border-border py-4">
           <div className="grid grid-cols-6 gap-4">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -286,7 +283,7 @@ export function ProfilePageSkeleton() {
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.1fr)]">
         <div className="space-y-6">
-          <Card className="overflow-hidden rounded-3xl py-0">
+          <Card className="overflow-hidden rounded-xl py-0">
             <Skeleton className="h-40 w-full rounded-none" />
             <CardContent className="space-y-5 pb-6">
               <div className="flex items-end gap-4">
@@ -299,23 +296,23 @@ export function ProfilePageSkeleton() {
               <Skeleton className="h-4 w-3/4" />
               <div className="grid gap-3 sm:grid-cols-3">
                 {Array.from({ length: 3 }).map((_, index) => (
-                  <Skeleton key={index} className="h-16 rounded-2xl" />
+                  <Skeleton key={index} className="h-16 rounded-lg" />
                 ))}
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-3xl">
+          <Card className="rounded-xl">
             <CardHeader className="space-y-2">
               <Skeleton className="h-3 w-24" />
               <Skeleton className="h-5 w-36" />
               <Skeleton className="h-4 w-64" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-28 w-full rounded-2xl" />
+              <Skeleton className="h-28 w-full rounded-lg" />
             </CardContent>
           </Card>
         </div>
-        <Card className="rounded-3xl">
+        <Card className="rounded-xl">
           <CardHeader className="space-y-2">
             <Skeleton className="h-5 w-40" />
             <Skeleton className="h-4 w-64" />
@@ -342,7 +339,7 @@ export function AuthCardSkeleton({ label = 'Loading' }: { label?: string }) {
       aria-live="polite"
     >
       <ScreenReaderStatus label={label} />
-      <Card className="w-full max-w-md rounded-3xl">
+      <Card className="w-full max-w-md rounded-xl">
         <CardHeader className="space-y-3">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-8 w-40" />

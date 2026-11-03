@@ -44,7 +44,7 @@ function PodiumCard({ entry }: { entry: LeaderboardEntry }) {
 
   return (
     <Card
-      className={`escrow-event-log-feed overflow-hidden rounded-3xl ${raised ? 'ring-2 ring-amber-300/80 dark:ring-amber-500/40 md:-mt-3' : ''}`}
+      className={`escrow-event-log-feed overflow-hidden rounded-xl ${raised ? 'ring-2 ring-amber-300/80 dark:ring-amber-500/40 md:-mt-3' : ''}`}
     >
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between">
@@ -140,7 +140,7 @@ export default function ContributorLeaderboard({
         </section>
       ) : null}
 
-      <Card className="escrow-event-log-feed overflow-hidden rounded-3xl py-0">
+      <Card className="escrow-event-log-feed overflow-hidden rounded-xl py-0">
         <CardContent className="px-0 pb-0">
           {error ? (
             <p className="px-6 py-16 text-center text-base font-semibold text-destructive">

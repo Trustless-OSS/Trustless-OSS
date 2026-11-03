@@ -41,10 +41,10 @@ export default function RepositoryEscrowCard({
       <Card
         aria-busy="true"
         aria-label="Loading repository escrow"
-        className="flex flex-col rounded-3xl"
+        className="flex flex-col rounded-xl"
       >
         <CardHeader className="flex flex-row items-start justify-between">
-          <Skeleton className="h-10 w-10 rounded-2xl" />
+          <Skeleton className="h-10 w-10 rounded-lg" />
           <Skeleton className="h-6 w-24 rounded-full" />
         </CardHeader>
         <CardContent className="space-y-3">
@@ -65,12 +65,12 @@ export default function RepositoryEscrowCard({
   const bountyCount = repo.bounty_count;
 
   return (
-    <Card className="flex flex-col rounded-3xl py-0">
+    <Card className="flex flex-col rounded-xl py-0">
       <CardHeader className="flex flex-row items-start justify-between gap-3 pt-5">
         <div className="flex min-w-0 items-start gap-3">
           <div
             aria-hidden="true"
-            className="font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-foreground text-lg font-extrabold text-background"
+            className="font-display flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-lg font-extrabold text-background"
           >
             {repoName.charAt(0).toUpperCase() || '?'}
           </div>

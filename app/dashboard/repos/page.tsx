@@ -212,7 +212,7 @@ export default async function ReposPage({ searchParams }: ReposProps) {
       {isInstallSyncing && repos.length === 0 ? (
         <ReposCardSkeletonGrid count={REPO_PAGE_SIZE} />
       ) : repos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/80 bg-muted/40 px-6 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-border/80 bg-muted/40 px-6 py-16 text-center">
           <div className="flex size-11 items-center justify-center rounded-md bg-primary/10 text-primary ring-1 ring-primary/15">
             <GitBranch className="size-5" strokeWidth={2.25} aria-hidden="true" />
           </div>
@@ -238,7 +238,7 @@ export default async function ReposPage({ searchParams }: ReposProps) {
           </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/40 px-6 py-14 text-center">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border/80 bg-muted/40 px-6 py-14 text-center">
           <div className="flex size-11 items-center justify-center rounded-md bg-muted text-muted-foreground ring-1 ring-border">
             <SearchX className="size-5" strokeWidth={2.25} aria-hidden="true" />
           </div>

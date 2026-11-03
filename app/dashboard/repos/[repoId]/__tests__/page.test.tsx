@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import RepoDetailPage from '../page';
 
@@ -110,11 +110,18 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     const PageJSX = await RepoDetailPage({ params: Promise.resolve({ repoId: 'repo-123' }) });
     render(PageJSX);
 
-    const actorLink = screen.getByRole('link', { name: '@ryzen-xp' });
-    expect(actorLink).toBeInTheDocument();
-    expect(actorLink).toHaveAttribute('href', 'https://github.com/ryzen-xp');
-    expect(actorLink).toHaveAttribute('target', '_blank');
-    expect(actorLink).toHaveAttribute('rel', 'noopener noreferrer');
+    const table = screen.getByRole('table');
+    for (const heading of ['Issue', 'Title', 'Level', 'Reward', 'Status', 'Contributor', 'Actions']) {
+      expect(within(table).getByRole('columnheader', { name: heading })).toBeInTheDocument();
+    }
+
+    const actorLinks = screen.getAllByRole('link', { name: '@ryzen-xp' });
+    expect(actorLinks).toHaveLength(2);
+    for (const actorLink of actorLinks) {
+      expect(actorLink).toHaveAttribute('href', 'https://github.com/ryzen-xp');
+      expect(actorLink).toHaveAttribute('target', '_blank');
+      expect(actorLink).toHaveAttribute('rel', 'noopener noreferrer');
+    }
     expect(screen.queryByText('null')).not.toBeInTheDocument();
   });
 
@@ -155,7 +162,7 @@ describe('RepoDetailPage - Actor Column Rendering', () => {
     expect(allDashes.length).toBeGreaterThan(0);
     expect(screen.queryByText('null')).not.toBeInTheDocument();
     // Verify "Not assigned" is shown in the contributor cell
-    expect(screen.getByText('Not assigned')).toBeInTheDocument();
+    expect(screen.getAllByText('Not assigned')).toHaveLength(2);
   });
 
   it('renders backend-provided reward levels instead of fixed low/medium/high labels', async () => {
