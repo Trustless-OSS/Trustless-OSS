@@ -28,6 +28,9 @@ describe('FundEscrowButton', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    localStorage.clear();
   });
 
   it('keeps the initial amount state neutral until the user submits', () => {
@@ -100,6 +103,48 @@ describe('FundEscrowButton', () => {
     expect(screen.getByRole('button', { name: '+25' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '+50' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '+100' })).toBeInTheDocument();
+  });
+
+  it('opens Albedo in the click before wallet loading or transaction preparation', () => {
+    localStorage.setItem('@StellarWalletsKit/selectedModuleId', 'albedo');
+    localStorage.setItem('@StellarWalletsKit/activeAddress', 'wallet-address');
+    const popup = { closed: false, close: vi.fn() };
+    const open = vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    vi.mocked(walletKit.getWalletKit).mockReturnValue(new Promise(() => undefined));
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FundEscrowButton repoId="repo-1" token="token" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Fund' }));
+    fireEvent.change(screen.getByLabelText(/^amount$/i), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+    expect(open).toHaveBeenCalledOnce();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the dialog closed until signing finishes and uses the funding account', async () => {
+    const signTransaction = vi.fn(() => new Promise(() => undefined));
+    vi.mocked(walletKit.getActiveWalletAddress).mockResolvedValue('wallet-address');
+    vi.mocked(walletKit.getWalletKit).mockResolvedValue({ signTransaction } as never);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ unsignedTransaction: 'unsigned-xdr' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FundEscrowButton repoId="repo-1" token="token" currentBalance={120} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Fund' }));
+    fireEvent.change(screen.getByLabelText(/^amount$/i), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+    await waitFor(() =>
+      expect(signTransaction).toHaveBeenCalledWith('unsigned-xdr', {
+        address: 'wallet-address',
+      })
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('hides the primary action after a failed transaction', async () => {

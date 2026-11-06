@@ -11,6 +11,7 @@ import {
 import { handleError, notifySuccess } from '@/lib/notifications';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
+import { openSelectedWalletPopup } from '@/lib/wallet-popup';
 
 interface DeployEscrowButtonProps {
   repoId: string;
@@ -31,8 +32,10 @@ export default function DeployEscrowButton({
 
   async function handleDeploy() {
     setLoading(true);
+    let popup: ReturnType<typeof openSelectedWalletPopup>;
 
     try {
+      popup = openSelectedWalletPopup();
       const kit = await getWalletKit();
       const address = await getActiveWalletAddress();
 
@@ -50,8 +53,9 @@ export default function DeployEscrowButton({
       }
       const { unsignedTransaction } = await res1.json();
 
+      popup?.assertOpen();
       const { signedTxXdr } = await withTimeout(
-        kit.signTransaction(unsignedTransaction),
+        kit.signTransaction(unsignedTransaction, { address }),
         WALLET_OPERATION_TIMEOUT_MS,
         'Transaction signing timed out. Please close the wallet modal and try again.'
       );
@@ -72,6 +76,7 @@ export default function DeployEscrowButton({
     } catch (err: unknown) {
       handleError(err, 'Deploy escrow');
     } finally {
+      popup?.close();
       setLoading(false);
     }
   }

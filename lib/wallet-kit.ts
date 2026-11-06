@@ -30,10 +30,22 @@ export async function getWalletKit(): Promise<WalletKit> {
 
   if (!walletKitPromise || walletKitNetwork !== network) {
     walletKitNetwork = network;
-    walletKitPromise = loadWalletKit(network);
+    const pending = loadWalletKit(network);
+    walletKitPromise = pending;
+    void pending.catch(() => {
+      if (walletKitPromise === pending) {
+        walletKitPromise = null;
+        walletKitNetwork = null;
+      }
+    });
   }
 
   return walletKitPromise;
+}
+
+export function preloadWalletKit(): void {
+  if (typeof window === 'undefined') return;
+  void getWalletKit().catch(() => undefined);
 }
 
 export async function withTimeout<T>(
@@ -62,8 +74,7 @@ async function loadWalletKit(network: string): Promise<WalletKit> {
     throw new Error('Stellar Wallets Kit can only be initialized in the browser.');
   }
 
-  // Register only real Stellar wallets. defaultModules() includes a MetaMask
-  // (Ethereum) module that throws "Failed to connect to MetaMask" when picked.
+  // Exclude the incompatible MetaMask adapter included by defaultModules().
   const [
     { StellarWalletsKit, Networks },
     { FreighterModule },

@@ -14,6 +14,7 @@ import { handleError, notifySuccess } from '@/lib/notifications';
 import LoadingLogo from '@/app/components/layout/LoadingLogo';
 import Button from '@/app/components/ui/Button';
 import { authHeaders, backendUrl } from '@/lib/backend';
+import { openSelectedWalletPopup } from '@/lib/wallet-popup';
 import { stellarExpertNetwork } from '@/lib/network';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -125,18 +126,13 @@ export default function FundEscrowButton({
 
     setLoading(true);
     setPhase('wallet');
+    setOpen(false);
+    let popup: ReturnType<typeof openSelectedWalletPopup>;
 
     try {
+      popup = openSelectedWalletPopup();
       const kit = await getWalletKit();
-
-      // Close dialog so wallet extension can receive clicks
-      setOpen(false);
-
       const address = await getActiveWalletAddress();
-
-      // Reopen dialog for transaction signing
-      setOpen(true);
-      setPhase('sign');
 
       const res1 = await fetch(backendUrl('/api/v1/escrow/fund-unsigned'), {
         method: 'POST',
@@ -159,15 +155,14 @@ export default function FundEscrowButton({
 
       const { unsignedTransaction } = await res1.json();
 
-      // Keep dialog closed for wallet signing interaction
       setPhase('sign');
+      popup?.assertOpen();
       const { signedTxXdr } = await withTimeout(
-        kit.signTransaction(unsignedTransaction),
+        kit.signTransaction(unsignedTransaction, { address }),
         WALLET_OPERATION_TIMEOUT_MS,
         'Transaction signing timed out. Please close the wallet modal and try again.'
       );
 
-      // Reopen dialog after signing
       setOpen(true);
       setPhase('processing');
 
@@ -200,7 +195,6 @@ export default function FundEscrowButton({
         'Escrow funded',
         `Successfully deposited ${formatUsdc(parsedAmount)} USDC to the escrow.`
       );
-      // Auto-close and reload after 1.5 seconds
       setTimeout(() => {
         setOpen(false);
         router.refresh();
@@ -211,6 +205,7 @@ export default function FundEscrowButton({
       setError(err instanceof Error ? err.message : 'Failed to fund');
       handleError(err, 'Fund escrow');
     } finally {
+      popup?.close();
       setLoading(false);
     }
   }
