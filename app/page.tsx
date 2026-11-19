@@ -4,7 +4,7 @@ import { ArrowRight, GitMerge, GitPullRequest, Tags, WalletCards } from 'lucide-
 import { createClient } from '@/lib/supabase/server';
 import Navbar from './components/layout/Navbar';
 import HeroSection from './components/home/HeroSection';
-import EscrowEventLog from './components/escrow/EscrowEventLog';
+import RecentBounties from './components/home/RecentBounties';
 import ContributorLeaderboard from './components/dashboard/ContributorLeaderboard';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -213,9 +213,7 @@ export default async function HomePage() {
           <ContributorLeaderboard limit={4} expandHref="/leaderboard/1" showSeeMore />
         </section>
 
-        <div className="relative mb-20 md:mb-28">
-          <EscrowEventLog />
-        </div>
+        <RecentBounties />
 
         <section className="relative mb-0 hidden md:block" aria-labelledby="payout-routes-title">
           <Image

@@ -235,3 +235,72 @@ export async function fetchPublicLeaderboard(
     totalPages: Math.max(1, Number(data.totalPages) || 1),
   };
 }
+
+export type RecentBounty = Pick<ActivityRow, 'id' | 'at' | 'repo' | 'issueTitle'> & {
+  issueNumber: number;
+  amountUsdc: number;
+};
+
+export async function fetchRecentBounties(): Promise<RecentBounty[]> {
+  const response = await fetch(`${remoteBackendUrl()}/api/bounties/recent`, {
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error('Recent bounties are unavailable. Please try again.');
+  return parseBounties(await response.json()).slice(0, 5);
+}
+
+function parseBounties(data: unknown): RecentBounty[] {
+  return responseRows(data, 'Invalid bounty response.').map((row) => {
+    const reward = requiredAmount(row.amountUsdc, 'bounty reward');
+    if (
+      typeof row.repo !== 'string' ||
+      !/^[\w.-]+\/[\w.-]+$/.test(row.repo) ||
+      row.repo.split('/').some((part) => part === '.' || part === '..') ||
+      !Number.isInteger(row.issueNumber) ||
+      Number(row.issueNumber) < 1 ||
+      typeof row.at !== 'string' ||
+      !Number.isFinite(Date.parse(row.at)) ||
+      reward <= 0
+    )
+      throw new Error('Invalid bounty response.');
+    return {
+      id: String(row.id),
+      at: row.at,
+      repo: row.repo,
+      issueNumber: Number(row.issueNumber),
+      issueTitle: typeof row.issueTitle === 'string' ? row.issueTitle : null,
+      amountUsdc: reward,
+    };
+  });
+}
+
+export type BountyPage = {
+  items: RecentBounty[];
+  page: number;
+  hasMore: boolean;
+  totalPages: number;
+};
+
+export async function fetchBountyPage(page: number): Promise<BountyPage> {
+  const response = await fetch(`${remoteBackendUrl()}/api/bounties?page=${page}`, {
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error('Bounties are unavailable. Please try again.');
+  const data = await response.json();
+  if (
+    !data ||
+    !Number.isSafeInteger(data.page) ||
+    data.page !== page ||
+    typeof data.hasMore !== 'boolean' ||
+    !Number.isSafeInteger(data.totalPages) ||
+    data.totalPages < 1
+  ) {
+    throw new Error('Invalid bounty page response.');
+  }
+  return {
+    items: parseBounties(data.items),
+    page: data.page,
+    hasMore: data.hasMore,
+    totalPages: data.totalPages,
+  };
+}

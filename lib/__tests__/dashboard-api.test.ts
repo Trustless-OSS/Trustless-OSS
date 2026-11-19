@@ -10,6 +10,8 @@ vi.mock('@/lib/supabase/client', () => ({
 
 import {
   fetchActivity,
+  fetchRecentBounties,
+  fetchBountyPage,
   fetchDashboardRepos,
   fetchDeployedEscrowBalance,
   fetchFundsMovement,
@@ -241,5 +243,59 @@ describe('fetchDashboardRepos', () => {
     });
 
     await expect(fetchDashboardRepos()).rejects.toThrow('Invalid repository escrow balance');
+  });
+});
+
+describe('fetchRecentBounties', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetAllMocks();
+  });
+  const row = {
+    id: 'bounty-1',
+    repo: 'org/repo',
+    issueNumber: 7,
+    issueTitle: 'Fix setup',
+    amountUsdc: '12.5',
+    at: '2026-11-01T00:00:00Z',
+  };
+  it('preserves all fifteen rows and pagination metadata on explore', async () => {
+    const rows = Array.from({ length: 15 }, (_, i) => ({ ...row, id: String(i) }));
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(Response.json({ items: rows, page: 2, hasMore: true, totalPages: 3 }))
+    );
+    const result = await fetchBountyPage(2);
+    expect(result.items).toHaveLength(15);
+    expect(result.hasMore).toBe(true);
+  });
+  it('rejects malformed pagination metadata', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ items: [], page: 1, hasMore: 'yes' }))
+    );
+    await expect(fetchBountyPage(1)).rejects.toThrow('Invalid bounty page');
+  });
+  it('loads public bounties without requesting a session and normalizes decimal amounts', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json([row]));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchRecentBounties()).resolves.toEqual([{ ...row, amountUsdc: 12.5 }]);
+    expect(createClientMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/bounties/recent');
+  });
+  it.each([
+    { ...row, repo: '../private' },
+    { ...row, amountUsdc: '-1' },
+    { ...row, issueNumber: 0 },
+    { ...row, at: 'invalid' },
+  ])('rejects malformed bounty data', async (invalid) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json([invalid])));
+    await expect(fetchRecentBounties()).rejects.toThrow();
+  });
+  it('surfaces a missing backend endpoint instead of returning fake entries', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 404 })));
+    await expect(fetchRecentBounties()).rejects.toThrow('unavailable');
   });
 });
